@@ -10,7 +10,7 @@ const ActionButtons: FC = () => {
         Demo Trading
       </Button>
       <Button variant="default" className="flex-1 py-3 h-auto bg-primary text-primary-foreground hover:bg-primary/90">
-        Sign up / Log in
+        Signup / Log in
       </Button>
     </section>
   );
