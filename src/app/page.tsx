@@ -8,7 +8,7 @@ export default function CryptoExchangePage() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <TopHeader />
-      <main className="flex-grow overflow-y-auto pb-16 md:pb-0">
+      <main className="flex-grow overflow-y-auto pb-16 md:pb-0 px-4 py-6">
         <CardBalance />
         <FeatureCards />
         <MarketSection />
@@ -17,4 +17,3 @@ export default function CryptoExchangePage() {
     </div>
   );
 }
-
