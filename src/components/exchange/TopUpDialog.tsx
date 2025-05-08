@@ -1,64 +1,55 @@
+// top-level comment
 'use client';
 
 import type { FC } from 'react';
 import { usePaystackPayment } from 'react-paystack';
-import { DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useState, useEffect } from 'react';
-import { CreditCard } from 'lucide-react'; // Loader2 removed as isProcessing is removed
+import { CreditCard, X } from 'lucide-react'; // Loader2 removed as isProcessing is removed
 
-// Effective Paystack Public Key Logic (remains unchanged)
+// Effective Paystack Public Key Logic
 const FALLBACK_TEST_PUBLIC_KEY = 'pk_test_fae492482c870c83a5d33ba8f260880c22a5b24f';
-let effectivePaystackPublicKey = FALLBACK_TEST_PUBLIC_KEY;
+let effectivePaystackPublicKey = FALLBACK_TEST_PUBLIC_KEY; // Default to fallback
+
+// User provided live key
+const userProvidedLiveKey = "pk_live_624bc2353b87de04be7d1dc3ca3fbdeab34dfa94";
 
 if (typeof window !== 'undefined') {
   const envPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
-  const liveKeyFromUser = "sk_live_e9cd71a7fa828e96e65ea8a2480756125506421e"; // User provided key
 
-  // Prioritize user-provided live key if it seems valid (starts with pk_live_ or sk_live_ for testing this scenario)
-  // WARNING: Using secret keys (sk_live_) on the client-side is a MAJOR SECURITY RISK.
-  // This is ONLY for temporary user testing as per their request.
-  // In a production environment, this MUST be a public key (pk_live_ or pk_test_).
-  if (liveKeyFromUser && (liveKeyFromUser.startsWith('pk_live_') || liveKeyFromUser.startsWith('sk_live_'))) {
-    effectivePaystackPublicKey = liveKeyFromUser.startsWith('sk_live_') 
-        ? liveKeyFromUser // Allow sk_live for user's specific testing request
-        : liveKeyFromUser; // Use pk_live_
-    if (liveKeyFromUser.startsWith('sk_live_')) {
-        console.warn(
-            `[Paystack Setup - CRITICAL SECURITY WARNING] Using a SECRET KEY ('${liveKeyFromUser.substring(0,10)}...') on the client side. ` +
-            `This is for TESTING ONLY as requested and is a SEVERE SECURITY RISK. Remove before production.`
-        );
-    } else {
-        console.log(`[Paystack Setup] Using user-provided live key (public part): ${effectivePaystackPublicKey.substring(0,10)}...`);
-    }
+  // Prioritize user-provided live key if it's valid
+  if (userProvidedLiveKey && userProvidedLiveKey.startsWith('pk_live_')) {
+    effectivePaystackPublicKey = userProvidedLiveKey;
+    console.log(`[Paystack Setup] Using user-provided LIVE key: ${effectivePaystackPublicKey.substring(0,10)}...`);
   } else if (envPublicKey && (envPublicKey.startsWith('pk_live_') || envPublicKey.startsWith('pk_test_'))) {
     effectivePaystackPublicKey = envPublicKey;
     console.log(`[Paystack Setup] Using Paystack public key from environment: ${effectivePaystackPublicKey.substring(0,10)}...`);
-  } else if (envPublicKey && envPublicKey.startsWith('sk_')) {
+  } else if (envPublicKey && envPublicKey.startsWith('sk_')) { // Check for sk_ in env as a warning
     console.warn(
       `[Paystack Setup - WARNING] Environment variable NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ('${envPublicKey.substring(0,10)}...') contains a SECRET KEY. ` +
       `This is a security risk and invalid for client-side usage. Falling back to test public key: ${FALLBACK_TEST_PUBLIC_KEY.substring(0,10)}...` +
       `\nPlease use your Paystack PUBLIC KEY (pk_live_... or pk_test_...) in NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY.`
     );
-    effectivePaystackPublicKey = FALLBACK_TEST_PUBLIC_KEY;
-  } else if (envPublicKey) {
+    // effectivePaystackPublicKey remains FALLBACK_TEST_PUBLIC_KEY
+  } else if (envPublicKey) { // Invalid format for env key
     console.warn(
       `[Paystack Setup - WARNING] Invalid Paystack key in NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: '${envPublicKey.substring(0,10)}...'. ` +
       `Falling back to test public key: ${FALLBACK_TEST_PUBLIC_KEY.substring(0,10)}...` +
       `\nPlease ensure it is a valid Paystack PUBLIC KEY (pk_live_... or pk_test_...).`
     );
-    effectivePaystackPublicKey = FALLBACK_TEST_PUBLIC_KEY;
-  } else {
-    console.warn(
-      `[Paystack Setup - WARNING] NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY is not set. ` +
-      `Falling back to test public key: ${FALLBACK_TEST_PUBLIC_KEY.substring(0,10)}... (or user-provided if valid)` +
-      `\nFor live transactions, please set your Paystack PUBLIC KEY in this environment variable.`
+    // effectivePaystackPublicKey remains FALLBACK_TEST_PUBLIC_KEY
+  } else if (!userProvidedLiveKey || !userProvidedLiveKey.startsWith('pk_live_')) { // Env not set AND user key is not a valid live key
+     console.warn(
+      `[Paystack Setup - WARNING] NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY is not set and no valid user-provided live key. ` +
+      `Falling back to test public key: ${FALLBACK_TEST_PUBLIC_KEY.substring(0,10)}...` +
+      `\nFor live transactions, please set your Paystack PUBLIC KEY in the environment variable or provide a valid live key directly.`
     );
-    // effectivePaystackPublicKey is already set to FALLBACK_TEST_PUBLIC_KEY or user's key
+    // effectivePaystackPublicKey remains FALLBACK_TEST_PUBLIC_KEY
   }
 }
 
@@ -89,8 +80,7 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ onClose: onDialogCloseProp, onPayme
 
   const selectedPlan = topUpPlans.find(p => p.id === selectedPlanId);
 
-  // Config is now assembled just before payment initialization
-  const initializePayment = usePaystackPayment(); // Initialize hook without config initially
+  const initializePayment = usePaystackPayment(); 
 
   const handleBuyCoins = () => {
     if (!selectedPlan) {
@@ -109,29 +99,29 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ onClose: onDialogCloseProp, onPayme
         });
         return;
     }
-    // Critical check for public key format, allow sk_live_ for testing as requested
-    if (!effectivePaystackPublicKey || !(effectivePaystackPublicKey.startsWith('pk_test_') || effectivePaystackPublicKey.startsWith('pk_live_') || effectivePaystackPublicKey.startsWith('sk_live_'))) {
+    
+    if (!effectivePaystackPublicKey || !(effectivePaystackPublicKey.startsWith('pk_test_') || effectivePaystackPublicKey.startsWith('pk_live_'))) {
         toast({
             title: 'Paystack Configuration Error',
-            description: `A valid Paystack key is missing or invalid. Please check setup or contact support. Key used: ${effectivePaystackPublicKey ? effectivePaystackPublicKey.substring(0,10)+'...' : 'Not found'}.`,
+            description: `A valid Paystack public key is missing or invalid. Please check setup or contact support. Key prefix: ${effectivePaystackPublicKey ? effectivePaystackPublicKey.substring(0,7) : 'Not found'}.`,
             variant: 'destructive',
         });
+        console.error("Invalid Paystack key:", effectivePaystackPublicKey);
         return;
     }
 
-    const paymentConfig = {
+    const paymentConfig = { // Ensure amount is in kobo/cents i.e. the smallest unit of your currency.
         reference: new Date().getTime().toString(),
         email: user.email,
         amount: selectedPlan.amount * 100, // Paystack amount is in kobo/cents
         publicKey: effectivePaystackPublicKey,
-        currency: 'KES',
+        currency: 'KES', // Currency for Paystack
     };
-
-    // Close the app's dialog *before* initializing Paystack payment
-    onDialogCloseProp();
+    
+    onDialogCloseProp(); // Close the app's dialog *before* initializing Paystack payment
 
     initializePayment({
-        ...paymentConfig, // Spread the dynamic config here
+        ...paymentConfig,
         onSuccess: (reference) => {
             console.log('Paystack success reference:', reference);
             if (selectedPlan) {
@@ -143,11 +133,7 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ onClose: onDialogCloseProp, onPayme
             });
         },
         onClose: () => {
-            // This callback is invoked when the Paystack modal is closed by the user
-            // or after onSuccess/onError. If it was closed by user before completion,
-            // we might want a toast, but onSuccess/onError toasts are usually sufficient.
             console.log('Paystack payment window closed.');
-            // No automatic toast here to avoid duplicates if success/error already showed one.
         },
         onError: (error) => {
             console.error('Paystack payment error:', error);
@@ -161,15 +147,21 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ onClose: onDialogCloseProp, onPayme
   };
 
   return (
-    <DialogContent className="sm:max-w-md md:max-w-lg p-0 glassmorphic-dialog">
-      <DialogHeader className="p-6 pb-4">
-        <DialogTitle className="text-2xl font-bold text-center text-primary">Top Up Your Wallet</DialogTitle>
-        <DialogDescription className="text-center text-muted-foreground">
-          Choose a coin package below to add funds to your account.
-        </DialogDescription>
+    <DialogContent className="sm:max-w-md md:max-w-lg p-0 glassmorphic-dialog overflow-hidden">
+      <DialogHeader className="p-6 pb-4 flex flex-row justify-between items-center">
+        <DialogTitle className="text-2xl font-bold text-center text-primary flex-grow">Top Up Your Wallet</DialogTitle>
+        <DialogClose asChild>
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+            <X className="h-5 w-5" />
+            <span className="sr-only">Close</span>
+          </Button>
+        </DialogClose>
       </DialogHeader>
+      <DialogDescription className="text-center text-muted-foreground px-6 pb-2 -mt-2">
+          Choose a coin package below to add funds to your account.
+      </DialogDescription>
       
-      <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+      <div className="p-6 pt-2 space-y-6 max-h-[calc(60vh-50px)] overflow-y-auto">
         <RadioGroup value={selectedPlanId} onValueChange={setSelectedPlanId} className="space-y-3">
           {topUpPlans.map((plan) => (
             <Label
@@ -197,7 +189,7 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ onClose: onDialogCloseProp, onPayme
         </Button>
         <Button
           onClick={handleBuyCoins}
-          disabled={!selectedPlanId || !user?.email?.includes('@') || !(effectivePaystackPublicKey.startsWith('pk_test_') || effectivePaystackPublicKey.startsWith('pk_live_') || effectivePaystackPublicKey.startsWith('sk_live_'))}
+          disabled={!selectedPlanId || !user?.email?.includes('@') || !(effectivePaystackPublicKey.startsWith('pk_test_') || effectivePaystackPublicKey.startsWith('pk_live_'))}
           className="bg-primary hover:bg-primary/90 text-primary-foreground"
         >
           <CreditCard className="mr-2 h-4 w-4" />
