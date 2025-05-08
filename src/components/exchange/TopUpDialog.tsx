@@ -14,25 +14,45 @@ import { Loader2, CreditCard } from 'lucide-react';
 
 // Read the environment variable for Paystack public key
 const PAYSTACK_PUBLIC_KEY_FROM_ENV = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
-const FALLBACK_TEST_KEY = 'pk_test_fae492482c870c83a5d33ba8f260880c22a5b24f';
+const FALLBACK_TEST_PUBLIC_KEY = 'pk_test_fae492482c870c83a5d33ba8f260880c22a5b24f'; // Standard Paystack test public key
 
 let effectivePaystackPublicKey = PAYSTACK_PUBLIC_KEY_FROM_ENV;
+const varName = 'NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY';
 
-// Check if the environment variable is missing, empty, or only whitespace
 if (!effectivePaystackPublicKey || effectivePaystackPublicKey.trim() === "") {
-  if (typeof window !== 'undefined') { // Ensure console.warn only runs client-side
-    const varName = 'NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY';
+  if (typeof window !== 'undefined') {
     console.warn(
       `[Paystack Setup] Environment variable ${varName} is not set or is empty.\n` +
-      `Using fallback test key: ${FALLBACK_TEST_KEY}.\n` +
-      `To use your own key:\n` +
+      `Using fallback TEST public key: ${FALLBACK_TEST_PUBLIC_KEY}.\n` +
+      `To use your own LIVE public key for actual transactions:\n` +
       `1. Create or open the '.env.local' file in your project root.\n` +
-      `2. Add the line: ${varName}=your_paystack_public_key (e.g., pk_live_xxxx or pk_test_xxxx).\n` +
+      `2. Add the line: ${varName}=your_paystack_public_live_key (e.g., pk_live_xxxxxxxxxxxx).\n` +
       `3. Restart your Next.js development server (e.g., 'npm run dev').\n` +
-      `For production, ensure ${varName} is set in your deployment environment's variables.`
+      `For production, ensure ${varName} is set in your deployment environment's variables with your live public key.`
     );
   }
-  effectivePaystackPublicKey = FALLBACK_TEST_KEY;
+  effectivePaystackPublicKey = FALLBACK_TEST_PUBLIC_KEY;
+} else if (effectivePaystackPublicKey.startsWith('sk_')) {
+  // Warn if a secret key is mistakenly used
+  if (typeof window !== 'undefined') {
+    console.warn(
+      `[Paystack Setup] The provided ${varName} ('${effectivePaystackPublicKey.substring(0, 10)}...') starts with 'sk_'.\n` +
+      `This appears to be a SECRET KEY. The client-side Paystack SDK requires a PUBLIC KEY (e.g., 'pk_live_...' or 'pk_test_...').\n` +
+      `Using fallback TEST public key: ${FALLBACK_TEST_PUBLIC_KEY} to prevent accidental exposure of secret key.\n` +
+      `Please update ${varName} with your correct Paystack PUBLIC key.`
+    );
+  }
+  effectivePaystackPublicKey = FALLBACK_TEST_PUBLIC_KEY; // Default to test key for safety
+} else if (!effectivePaystackPublicKey.startsWith('pk_live_') && !effectivePaystackPublicKey.startsWith('pk_test_')) {
+    // Warn if the key doesn't look like a public key
+    if (typeof window !== 'undefined') {
+        console.warn(
+            `[Paystack Setup] The provided ${varName} ('${effectivePaystackPublicKey.substring(0, 10)}...') does not look like a valid Paystack public key (should start with 'pk_live_' or 'pk_test_').\n` +
+            `Using fallback TEST public key: ${FALLBACK_TEST_PUBLIC_KEY}.\n` +
+            `Please verify your ${varName}.`
+        );
+    }
+    effectivePaystackPublicKey = FALLBACK_TEST_PUBLIC_KEY;
 }
 
 
@@ -62,7 +82,6 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
   const [selectedPlanId, setSelectedPlanId] = useState<string | undefined>(topUpPlans[0].id);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Effect to reset processing state if the dialog is closed externally
   useEffect(() => {
     if (!isOpen) {
       setIsProcessing(false);
@@ -75,7 +94,7 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
     reference: new Date().getTime().toString(),
     email: user?.email || 'test@example.com', 
     amount: selectedPlan ? selectedPlan.amount * 100 : 0, 
-    publicKey: effectivePaystackPublicKey, // Use the determined public key
+    publicKey: effectivePaystackPublicKey,
     currency: 'KES',
   };
 
@@ -98,13 +117,10 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
         });
         return;
     }
-    // This check is a final safeguard. 
-    // Given the logic at the top of the file, effectivePaystackPublicKey (and thus config.publicKey) 
-    // should always be populated with a non-empty string.
-    if (!config.publicKey) { 
+    if (!config.publicKey || (!config.publicKey.startsWith('pk_test_') && !config.publicKey.startsWith('pk_live_'))) { 
         toast({
             title: 'Paystack Configuration Error',
-            description: 'Paystack public key is critically missing. Please check setup or contact support.',
+            description: `Paystack public key ('${config.publicKey ? config.publicKey.substring(0,10)+'...' : 'Not Set'}') is invalid or missing. Please check setup or contact support.`,
             variant: 'destructive',
         });
         setIsProcessing(false);
@@ -112,25 +128,21 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
     }
 
     setIsProcessing(true); 
-
-    // Close this dialog *before* Paystack modal opens
     onDialogCloseProp(); 
 
     initializePayment({
       onSuccess: (reference) => {
         console.log('Paystack success reference:', reference);
-        if (selectedPlan) { // Ensure selectedPlan is still valid
+        if (selectedPlan) { 
             onPaymentSuccess(selectedPlan.coins);
         }
-        // setIsProcessing(false); // Not needed as dialog is closed, component might be unmounted
       },
-      onClose: () => { // Paystack modal closed by user
+      onClose: () => { 
         toast({
           title: 'Payment Cancelled',
           description: 'The payment process was not completed.',
           variant: 'warning',
         });
-        // setIsProcessing(false); // Not needed as dialog is closed
       },
       onError: (error) => { 
         console.error('Paystack payment error:', error);
@@ -139,7 +151,6 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
             description: 'An error occurred during payment. Please try again.',
             variant: 'destructive',
         });
-        // setIsProcessing(false); // Not needed as dialog is closed
       }
     });
   };
@@ -179,14 +190,14 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
 
       <DialogFooter className="p-6 border-t border-border/20">
         <Button variant="outline" onClick={() => {
-          setIsProcessing(false); // Ensure processing is stopped if cancelled
+          setIsProcessing(false); 
           onDialogCloseProp();
         }} disabled={isProcessing}>
           Cancel
         </Button>
         <Button 
           onClick={handleBuyCoins} 
-          disabled={!selectedPlanId || isProcessing || !config.publicKey || !config.email.includes('@')} // Added email validation check for safety
+          disabled={!selectedPlanId || isProcessing || !config.publicKey || !config.email.includes('@') || (!config.publicKey.startsWith('pk_test_') && !config.publicKey.startsWith('pk_live_'))}
           className="bg-primary hover:bg-primary/90 text-primary-foreground"
         >
           {isProcessing ? (
