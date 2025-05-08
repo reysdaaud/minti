@@ -73,20 +73,20 @@ body {
 
     /* Send Money Dialog Specific Styles */
     .send-money-dialog-content {
-      background: linear-gradient(135deg, rgba(255,165,0,0.1), rgba(0,255,128,0.1)) !important; /* Reduced alpha for more transparency */
+      background: linear-gradient(135deg, rgba(255,165,0,0.25), rgba(0,255,128,0.25)) !important; /* Increased alpha for less transparency */
       box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
       backdrop-filter: blur(20px) !important;
       -webkit-backdrop-filter: blur(20px) !important; /* For Safari */
-      border: 1px solid rgba(255, 255, 255, 0.15) !important; /* Slightly reduced border alpha */
+      border: 1px solid rgba(255, 255, 255, 0.3) !important; /* Increased border alpha */
       color: hsl(var(--foreground)) !important; /* Ensures text color from theme */
     }
 
     .glass-input {
-      background-color: rgba(255, 255, 255, 0.05) !important; /* Reduced alpha for more transparency */
+      background-color: rgba(255, 255, 255, 0.2) !important; /* Increased alpha for less transparency */
       color: hsl(var(--foreground)) !important; /* Use theme foreground for consistency */
       border-radius: 10px !important;
       padding: 10px !important;
-      border: 1px solid rgba(255, 255, 255, 0.1) !important; /* Added subtle border */
+      border: 1px solid rgba(255, 255, 255, 0.25) !important; /* Increased border alpha */
       line-height: 1.5; /* Ensure text is vertically centered */
     }
 
