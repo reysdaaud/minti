@@ -18,11 +18,18 @@ const FALLBACK_TEST_KEY = 'pk_test_fae492482c870c83a5d33ba8f260880c22a5b24f';
 
 let effectivePaystackPublicKey = PAYSTACK_PUBLIC_KEY_FROM_ENV;
 
-if (!PAYSTACK_PUBLIC_KEY_FROM_ENV) {
+// Check if the environment variable is missing, empty, or only whitespace
+if (!effectivePaystackPublicKey || effectivePaystackPublicKey.trim() === "") {
   if (typeof window !== 'undefined') { // Ensure console.warn only runs client-side
+    const varName = 'NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY';
     console.warn(
-      "Paystack public key (NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY) is not set in environment variables. " +
-      `Using fallback test key: ${FALLBACK_TEST_KEY}. Ensure you set your actual public key for production.`
+      `[Paystack Setup] Environment variable ${varName} is not set or is empty.\n` +
+      `Using fallback test key: ${FALLBACK_TEST_KEY}.\n` +
+      `To use your own key:\n` +
+      `1. Create or open the '.env.local' file in your project root.\n` +
+      `2. Add the line: ${varName}=your_paystack_public_key (e.g., pk_live_xxxx or pk_test_xxxx).\n` +
+      `3. Restart your Next.js development server (e.g., 'npm run dev').\n` +
+      `For production, ensure ${varName} is set in your deployment environment's variables.`
     );
   }
   effectivePaystackPublicKey = FALLBACK_TEST_KEY;
@@ -68,7 +75,7 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
     reference: new Date().getTime().toString(),
     email: user?.email || 'test@example.com', 
     amount: selectedPlan ? selectedPlan.amount * 100 : 0, 
-    publicKey: effectivePaystackPublicKey || FALLBACK_TEST_KEY, // Ensure publicKey is never undefined or empty
+    publicKey: effectivePaystackPublicKey, // Use the determined public key
     currency: 'KES',
   };
 
@@ -91,17 +98,20 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
         });
         return;
     }
-    if (!config.publicKey) {
+    // This check is a final safeguard. 
+    // Given the logic at the top of the file, effectivePaystackPublicKey (and thus config.publicKey) 
+    // should always be populated with a non-empty string.
+    if (!config.publicKey) { 
         toast({
             title: 'Paystack Configuration Error',
-            description: 'Paystack public key is missing. Please contact support.',
+            description: 'Paystack public key is critically missing. Please check setup or contact support.',
             variant: 'destructive',
         });
         setIsProcessing(false);
         return;
     }
 
-    setIsProcessing(true); // Indicate processing started
+    setIsProcessing(true); 
 
     // Close this dialog *before* Paystack modal opens
     onDialogCloseProp(); 
@@ -109,7 +119,9 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
     initializePayment({
       onSuccess: (reference) => {
         console.log('Paystack success reference:', reference);
-        onPaymentSuccess(selectedPlan.coins);
+        if (selectedPlan) { // Ensure selectedPlan is still valid
+            onPaymentSuccess(selectedPlan.coins);
+        }
         // setIsProcessing(false); // Not needed as dialog is closed, component might be unmounted
       },
       onClose: () => { // Paystack modal closed by user
