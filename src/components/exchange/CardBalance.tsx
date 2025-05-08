@@ -9,7 +9,7 @@ const CardBalance: FC = () => {
   const [showBalance, setShowBalance] = useState(false);
 
   return (
-    <section className="w-full max-w-md mx-auto text-center space-y-6 mb-6">
+    <section className="w-full max-w-md mx-auto text-center space-y-6"> {/* Removed mb-6 */}
       {/* Bank Card Section - Profile Info is ON this card */}
       <div className="bg-gradient-to-br from-primary/90 via-primary to-yellow-500 rounded-xl p-5 text-primary-foreground shadow-xl relative overflow-hidden">
         {/* Profile Section */}
