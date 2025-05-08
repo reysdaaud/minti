@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 export default function CryptoExchangePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [coinBalance, setCoinBalance] = useState(0);
+  const [coinBalance, setCoinBalance] = useState(0); // Initial balance likely 0 before top-up
 
   useEffect(() => {
     if (!loading && !user) {
@@ -37,7 +37,7 @@ export default function CryptoExchangePage() {
       <main className="flex-grow overflow-y-auto pb-16 md:pb-0 px-4 pt-3">
         <Card className="mb-4 bg-card border-border shadow-lg">
           <CardHeader>
-            <CardTitle className="text-lg text-primary">Your Wallet</CardTitle>
+            <CardTitle className="text-lg text-primary">Your Sondar Wallet</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold text-foreground">

@@ -17,15 +17,15 @@ const PAYSTACK_PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 'pk_t
 interface TopUpPlan {
   id: string;
   coins: number;
-  amount: number; // Amount in NGN (e.g., 1000 for NGN 1000)
+  amount: number; // Amount in KES (e.g., 100 for KES 100)
   description: string;
 }
 
 const topUpPlans: TopUpPlan[] = [
-  { id: 'plan1', coins: 100, amount: 1000, description: 'Get 100 Coins for ₦1,000' },
-  { id: 'plan2', coins: 250, amount: 2200, description: 'Get 250 Coins for ₦2,200 (Save ₦300)' },
-  { id: 'plan3', coins: 500, amount: 4000, description: 'Get 500 Coins for ₦4,000 (Save ₦1000)' },
-  { id: 'plan4', coins: 1000, amount: 7500, description: 'Get 1000 Coins for ₦7,500 (Best Value!)' },
+  { id: 'plan1', coins: 100, amount: 100, description: 'Get 100 Coins for KES 100' },
+  { id: 'plan2', coins: 250, amount: 220, description: 'Get 250 Coins for KES 220 (Save KES 30)' },
+  { id: 'plan3', coins: 500, amount: 400, description: 'Get 500 Coins for KES 400 (Save KES 100)' },
+  { id: 'plan4', coins: 1000, amount: 750, description: 'Get 1000 Coins for KES 750 (Best Value!)' },
 ];
 
 interface TopUpDialogProps {
@@ -45,9 +45,9 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose, onPaymentSuccess }
   const config = {
     reference: new Date().getTime().toString(),
     email: user?.email || 'test@example.com', // Fallback email if user.email is null
-    amount: selectedPlan ? selectedPlan.amount * 100 : 0, // Amount in Kobo
+    amount: selectedPlan ? selectedPlan.amount * 100 : 0, // Amount in Kobo/Cents
     publicKey: PAYSTACK_PUBLIC_KEY,
-    currency: 'NGN',
+    currency: 'KES', // Updated to KES
   };
 
   const initializePayment = usePaystackPayment(config);
@@ -74,7 +74,12 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose, onPaymentSuccess }
       onSuccess: (reference) => {
         console.log('Paystack success reference:', reference);
         onPaymentSuccess(selectedPlan.coins);
+        toast({
+          title: 'Payment Successful!',
+          description: `Successfully purchased ${selectedPlan.coins} coins.`,
+        });
         setIsProcessing(false);
+        onClose(); // Close dialog on success
       },
       onClose: () => {
         toast({
@@ -115,7 +120,7 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose, onPaymentSuccess }
                   <p className="text-sm text-muted-foreground">{plan.description}</p>
                 </div>
               </div>
-              <span className="text-lg font-bold text-primary">₦{plan.amount.toLocaleString()}</span>
+              <span className="text-lg font-bold text-primary">KES {plan.amount.toLocaleString()}</span>
             </Label>
           ))}
         </RadioGroup>

@@ -85,7 +85,7 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
     setCoinBalance(prevBalance => prevBalance + coinsPurchased);
     toast({
       title: 'Top-up Successful!',
-      description: `You've successfully purchased ${coinsPurchased} coins.`,
+      description: `You've successfully purchased ${coinsPurchased.toLocaleString()} coins.`, // Updated to toLocaleString for better readability
     });
     setTopUpDialogOpen(false); // Close the top-up dialog
   };
