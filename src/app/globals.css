@@ -8,56 +8,112 @@ body {
 
 @layer base {
   :root {
-    --background: 220 10% 10%; /* Very Dark Grey/Black */
-    --foreground: 0 0% 95%; /* Light Grey/White */
+    --background: 0 0% 7%; /* Deep Dark Black */
+    --foreground: 0 0% 98%; /* Slik White */
 
-    --card: 220 10% 15%; /* Slightly lighter dark grey for card backgrounds */
+    --card: 220 10% 15%; 
     --card-foreground: 0 0% 95%;
 
     --popover: 220 10% 12%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 45 100% 50%; /* Bright Yellow/Gold */
-    --primary-foreground: 220 10% 10%; /* Dark text on Yellow/Gold */
+    --primary: 145 63% 49%; /* Spotify Green */
+    --primary-foreground: 0 0% 98%; /* Slik White on Spotify Green */
 
-    --secondary: 220 10% 25%; /* Medium Dark Grey for secondary elements */
-    --secondary-foreground: 0 0% 80%; /* Lighter grey text on secondary */
+    --secondary: 220 10% 25%; 
+    --secondary-foreground: 0 0% 80%;
     
-    --muted: 220 10% 20%; /* Muted dark grey */
-    --muted-foreground: 0 0% 60%; /* Muted grey text */
+    --muted: 220 10% 20%;
+    --muted-foreground: 0 0% 60%;
 
-    --accent: 45 100% 50%; /* Bright Yellow/Gold for accent */
-    --accent-foreground: 220 10% 10%; /* Dark text on Yellow/Gold */
+    --accent: 145 63% 49%; /* Spotify Green for accent */
+    --accent-foreground: 0 0% 98%; /* Slik White on Spotify Green */
 
-    --destructive: 0 70% 50%; /* Red for destructive actions */
+    --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 220 10% 20%; /* Subtle border color */
-    --input: 220 10% 18%; /* Input background */
-    --ring: 45 100% 50%; /* Ring color to be Yellow/Gold */
+    --border: 220 10% 20%;
+    --input: 220 10% 18%;
+    --ring: 145 63% 49%; /* Ring color to be Spotify Green */
     
     --radius: 0.5rem;
 
-    /* Sidebar variables - retain for shadcn components, but theme for dark mode */
+    /* Sidebar variables */
     --sidebar-background: 220 10% 12%;
     --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 45 100% 55%;
-    --sidebar-primary-foreground: 220 10% 5%;
+    --sidebar-primary: 145 63% 55%; /* Spotify Green variation */
+    --sidebar-primary-foreground: 0 0% 5%;
     --sidebar-accent: 220 10% 20%;
-    --sidebar-accent-foreground: 45 100% 50%;
+    --sidebar-accent-foreground: 145 63% 50%; /* Spotify Green variation */
     --sidebar-border: 220 10% 25%;
-    --sidebar-ring: 45 100% 55%;
+    --sidebar-ring: 145 63% 55%; /* Spotify Green variation */
 
-    --chart-1: 45 90% 55%; /* Gold variations for charts */
-    --chart-2: 35 80% 60%;
-    --chart-3: 50 100% 45%;
-    --chart-4: 40 70% 50%;
-    --chart-5: 30 90% 65%;
+    --chart-1: 145 70% 50%; /* Spotify Green variations for charts */
+    --chart-2: 145 80% 45%;
+    --chart-3: 145 60% 55%;
+    --chart-4: 145 90% 40%;
+    --chart-5: 145 50% 60%;
   }
 
-  /* .dark class is not strictly necessary if :root is already dark themed, 
-     but good for explicitness or if a light theme toggle is added later.
-     For now, :root directly defines the dark theme. */
+    /* Glassmorphic dialog original - used by TopUp */
+    .glassmorphic-dialog {
+        background-color: rgba(255, 255, 255, 0.1); 
+        border: 1px solid rgba(255, 255, 255, 0.2); 
+        backdrop-filter: blur(8px); 
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+        -webkit-backdrop-filter: blur(10px); 
+        border-radius: 10px;
+      }
+      
+      .dark .glassmorphic-dialog {
+        background-color: rgba(0, 0, 0, 0.1); 
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+      }
+
+    /* Send Money Dialog Specific Styles */
+    .send-money-dialog-content {
+      background: linear-gradient(135deg, rgba(255,165,0,0.2), rgba(0,255,128,0.2)) !important;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+      backdrop-filter: blur(20px) !important;
+      -webkit-backdrop-filter: blur(20px) !important; /* For Safari */
+      border: 1px solid rgba(255, 255, 255, 0.2) !important;
+      color: hsl(var(--foreground)) !important; /* Ensures text color from theme */
+      /* padding and border-radius are set via Tailwind utilities on the component for flexibility */
+    }
+
+    .glass-input {
+      background-color: rgba(255, 255, 255, 0.1) !important;
+      color: hsl(var(--foreground)) !important; /* Use theme foreground for consistency */
+      border-radius: 10px !important;
+      padding: 10px !important;
+      border: none !important;
+      line-height: 1.5; /* Ensure text is vertically centered */
+    }
+
+    .glass-input::placeholder {
+      color: rgba(255, 255, 255, 0.7) !important;
+      opacity: 1; /* Ensure placeholder is visible */
+    }
+    
+    /* For Textarea specific height from mockup */
+    .glass-input[name="note"] {
+      height: 60px !important; 
+      resize: none !important;
+    }
+
+    .send-money-button {
+      background: linear-gradient(135deg, rgb(255,165,0), rgb(0,255,128)) !important;
+      color: #000 !important;
+      font-weight: bold !important;
+      padding: 12px !important;
+      border-radius: 10px !important;
+      transition: opacity 0.3s ease;
+    }
+
+    .send-money-button:hover {
+      opacity: 0.8 !important;
+    }
 }
 
 @layer base {
