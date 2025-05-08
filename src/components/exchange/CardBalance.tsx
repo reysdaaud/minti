@@ -5,29 +5,22 @@ const CardBalance: FC = () => {
   return (
     <section className="w-full max-w-md mx-auto text-center space-y-6 mb-6"> {/* Added mb-6 for spacing below card */}
       {/* Mastercard Style Card */}
-      <div className="bg-slate-700 rounded-xl p-4 text-white shadow-xl relative overflow-hidden aspect-[1.586/1] flex flex-col justify-between"> {/* Changed p-5 to p-4 */}
+      <div className="rounded-xl p-4 text-white shadow-xl relative overflow-hidden aspect-[1.586/1] flex flex-col justify-between bg-[conic-gradient(from_230deg_at_50%_50%,#f9f062,rgb(72_61_139))]">
         {/* Top Section: Business, Chip, Contactless */}
         <div className="flex justify-between items-start">
           <div className="flex items-center space-x-2">
             {/* Chip SVG */}
             <svg
-              width="40"
-              height="30"
-              viewBox="0 0 40 30"
-              fill="none"
+              width="45"
+              height="35"
+              viewBox="0 0 512 512"
+              fill="white"
               xmlns="http://www.w3.org/2000/svg"
-              className="h-8 w-10"
+              className="h-10 w-12"
             >
-              <rect width="40" height="30" rx="4" fill="#C4C4C4" />
-              <rect x="5" y="13" width="15" height="4" rx="1" fill="#A0A0A0" />
-              <rect x="25" y="7" width="10" height="4" rx="1" fill="#A0A0A0" />
-              <rect x="25" y="19" width="10" height="4" rx="1" fill="#A0A0A0" />
-              <rect x="5" y="5" width="8" height="6" rx="1" fill="#B0B0B0" />
-              <rect x="15" y="5" width="8" height="6" rx="1" fill="#B0B0B0" />
-              <rect x="5" y="20" width="8" height="6" rx="1" fill="#B0B0B0" />
-              <rect x="15" y="20" width="8" height="6" rx="1" fill="#B0B0B0" />
+              <path d="M416 128h-80a16 16 0 0 0-16 16v80a16 16 0 0 0 16 16h80a16 16 0 0 0 16-16v-80a16 16 0 0 0-16-16zM96 128h-80a16 16 0 0 0-16 16v80a16 16 0 0 0 16 16h80a16 16 0 0 0 16-16v-80a16 16 0 0 0-16-16zM416 352h-80a16 16 0 0 0-16 16v80a16 16 0 0 0 16 16h80a16 16 0 0 0 16-16v-80a16 16 0 0 0-16-16zM96 352h-80a16 16 0 0 0-16 16v80a16 16 0 0 0 16 16h80a16 16 0 0 0 16-16v-80a16 16 0 0 0-16-16zM256 352a80 80 0 1 0 0-160 80 80 0 1 0 0 160z" />
             </svg>
-            <span className="text-xl font-semibold tracking-wide">business</span>
+            <span className="text-xl font-semibold tracking-wide">Sondar</span>
           </div>
           <div className="flex flex-col items-end">
             {/* Contactless SVG */}
@@ -102,7 +95,7 @@ const CardBalance: FC = () => {
             <svg width="50" height="30" viewBox="0 0 70 40" xmlns="http://www.w3.org/2000/svg" className="h-8"> {/* Changed h-10 to h-8 */}
               <circle cx="20" cy="20" r="18" fill="#EA001B"/>
               <circle cx="50" cy="20" r="18" fill="#F79E1B"/>
-              <path d="M35 20 C 35 29.941125 27.941125 38 20 38 C 12.058875 38 5 29.941125 5 20 C 5 10.058875 12.058875 2 20 2 C 27.941125 2 35 10.058875 35 20 Z M35 20 C35 29.941125 42.058875 38 50 38 C 57.941125 38 65 29.941125 65 20 C 65 10.058875 57.941125 2 50 2 C 42.058875 2 35 10.058875 35 20 Z" fill="#FF5F00"/>
+              <path d="M35 20 C 35 29.941125 27.941125 38 20 38 C 12.058875 38 5 29.941125 5 20 C 5 10.058875 12.058875 2 20 2 C 27.941125 2 35 10.058875 35 20 Z M35 20 C35 29.941125 42.058875 38 50 38 C 57.941125 65 29.941125 65 20 C 65 10.058875 57.941125 2 50 2 C 42.058875 2 35 10.058875 35 20 Z" fill="#FF5F00"/>
             </svg>
           </div>
         </div>
