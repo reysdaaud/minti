@@ -1,3 +1,4 @@
+// src/app/page.tsx
 'use client';
 
 import TopHeader from '@/components/exchange/TopHeader';
@@ -15,13 +16,28 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 export default function CryptoExchangePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [coinBalance, setCoinBalance] = useState(0); // Initial balance likely 0 before top-up
+  // This state will be updated by UserActions after a successful top-up
+  const [coinBalance, setCoinBalance] = useState(0); 
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/auth/signin');
     }
   }, [user, loading, router]);
+
+  // Effect to fetch initial coin balance if user exists (e.g., from Firestore)
+  // This is a placeholder; actual fetching logic would be needed here or passed down.
+  useEffect(() => {
+    if (user) {
+      // Placeholder: fetch balance for user.uid
+      // For now, we'll just log it. In a real app, you'd fetch from Firestore.
+      console.log("User logged in, ideally fetch coin balance for:", user.uid);
+      // Example: fetchUserBalance(user.uid).then(setCoinBalance);
+      // For the purpose of this task, Pay.tsx updates Firestore, and this page
+      // will reflect the change if UserActions calls setCoinBalance.
+    }
+  }, [user]);
+
 
   if (loading || !user) {
     return (
@@ -49,7 +65,8 @@ export default function CryptoExchangePage() {
           </CardContent>
         </Card>
         <CardBalance />
-        <UserActions setCoinBalance={setCoinBalance} />
+        {/* Pass setCoinBalance to UserActions so it can update the balance after top-up */}
+        <UserActions setCoinBalance={setCoinBalance} /> 
         <MarketSection />
       </main>
       <BottomNavBar />
