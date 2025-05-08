@@ -6,48 +6,41 @@ import { DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFoot
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useState, useEffect } from 'react';
 import { Loader2, CreditCard } from 'lucide-react';
 
-// User-provided live secret key for testing purposes.
-// WARNING: THIS IS A SECRET KEY AND SHOULD NOT BE USED IN CLIENT-SIDE PRODUCTION CODE.
-// THE USER HAS ACKNOWLEDGED THIS AND WILL FIX SECURITY LATER.
-const USER_PROVIDED_PAYSTACK_KEY = 'sk_live_e9cd71a7fa828e96e65ea8a2480756125506421e';
 const FALLBACK_TEST_PUBLIC_KEY = 'pk_test_fae492482c870c83a5d33ba8f260880c22a5b24f'; // Standard Paystack test public key
-
-// Directly use the user-provided key for testing.
-// For actual client-side integration, Paystack expects a PUBLIC KEY (pk_live_... or pk_test_...).
-// Using a secret key (sk_live_...) on the client is a security risk.
-// The user has requested this for testing and will address security later.
-let effectivePaystackPublicKey = USER_PROVIDED_PAYSTACK_KEY;
-
-const varName = 'NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY'; // This variable is usually for public keys.
-
-// For this specific request, we bypass typical client-side key validation
-// as the user wants to test with a secret key directly.
-// In a normal scenario, if a secret key is found in `process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`,
-// we would warn and fallback to a test public key.
-// However, here we are using the hardcoded `USER_PROVIDED_PAYSTACK_KEY`.
+let effectivePaystackPublicKey = FALLBACK_TEST_PUBLIC_KEY; // Default to fallback
 
 if (typeof window !== 'undefined') {
-  if (USER_PROVIDED_PAYSTACK_KEY.startsWith('sk_')) {
+  const envPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
+
+  if (envPublicKey && (envPublicKey.startsWith('pk_live_') || envPublicKey.startsWith('pk_test_'))) {
+    effectivePaystackPublicKey = envPublicKey;
+    console.log(`[Paystack Setup] Using Paystack public key from environment: ${effectivePaystackPublicKey.substring(0,10)}...`);
+  } else if (envPublicKey && envPublicKey.startsWith('sk_')) {
     console.warn(
-      `[Paystack Setup - TESTING] Using a LIVE SECRET KEY ('${USER_PROVIDED_PAYSTACK_KEY.substring(0, 10)}...') directly on the client for testing, as requested.\n` +
-      `This is a significant security risk and must not be done in production.\n` +
-      `Ensure this is replaced with a secure server-side implementation or a public key for client-side operations before going live.`
+      `[Paystack Setup - WARNING] Environment variable NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ('${envPublicKey.substring(0,10)}...') contains a SECRET KEY. ` +
+      `This is a security risk and invalid for client-side usage. Falling back to test public key: ${FALLBACK_TEST_PUBLIC_KEY.substring(0,10)}...` +
+      `\nPlease use your Paystack PUBLIC KEY (pk_live_... or pk_test_...) in NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY.`
     );
-  } else if (!USER_PROVIDED_PAYSTACK_KEY.startsWith('pk_live_') && !USER_PROVIDED_PAYSTACK_KEY.startsWith('pk_test_')) {
+    effectivePaystackPublicKey = FALLBACK_TEST_PUBLIC_KEY;
+  } else if (envPublicKey) {
     console.warn(
-        `[Paystack Setup - TESTING] The provided key ('${USER_PROVIDED_PAYSTACK_KEY.substring(0, 10)}...') does not look like a standard Paystack public key or the intended secret key for testing.\n` +
-        `Proceeding with this key as requested for testing. Ensure it is the correct key for your testing scenario and replace with a secure setup for production.`
+      `[Paystack Setup - WARNING] Invalid Paystack key in NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: '${envPublicKey.substring(0,10)}...'. ` +
+      `Falling back to test public key: ${FALLBACK_TEST_PUBLIC_KEY.substring(0,10)}...` +
+      `\nPlease ensure it is a valid Paystack PUBLIC KEY (pk_live_... or pk_test_...).`
     );
+    effectivePaystackPublicKey = FALLBACK_TEST_PUBLIC_KEY;
   } else {
-     console.log(
-      `[Paystack Setup - TESTING] Using provided key: '${USER_PROVIDED_PAYSTACK_KEY.substring(0, 10)}...' for Paystack integration.`
-     );
+    console.warn(
+      `[Paystack Setup - WARNING] NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY is not set. ` +
+      `Falling back to test public key: ${FALLBACK_TEST_PUBLIC_KEY.substring(0,10)}...` +
+      `\nFor live transactions, please set your Paystack PUBLIC KEY in this environment variable.`
+    );
+    effectivePaystackPublicKey = FALLBACK_TEST_PUBLIC_KEY;
   }
 }
 
@@ -86,15 +79,11 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
 
   const selectedPlan = topUpPlans.find(p => p.id === selectedPlanId);
 
-  // The Paystack SDK on the client expects a PUBLIC KEY.
-  // If `effectivePaystackPublicKey` is a SECRET KEY, the behavior of the Paystack popup/checkout
-  // might be unpredictable or might not work as intended for typical client-side flows.
-  // This setup is based on the user's specific request for testing.
   const config = {
     reference: new Date().getTime().toString(),
     email: user?.email || 'test@example.com', 
-    amount: selectedPlan ? selectedPlan.amount * 100 : 0, 
-    publicKey: effectivePaystackPublicKey, // This will be the sk_live_... key
+    amount: selectedPlan ? selectedPlan.amount * 100 : 0, // Paystack amount is in kobo/cents
+    publicKey: effectivePaystackPublicKey, 
     currency: 'KES',
   };
 
@@ -117,15 +106,11 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
         });
         return;
     }
-    // As per user request, we are using the provided key, even if it's a secret key.
-    // The standard Paystack client SDK expects a public key.
-    // If `config.publicKey` is a secret key, this check might need to be adjusted or removed
-    // if Paystack's client SDK behavior with a secret key is different.
-    // For now, we'll check if it's simply present.
-    if (!config.publicKey) { 
+   
+    if (!config.publicKey || !(config.publicKey.startsWith('pk_test_') || config.publicKey.startsWith('pk_live_'))) { 
         toast({
             title: 'Paystack Configuration Error',
-            description: `Paystack key is missing. Please check setup or contact support.`,
+            description: `A valid Paystack public key is missing or invalid. Please check setup or contact support. Key used: ${config.publicKey ? config.publicKey.substring(0,10)+'...' : 'Not found'}.`,
             variant: 'destructive',
         });
         setIsProcessing(false);
@@ -134,10 +119,6 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
 
     setIsProcessing(true); 
     
-    // We close the dialog immediately and let Paystack's modal take over.
-    // This is a change from previous behavior where dialog was closed *after* Paystack modal.
-    // onDialogCloseProp(); 
-
     initializePayment({
       onSuccess: (reference) => {
         console.log('Paystack success reference:', reference);
@@ -149,17 +130,20 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
             description: `Reference: ${reference.reference}`,
         });
         setIsProcessing(false);
-        onDialogCloseProp(); // Close our dialog after success
+        onDialogCloseProp(); 
       },
       onClose: () => { 
         // This callback is invoked when the Paystack modal is closed by the user.
-        toast({
-          title: 'Payment Process Closed',
-          description: 'The Paystack payment window was closed.',
-          variant: 'warning',
-        });
+        // Do not show a toast if payment was successful and dialog already closed.
+        if (isProcessing) { // Only show if processing was interrupted by closing.
+            toast({
+              title: 'Payment Process Closed',
+              description: 'The Paystack payment window was closed before completion.',
+              variant: 'warning',
+            });
+        }
         setIsProcessing(false);
-        // onDialogCloseProp(); // Ensure our dialog is also closed if not already.
+        // onDialogCloseProp(); // Dialog might be closed by onSuccess already.
       },
       onError: (error) => { 
         console.error('Paystack payment error:', error);
@@ -169,7 +153,7 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
             variant: 'destructive',
         });
         setIsProcessing(false);
-        onDialogCloseProp(); // Close our dialog on error
+        onDialogCloseProp(); 
       }
     });
   };
@@ -216,7 +200,7 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
         </Button>
         <Button 
           onClick={handleBuyCoins} 
-          disabled={!selectedPlanId || isProcessing || !config.publicKey || !user?.email?.includes('@')}
+          disabled={!selectedPlanId || isProcessing || !config.publicKey || !user?.email?.includes('@') || !(config.publicKey.startsWith('pk_test_') || config.publicKey.startsWith('pk_live_'))}
           className="bg-primary hover:bg-primary/90 text-primary-foreground"
         >
           {isProcessing ? (
