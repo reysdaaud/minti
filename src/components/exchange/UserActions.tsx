@@ -41,12 +41,12 @@ const UserActions: FC = () => {
           <Button
             key={action.label}
             variant="ghost"
-            className="flex flex-col items-center justify-center h-auto p-2 space-y-2 text-primary-foreground hover:bg-primary/10 group transition-all duration-200 hover:shadow-sm rounded-md flex-1 max-w-[100px]" // Adjusted space-y
+            className="flex flex-col items-center justify-center h-auto p-2 space-y-2 text-primary-foreground hover:bg-primary/10 group transition-all duration-200 hover:shadow-sm rounded-md flex-1 max-w-[100px]"
             onClick={action.onClick}
             aria-label={action.label}
           >
-            <div className="p-2 border border-border group-hover:border-primary transition-colors duration-200 rounded-md">
-              <action.icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary group-hover:scale-105 transition-transform" /> {/* Adjusted icon size and wrapper padding */}
+            <div className="p-3 border-2 border-border/70 group-hover:border-primary transition-colors duration-200 rounded-lg">
+              <action.icon className="h-6 w-6 sm:h-7 sm:w-7 text-primary group-hover:scale-105 transition-transform" />
             </div>
             <span className="text-xs sm:text-sm text-primary group-hover:font-semibold whitespace-nowrap">{action.label}</span>
           </Button>
@@ -57,4 +57,3 @@ const UserActions: FC = () => {
 };
 
 export default UserActions;
-
