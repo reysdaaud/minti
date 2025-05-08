@@ -3,7 +3,6 @@
 import type { FC } from 'react';
 import { ArrowRightLeft, PlusCircle, ReceiptText, ArrowDownToLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface ActionItem {
   label: string;
@@ -37,29 +36,23 @@ const UserActions: FC = () => {
 
   return (
     <section className="py-6">
-      <Card className="bg-card border-border shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-lg text-primary">Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-            {actions.map((action) => (
-              <Button
-                key={action.label}
-                variant="outline"
-                className="flex flex-col items-center justify-center h-24 p-2 space-y-1.5 border-primary/30 hover:bg-primary/10 group transition-all duration-200 hover:shadow-md"
-                onClick={action.onClick}
-                aria-label={action.label}
-              >
-                <action.icon className="h-7 w-7 text-primary group-hover:scale-110 transition-transform" />
-                <span className="text-xs text-primary-foreground group-hover:font-semibold">{action.label}</span>
-              </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-row justify-around items-center space-x-2 sm:space-x-3 p-3 bg-card border border-border rounded-lg shadow-md">
+        {actions.map((action) => (
+          <Button
+            key={action.label}
+            variant="ghost"
+            className="flex flex-col items-center justify-center h-auto p-2 space-y-1.5 text-primary-foreground hover:bg-primary/10 group transition-all duration-200 hover:shadow-sm rounded-md flex-1 max-w-[100px]" // flex-1 to distribute space, max-w to control size
+            onClick={action.onClick}
+            aria-label={action.label}
+          >
+            <action.icon className="h-6 w-6 sm:h-7 sm:w-7 text-primary group-hover:scale-110 transition-transform" />
+            <span className="text-xs sm:text-sm text-primary group-hover:font-semibold whitespace-nowrap">{action.label}</span>
+          </Button>
+        ))}
+      </div>
     </section>
   );
 };
 
 export default UserActions;
+
