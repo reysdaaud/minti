@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { auth, GoogleAuthProvider } from '@/lib/firebase';
-import { signInWithPopup } from 'firebase/auth';
+import { signInWithPopup, type AuthError } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { LogIn } from 'lucide-react';
@@ -21,10 +21,17 @@ const SignInButton: React.FC = () => {
       });
       router.push('/'); // Redirect to home page after successful sign-in
     } catch (error) {
-      console.error('Error signing in with Google:', error);
+      const authError = error as AuthError;
+      // Don't show error toast if user closed the popup
+      if (authError.code === 'auth/popup-closed-by-user' || authError.code === 'auth/cancelled-popup-request') {
+        console.info('Sign-in popup closed by user.');
+        return;
+      }
+      
+      console.error('Error signing in with Google:', authError);
       toast({
         title: 'Sign In Failed',
-        description: (error as Error).message || 'An unexpected error occurred.',
+        description: authError.message || 'An unexpected error occurred.',
         variant: 'destructive',
       });
     }
