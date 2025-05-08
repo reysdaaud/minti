@@ -1,23 +1,23 @@
 'use client';
 import type { FC } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button'; 
-import { EyeOff, Eye } from 'lucide-react';
-import { useState } from 'react';
+// import { Button } from '@/components/ui/button'; 
+// import { EyeOff, Eye } from 'lucide-react';
+// import { useState } from 'react';
 
 const CardBalance: FC = () => {
-  const [showBalance, setShowBalance] = useState(false);
+  // const [showBalance, setShowBalance] = useState(false);
 
   return (
     <section className="w-full max-w-md mx-auto text-center space-y-6"> {/* Removed mb-6 */}
       {/* Bank Card Section - Profile Info is ON this card */}
-      <div className="bg-gradient-to-br from-primary/90 via-primary to-yellow-500 rounded-xl p-5 text-primary-foreground shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-br from-primary/40 via-primary/50 to-yellow-500/60 backdrop-blur-lg border border-primary/50 rounded-xl p-5 text-primary-foreground shadow-xl relative overflow-hidden">
         {/* Profile Section */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
-            <Avatar className="h-10 w-10 border-2 border-primary-foreground/50">
+            <Avatar className="h-10 w-10 border-2 border-primary/70">
               <AvatarImage src="https://picsum.photos/seed/useravatar/50/50" alt="User Avatar" data-ai-hint="user avatar" />
-              <AvatarFallback className="bg-primary-foreground/20 text-primary-foreground">JD</AvatarFallback>
+              <AvatarFallback className="bg-primary/20 text-primary-foreground">JD</AvatarFallback>
             </Avatar>
             <div>
               <h3 className="text-sm font-normal text-left">Welcome back,</h3>
