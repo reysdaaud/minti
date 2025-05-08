@@ -1,5 +1,5 @@
 import TopHeader from '@/components/exchange/TopHeader';
-import FeatureCards from '@/components/exchange/FeatureCards';
+import UserActions from '@/components/exchange/UserActions';
 import MarketSection from '@/components/exchange/MarketSection';
 import BottomNavBar from '@/components/exchange/BottomNavBar';
 import CardBalance from '@/components/exchange/CardBalance';
@@ -10,7 +10,7 @@ export default function CryptoExchangePage() {
       <TopHeader />
       <main className="flex-grow overflow-y-auto pb-16 md:pb-0 px-4 pt-6"> {/* Adjusted py-6 to pt-6 */}
         <CardBalance /> {/* CardBalance now has mb-6 internally */}
-        <FeatureCards />
+        <UserActions />
         <MarketSection />
       </main>
       <BottomNavBar />
