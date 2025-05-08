@@ -1,16 +1,17 @@
-# **App Name**: NeoWallet
+# **App Name**: KeyFind
 
 ## Core Features:
 
-- Profile Header: Display a user profile header with basic information.
-- Card & Balance Display: Display card layout and balance information.
-- Core Actions: Implement basic features like transfer, top-up, pay bills, withdraw, and request funds.
+- Key Extraction: Extract secrets, passwords and api keys from pasted text, and display a warning if any are detected. Use an LLM tool to extract the keys or secrets.
+- Text Input: Provide a text input area for users to paste code or text.
+- Results Display: Display the extracted secrets in a clear, formatted list with a severity level indication (e.g., high, medium, low).
+- Clear Input: Option to clear the text input area for the next use.
 
 ## Style Guidelines:
 
-- Primary color: Deep Blue (#1A237E) for a sense of security and trust.
-- Secondary color: Light Grey (#EEEEEE) for a clean, modern background.
-- Accent color: Teal (#009688) for interactive elements and highlights.
-- Dashboard-centric layout with clear sections for profile, cards, and transactions.
-- Use modern, line-style icons for actions and navigation.
-- Subtle animations on card selection and transaction confirmation.
+- Primary color: Light gray for the background (#F5F5F5)
+- Accent color: Soft blue (#A7D1F0) for highlights and buttons.
+- Clear and readable sans-serif font for all text elements.
+- Simple, flat icons to represent severity levels (e.g., red for high, yellow for medium, green for low).
+- Clean and intuitive layout with the input area at the top and results displayed below.
+- Subtle animations or transitions when keys or secrets are detected and displayed.

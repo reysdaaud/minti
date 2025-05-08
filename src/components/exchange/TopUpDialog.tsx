@@ -34,7 +34,7 @@ interface TopUpDialogProps {
   onPaymentSuccess: (coinsPurchased: number) => void;
 }
 
-const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose, onPaymentSuccess }) => {
+const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogClose, onPaymentSuccess }) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedPlanId, setSelectedPlanId] = useState<string | undefined>(topUpPlans[0].id);
@@ -74,22 +74,29 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose, onPaymentSuccess }
       onSuccess: (reference) => {
         console.log('Paystack success reference:', reference);
         onPaymentSuccess(selectedPlan.coins);
-        toast({
-          title: 'Payment Successful!',
-          description: `Successfully purchased ${selectedPlan.coins} coins.`,
-        });
+        // The primary success toast is handled by onPaymentSuccess prop in UserActions.tsx
         setIsProcessing(false);
-        onClose(); // Close dialog on success
+        onDialogClose(); // Close dialog on success
       },
-      onClose: () => {
+      onClose: () => { // This is Paystack's modal onClose
         toast({
           title: 'Payment Closed',
           description: 'You closed the payment window.',
           variant: 'warning',
         });
         setIsProcessing(false);
+        // User remains on the TopUpDialog
       },
-      // onError is implicitly handled by Paystack's UI, but you can add specific logging if needed.
+      onError: (error) => { // Handle payment errors from Paystack
+        console.error('Paystack payment error:', error);
+        toast({
+            title: 'Payment Failed',
+            description: 'An error occurred during payment. Please try again or contact support.',
+            variant: 'destructive',
+        });
+        setIsProcessing(false);
+        // User remains on the TopUpDialog
+      }
     });
   };
 
@@ -127,7 +134,7 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose, onPaymentSuccess }
       </div>
 
       <DialogFooter className="p-6 border-t border-border/20">
-        <Button variant="outline" onClick={onClose} disabled={isProcessing}>
+        <Button variant="outline" onClick={onDialogClose} disabled={isProcessing}>
           Cancel
         </Button>
         <Button 
