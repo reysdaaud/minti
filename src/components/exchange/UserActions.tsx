@@ -98,7 +98,7 @@ const UserActions: FC = () => {
                     <span className="text-xs sm:text-sm text-primary group-hover:font-semibold whitespace-nowrap">{action.label}</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="w-full max-w-xs p-[30px] rounded-[20px] send-money-dialog-content">
+                <DialogContent className="w-full max-w-xs p-6 rounded-[20px] send-money-dialog-content"> {/* Changed p-[30px] to p-6 */}
                   <DialogHeader>
                     <DialogTitle className="text-2xl text-center mb-5 text-white">Send Money</DialogTitle>
                     {/* DialogDescription removed as per mockup */}
