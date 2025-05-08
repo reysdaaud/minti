@@ -2,7 +2,7 @@
 import type { FC } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button'; // Import Button if needed for icons
-import { EyeOff, Eye, Bell } from 'lucide-react';
+import { EyeOff, Eye } from 'lucide-react';
 import { useState } from 'react';
 
 const CardBalance: FC = () => {
@@ -24,31 +24,25 @@ const CardBalance: FC = () => {
               <p className="text-lg font-semibold text-left">Jane Doe</p>
             </div>
           </div>
-          {/* Optional: Notification Bell Icon 
-          <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10">
-            <Bell className="h-5 w-5" />
-          </Button>
-          */}
         </div>
 
         {/* Card Details Section */}
         <div className="mt-6"> {/* Increased margin-top for better spacing from profile */}
           <div className="flex items-end justify-between"> {/* items-end to push VISA logo to bottom */}
             <div className="text-left">
-              <h5 className="text-base font-medium opacity-80">NeoWallet Premier</h5>
+              <div className="flex items-center space-x-2">
+                <svg width="24" height="24" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-6 w-6">
+                  <path d="M45.3359 20C45.3359 20 40.4577 130.522 47.8203 136.752C55.1829 142.983 137.998 121.155 137.998 121.155L154.664 70.1812C154.664 70.1812 162.027 169.478 152.179 178C142.332 186.522 64.4988 169.478 64.4988 169.478L45.3359 20Z" fill="#34D399"/>
+                </svg>
+                <h5 className="text-xl font-semibold">Sondar</h5>
+              </div>
               <p className="text-2xl tracking-wider font-mono my-3">**** **** **** 1234</p>
               <div className="flex justify-between items-center text-xs opacity-90">
                 <p className="uppercase">Jane Doe</p>
                 <p>Expires: 12/28</p>
               </div>
             </div>
-            {/* VISA Logo Placeholder */}
-            <div>
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="30" viewBox="0 0 38 24" className="fill-current">
-                    <path d="M37.031 2.121c0-.608-.493-1.101-1.101-1.101H15.432c-.608 0-1.101.493-1.101 1.101L3.819 21.879c0 .608.493 1.101 1.101 1.101H22.23c.608 0 1.101-.493 1.101-1.101l13.699-19.758h.001zm-14.268 8.474h-3.328c-.493 0-.863.425-.799.917l.654 4.932c.065.493.493.863.994.863h1.729c.501 0 .93-.37.994-.863l.654-4.932c.065-.492-.305-.917-.8-.917zm5.735 6.081c0 .608-.493 1.101-1.101 1.101h-1.565a.991.991 0 0 1-.994-.863l-.654-4.932c-.065-.493.305-.917.799-.917h3.328c.493 0 .863.425.799.917l-.654 4.932a.864.864 0 0 1-.959.863zm7.057-6.081c0 .493-.37.863-.863.863h-1.729c-.501 0-.93-.37-.994-.863l-.654-4.932c-.065-.493.305-.917.799-.917h3.328c.493 0 .863.425.799.917l-.958 4.932h.002z" fill="#fff"/>
-                    <path d="M21.368 21.879H3.819C2.031 21.879.74 20.49.863 18.707L0 4.58C-.123 2.797 1.168 1.408 2.956 1.408h17.549L21.368 21.879z" fill="#FFD700"/> {/* Standard Gold for VISA */}
-                </svg>
-            </div>
+            {/* Removed VISA Logo */}
           </div>
         </div>
       </div>
