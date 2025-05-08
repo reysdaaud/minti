@@ -73,25 +73,25 @@ body {
 
     /* Send Money Dialog Specific Styles */
     .send-money-dialog-content {
-      background: linear-gradient(135deg, rgba(255,165,0,0.25), rgba(0,255,128,0.25)) !important; /* Increased alpha for less transparency */
+      background: linear-gradient(135deg, rgba(255,165,0,0.1), rgba(0,255,128,0.1)) !important; /* Reduced alpha for less color intensity */
       box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
       backdrop-filter: blur(20px) !important;
       -webkit-backdrop-filter: blur(20px) !important; /* For Safari */
-      border: 1px solid rgba(255, 255, 255, 0.3) !important; /* Increased border alpha */
+      border: 1px solid rgba(255, 255, 255, 0.3) !important; 
       color: hsl(var(--foreground)) !important; /* Ensures text color from theme */
     }
 
     .glass-input {
-      background-color: rgba(255, 255, 255, 0.2) !important; /* Increased alpha for less transparency */
-      color: hsl(var(--foreground)) !important; /* Use theme foreground for consistency */
+      background-color: rgba(255, 255, 255, 0.2) !important; 
+      color: hsl(var(--foreground)) !important; 
       border-radius: 10px !important;
       padding: 10px !important;
-      border: 1px solid rgba(255, 255, 255, 0.25) !important; /* Increased border alpha */
+      border: 1px solid rgba(255, 255, 255, 0.25) !important; 
       line-height: 1.5; /* Ensure text is vertically centered */
     }
 
     .glass-input::placeholder {
-      color: rgba(255, 255, 255, 0.6) !important; /* Adjusted placeholder opacity */
+      color: rgba(255, 255, 255, 0.6) !important; 
       opacity: 1; /* Ensure placeholder is visible */
     }
     
