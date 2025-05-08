@@ -45,7 +45,7 @@ const UserActions: FC = () => {
             onClick={action.onClick}
             aria-label={action.label}
           >
-            <div className="p-3 border-2 border-border/70 group-hover:border-primary transition-colors duration-200 rounded-lg">
+            <div className="p-3 border-2 border-primary/40 group-hover:border-primary transition-colors duration-200 rounded-lg">
               <action.icon className="h-6 w-6 sm:h-7 sm:w-7 text-primary group-hover:scale-105 transition-transform" />
             </div>
             <span className="text-xs sm:text-sm text-primary group-hover:font-semibold whitespace-nowrap">{action.label}</span>
@@ -57,3 +57,4 @@ const UserActions: FC = () => {
 };
 
 export default UserActions;
+
