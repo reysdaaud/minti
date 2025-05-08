@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2, CreditCard } from 'lucide-react';
 
 const PAYSTACK_PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 'pk_test_fae492482c870c83a5d33ba8f260880c22a5b24f';
@@ -34,20 +34,27 @@ interface TopUpDialogProps {
   onPaymentSuccess: (coinsPurchased: number) => void;
 }
 
-const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogClose, onPaymentSuccess }) => {
+const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp, onPaymentSuccess }) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedPlanId, setSelectedPlanId] = useState<string | undefined>(topUpPlans[0].id);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Effect to reset processing state if the dialog is closed externally
+  useEffect(() => {
+    if (!isOpen) {
+      setIsProcessing(false);
+    }
+  }, [isOpen]);
+
   const selectedPlan = topUpPlans.find(p => p.id === selectedPlanId);
 
   const config = {
     reference: new Date().getTime().toString(),
-    email: user?.email || 'test@example.com', // Fallback email if user.email is null
-    amount: selectedPlan ? selectedPlan.amount * 100 : 0, // Amount in Kobo/Cents
+    email: user?.email || 'test@example.com', 
+    amount: selectedPlan ? selectedPlan.amount * 100 : 0, 
     publicKey: PAYSTACK_PUBLIC_KEY,
-    currency: 'KES', // Updated to KES
+    currency: 'KES',
   };
 
   const initializePayment = usePaystackPayment(config);
@@ -69,33 +76,34 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogClose, onP
         });
         return;
     }
-    setIsProcessing(true);
+
+    setIsProcessing(true); // Indicate processing started
+
+    // Close this dialog *before* Paystack modal opens
+    onDialogCloseProp(); 
+
     initializePayment({
       onSuccess: (reference) => {
         console.log('Paystack success reference:', reference);
         onPaymentSuccess(selectedPlan.coins);
-        // The primary success toast is handled by onPaymentSuccess prop in UserActions.tsx
-        setIsProcessing(false);
-        onDialogClose(); // Close dialog on success
+        // setIsProcessing(false); // Not needed as dialog is closed, component might be unmounted
       },
-      onClose: () => { // This is Paystack's modal onClose
+      onClose: () => { // Paystack modal closed by user
         toast({
-          title: 'Payment Closed',
-          description: 'You closed the payment window.',
+          title: 'Payment Cancelled',
+          description: 'The payment process was not completed.',
           variant: 'warning',
         });
-        setIsProcessing(false);
-        // User remains on the TopUpDialog
+        // setIsProcessing(false); // Not needed as dialog is closed
       },
-      onError: (error) => { // Handle payment errors from Paystack
+      onError: (error) => { 
         console.error('Paystack payment error:', error);
         toast({
             title: 'Payment Failed',
-            description: 'An error occurred during payment. Please try again or contact support.',
+            description: 'An error occurred during payment. Please try again.',
             variant: 'destructive',
         });
-        setIsProcessing(false);
-        // User remains on the TopUpDialog
+        // setIsProcessing(false); // Not needed as dialog is closed
       }
     });
   };
@@ -134,7 +142,10 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogClose, onP
       </div>
 
       <DialogFooter className="p-6 border-t border-border/20">
-        <Button variant="outline" onClick={onDialogClose} disabled={isProcessing}>
+        <Button variant="outline" onClick={() => {
+          setIsProcessing(false); // Ensure processing is stopped if cancelled
+          onDialogCloseProp();
+        }} disabled={isProcessing}>
           Cancel
         </Button>
         <Button 
