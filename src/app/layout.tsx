@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Crypto Exchange',
-  description: 'Your comprehensive cryptocurrency trading platform.',
+  title: 'NeoWallet', // Updated to NeoWallet as per project name
+  description: 'Your modern digital banking solution.', // Updated description
 };
 
 export default function RootLayout({
@@ -25,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark"> {/* Apply dark class for consistent dark theme */}
+    <html lang="en" className="dark">
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         <AuthProvider>
           {children}
