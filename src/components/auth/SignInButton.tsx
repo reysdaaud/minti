@@ -19,7 +19,7 @@ const SignInButton: React.FC = () => {
         title: 'Signed In',
         description: 'Successfully signed in with Google.',
       });
-      // router.push('/'); // Let the SignInPage's useEffect handle redirection based on AuthContext
+      router.push('/'); // Ensure redirection to dashboard after successful sign-in
     } catch (error) {
       const authError = error as AuthError;
       // Don't show error toast if user closed the popup
