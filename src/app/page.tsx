@@ -7,12 +7,15 @@ import BottomNavBar from '@/components/exchange/BottomNavBar';
 import CardBalance from '@/components/exchange/CardBalance';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
 
 export default function CryptoExchangePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [coinBalance, setCoinBalance] = useState(0);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -32,8 +35,21 @@ export default function CryptoExchangePage() {
     <div className="min-h-screen bg-background flex flex-col">
       <TopHeader />
       <main className="flex-grow overflow-y-auto pb-16 md:pb-0 px-4 pt-3">
+        <Card className="mb-4 bg-card border-border shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-lg text-primary">Your Wallet</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold text-foreground">
+              Coin Balance: {coinBalance.toLocaleString()} Coins
+            </p>
+             <p className="text-sm text-muted-foreground mt-1">
+              Manage your digital assets with ease.
+            </p>
+          </CardContent>
+        </Card>
         <CardBalance />
-        <UserActions />
+        <UserActions setCoinBalance={setCoinBalance} />
         <MarketSection />
       </main>
       <BottomNavBar />
