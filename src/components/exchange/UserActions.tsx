@@ -85,9 +85,9 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
     setCoinBalance(prevBalance => prevBalance + coinsPurchased);
     toast({
       title: 'Top-up Successful!',
-      description: `You've successfully purchased ${coinsPurchased.toLocaleString()} coins.`, // Updated to toLocaleString for better readability
+      description: `You've successfully purchased ${coinsPurchased.toLocaleString()} coins.`,
     });
-    setTopUpDialogOpen(false); // Close the top-up dialog
+    // setTopUpDialogOpen(false); // Dialog is closed by TopUpDialog's onClose before Paystack
   };
 
 
@@ -131,9 +131,8 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
                 </form>
               </DialogContent>
             )}
-            {action.label === 'Top-up' && (
+            {action.label === 'Top-up' && topUpDialogOpen && ( // Ensure TopUpDialog is rendered only when open
               <TopUpDialog
-                isOpen={topUpDialogOpen}
                 onClose={() => setTopUpDialogOpen(false)}
                 onPaymentSuccess={handlePaymentSuccess}
               />

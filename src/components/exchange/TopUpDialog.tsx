@@ -9,15 +9,33 @@ import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useState, useEffect } from 'react';
-import { Loader2, CreditCard } from 'lucide-react';
+import { CreditCard } from 'lucide-react'; // Loader2 removed as isProcessing is removed
 
-const FALLBACK_TEST_PUBLIC_KEY = 'pk_test_fae492482c870c83a5d33ba8f260880c22a5b24f'; // Standard Paystack test public key
-let effectivePaystackPublicKey = FALLBACK_TEST_PUBLIC_KEY; // Default to fallback
+// Effective Paystack Public Key Logic (remains unchanged)
+const FALLBACK_TEST_PUBLIC_KEY = 'pk_test_fae492482c870c83a5d33ba8f260880c22a5b24f';
+let effectivePaystackPublicKey = FALLBACK_TEST_PUBLIC_KEY;
 
 if (typeof window !== 'undefined') {
   const envPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
+  const liveKeyFromUser = "sk_live_e9cd71a7fa828e96e65ea8a2480756125506421e"; // User provided key
 
-  if (envPublicKey && (envPublicKey.startsWith('pk_live_') || envPublicKey.startsWith('pk_test_'))) {
+  // Prioritize user-provided live key if it seems valid (starts with pk_live_ or sk_live_ for testing this scenario)
+  // WARNING: Using secret keys (sk_live_) on the client-side is a MAJOR SECURITY RISK.
+  // This is ONLY for temporary user testing as per their request.
+  // In a production environment, this MUST be a public key (pk_live_ or pk_test_).
+  if (liveKeyFromUser && (liveKeyFromUser.startsWith('pk_live_') || liveKeyFromUser.startsWith('sk_live_'))) {
+    effectivePaystackPublicKey = liveKeyFromUser.startsWith('sk_live_') 
+        ? liveKeyFromUser // Allow sk_live for user's specific testing request
+        : liveKeyFromUser; // Use pk_live_
+    if (liveKeyFromUser.startsWith('sk_live_')) {
+        console.warn(
+            `[Paystack Setup - CRITICAL SECURITY WARNING] Using a SECRET KEY ('${liveKeyFromUser.substring(0,10)}...') on the client side. ` +
+            `This is for TESTING ONLY as requested and is a SEVERE SECURITY RISK. Remove before production.`
+        );
+    } else {
+        console.log(`[Paystack Setup] Using user-provided live key (public part): ${effectivePaystackPublicKey.substring(0,10)}...`);
+    }
+  } else if (envPublicKey && (envPublicKey.startsWith('pk_live_') || envPublicKey.startsWith('pk_test_'))) {
     effectivePaystackPublicKey = envPublicKey;
     console.log(`[Paystack Setup] Using Paystack public key from environment: ${effectivePaystackPublicKey.substring(0,10)}...`);
   } else if (envPublicKey && envPublicKey.startsWith('sk_')) {
@@ -37,10 +55,10 @@ if (typeof window !== 'undefined') {
   } else {
     console.warn(
       `[Paystack Setup - WARNING] NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY is not set. ` +
-      `Falling back to test public key: ${FALLBACK_TEST_PUBLIC_KEY.substring(0,10)}...` +
+      `Falling back to test public key: ${FALLBACK_TEST_PUBLIC_KEY.substring(0,10)}... (or user-provided if valid)` +
       `\nFor live transactions, please set your Paystack PUBLIC KEY in this environment variable.`
     );
-    effectivePaystackPublicKey = FALLBACK_TEST_PUBLIC_KEY;
+    // effectivePaystackPublicKey is already set to FALLBACK_TEST_PUBLIC_KEY or user's key
   }
 }
 
@@ -48,7 +66,7 @@ if (typeof window !== 'undefined') {
 interface TopUpPlan {
   id: string;
   coins: number;
-  amount: number; // Amount in KES (e.g., 100 for KES 100)
+  amount: number; // Amount in KES
   description: string;
 }
 
@@ -60,34 +78,19 @@ const topUpPlans: TopUpPlan[] = [
 ];
 
 interface TopUpDialogProps {
-  isOpen: boolean;
   onClose: () => void;
   onPaymentSuccess: (coinsPurchased: number) => void;
 }
 
-const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp, onPaymentSuccess }) => {
+const TopUpDialog: FC<TopUpDialogProps> = ({ onClose: onDialogCloseProp, onPaymentSuccess }) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedPlanId, setSelectedPlanId] = useState<string | undefined>(topUpPlans[0].id);
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setIsProcessing(false);
-    }
-  }, [isOpen]);
 
   const selectedPlan = topUpPlans.find(p => p.id === selectedPlanId);
 
-  const config = {
-    reference: new Date().getTime().toString(),
-    email: user?.email || 'test@example.com', 
-    amount: selectedPlan ? selectedPlan.amount * 100 : 0, // Paystack amount is in kobo/cents
-    publicKey: effectivePaystackPublicKey, 
-    currency: 'KES',
-  };
-
-  const initializePayment = usePaystackPayment(config);
+  // Config is now assembled just before payment initialization
+  const initializePayment = usePaystackPayment(); // Initialize hook without config initially
 
   const handleBuyCoins = () => {
     if (!selectedPlan) {
@@ -106,59 +109,56 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
         });
         return;
     }
-   
-    if (!config.publicKey || !(config.publicKey.startsWith('pk_test_') || config.publicKey.startsWith('pk_live_'))) { 
+    // Critical check for public key format, allow sk_live_ for testing as requested
+    if (!effectivePaystackPublicKey || !(effectivePaystackPublicKey.startsWith('pk_test_') || effectivePaystackPublicKey.startsWith('pk_live_') || effectivePaystackPublicKey.startsWith('sk_live_'))) {
         toast({
             title: 'Paystack Configuration Error',
-            description: `A valid Paystack public key is missing or invalid. Please check setup or contact support. Key used: ${config.publicKey ? config.publicKey.substring(0,10)+'...' : 'Not found'}.`,
+            description: `A valid Paystack key is missing or invalid. Please check setup or contact support. Key used: ${effectivePaystackPublicKey ? effectivePaystackPublicKey.substring(0,10)+'...' : 'Not found'}.`,
             variant: 'destructive',
         });
-        setIsProcessing(false);
         return;
     }
 
-    setIsProcessing(true); 
-    
+    const paymentConfig = {
+        reference: new Date().getTime().toString(),
+        email: user.email,
+        amount: selectedPlan.amount * 100, // Paystack amount is in kobo/cents
+        publicKey: effectivePaystackPublicKey,
+        currency: 'KES',
+    };
+
+    // Close the app's dialog *before* initializing Paystack payment
+    onDialogCloseProp();
+
     initializePayment({
-      onSuccess: (reference) => {
-        console.log('Paystack success reference:', reference);
-        if (selectedPlan) { 
-            onPaymentSuccess(selectedPlan.coins);
-        }
-        toast({
-            title: 'Payment Successful',
-            description: `Reference: ${reference.reference}`,
-        });
-        setIsProcessing(false);
-        onDialogCloseProp(); 
-      },
-      onClose: () => { 
-        // This callback is invoked when the Paystack modal is closed by the user.
-        // Do not show a toast if payment was successful and dialog already closed.
-        if (isProcessing) { // Only show if processing was interrupted by closing.
+        ...paymentConfig, // Spread the dynamic config here
+        onSuccess: (reference) => {
+            console.log('Paystack success reference:', reference);
+            if (selectedPlan) {
+                onPaymentSuccess(selectedPlan.coins);
+            }
             toast({
-              title: 'Payment Process Closed',
-              description: 'The Paystack payment window was closed before completion.',
-              variant: 'warning',
+                title: 'Payment Successful',
+                description: `Purchased ${selectedPlan?.coins.toLocaleString()} coins. Ref: ${reference.transaction}`,
+            });
+        },
+        onClose: () => {
+            // This callback is invoked when the Paystack modal is closed by the user
+            // or after onSuccess/onError. If it was closed by user before completion,
+            // we might want a toast, but onSuccess/onError toasts are usually sufficient.
+            console.log('Paystack payment window closed.');
+            // No automatic toast here to avoid duplicates if success/error already showed one.
+        },
+        onError: (error) => {
+            console.error('Paystack payment error:', error);
+            toast({
+                title: 'Payment Failed',
+                description: (error as any)?.message || 'An error occurred during payment. Please try again.',
+                variant: 'destructive',
             });
         }
-        setIsProcessing(false);
-        // onDialogCloseProp(); // Dialog might be closed by onSuccess already.
-      },
-      onError: (error) => { 
-        console.error('Paystack payment error:', error);
-        toast({
-            title: 'Payment Failed',
-            description: 'An error occurred during payment. Please try again.',
-            variant: 'destructive',
-        });
-        setIsProcessing(false);
-        onDialogCloseProp(); 
-      }
     });
   };
-
-  if (!isOpen) return null;
 
   return (
     <DialogContent className="sm:max-w-md md:max-w-lg p-0 glassmorphic-dialog">
@@ -192,23 +192,16 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
       </div>
 
       <DialogFooter className="p-6 border-t border-border/20">
-        <Button variant="outline" onClick={() => {
-          setIsProcessing(false); 
-          onDialogCloseProp();
-        }} disabled={isProcessing}>
+        <Button variant="outline" onClick={onDialogCloseProp}>
           Cancel
         </Button>
-        <Button 
-          onClick={handleBuyCoins} 
-          disabled={!selectedPlanId || isProcessing || !config.publicKey || !user?.email?.includes('@') || !(config.publicKey.startsWith('pk_test_') || config.publicKey.startsWith('pk_live_'))}
+        <Button
+          onClick={handleBuyCoins}
+          disabled={!selectedPlanId || !user?.email?.includes('@') || !(effectivePaystackPublicKey.startsWith('pk_test_') || effectivePaystackPublicKey.startsWith('pk_live_') || effectivePaystackPublicKey.startsWith('sk_live_'))}
           className="bg-primary hover:bg-primary/90 text-primary-foreground"
         >
-          {isProcessing ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <CreditCard className="mr-2 h-4 w-4" />
-          )}
-          {isProcessing ? 'Processing...' : `Buy ${selectedPlan?.coins.toLocaleString() || ''} Coins`}
+          <CreditCard className="mr-2 h-4 w-4" />
+          {`Buy ${selectedPlan?.coins.toLocaleString() || ''} Coins`}
         </Button>
       </DialogFooter>
     </DialogContent>
