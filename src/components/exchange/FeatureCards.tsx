@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 const FeatureCards: FC = () => {
   return (
     <section className="px-4 pb-6 grid grid-cols-1 md:grid-cols-2 gap-4 bg-background">
+      {/* TradeGPT Card - REMOVED
       <Card className="bg-card border-border overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">TradeGPT</CardTitle>
@@ -28,6 +29,7 @@ const FeatureCards: FC = () => {
           </div>
         </CardContent>
       </Card>
+      */}
 
       <Card className="bg-card border-border overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between pb-2">

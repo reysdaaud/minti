@@ -1,7 +1,7 @@
 'use client';
 import type { FC } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button'; // Import Button if needed for icons
+import { Button } from '@/components/ui/button'; 
 import { EyeOff, Eye } from 'lucide-react';
 import { useState } from 'react';
 
@@ -9,7 +9,7 @@ const CardBalance: FC = () => {
   const [showBalance, setShowBalance] = useState(false);
 
   return (
-    <section className="w-full max-w-md mx-auto text-center space-y-6">
+    <section className="w-full max-w-md mx-auto text-center space-y-6 mb-6">
       {/* Bank Card Section - Profile Info is ON this card */}
       <div className="bg-gradient-to-br from-primary/90 via-primary to-yellow-500 rounded-xl p-5 text-primary-foreground shadow-xl relative overflow-hidden">
         {/* Profile Section */}
@@ -47,7 +47,7 @@ const CardBalance: FC = () => {
         </div>
       </div>
 
-      {/* Balance Section - Styled as a separate card */}
+      {/* Balance Section - REMOVED
       <div className="bg-card border-border rounded-lg p-5 shadow-md">
         <h4 className="text-sm text-muted-foreground text-left mb-1">Current Balance</h4>
         <div className="flex items-center justify-between">
@@ -65,6 +65,7 @@ const CardBalance: FC = () => {
           </Button>
         </div>
       </div>
+      */}
     </section>
   );
 };
