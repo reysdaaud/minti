@@ -12,7 +12,22 @@ import { Label } from '@/components/ui/label';
 import { useState, useEffect } from 'react';
 import { Loader2, CreditCard } from 'lucide-react';
 
-const PAYSTACK_PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 'pk_test_fae492482c870c83a5d33ba8f260880c22a5b24f';
+// Read the environment variable for Paystack public key
+const PAYSTACK_PUBLIC_KEY_FROM_ENV = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
+const FALLBACK_TEST_KEY = 'pk_test_fae492482c870c83a5d33ba8f260880c22a5b24f';
+
+let effectivePaystackPublicKey = PAYSTACK_PUBLIC_KEY_FROM_ENV;
+
+if (!PAYSTACK_PUBLIC_KEY_FROM_ENV) {
+  if (typeof window !== 'undefined') { // Ensure console.warn only runs client-side
+    console.warn(
+      "Paystack public key (NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY) is not set in environment variables. " +
+      `Using fallback test key: ${FALLBACK_TEST_KEY}. Ensure you set your actual public key for production.`
+    );
+  }
+  effectivePaystackPublicKey = FALLBACK_TEST_KEY;
+}
+
 
 interface TopUpPlan {
   id: string;
@@ -53,7 +68,7 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
     reference: new Date().getTime().toString(),
     email: user?.email || 'test@example.com', 
     amount: selectedPlan ? selectedPlan.amount * 100 : 0, 
-    publicKey: PAYSTACK_PUBLIC_KEY,
+    publicKey: effectivePaystackPublicKey || FALLBACK_TEST_KEY, // Ensure publicKey is never undefined or empty
     currency: 'KES',
   };
 
@@ -74,6 +89,15 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
             description: 'Please ensure you are properly signed in.',
             variant: 'destructive',
         });
+        return;
+    }
+    if (!config.publicKey) {
+        toast({
+            title: 'Paystack Configuration Error',
+            description: 'Paystack public key is missing. Please contact support.',
+            variant: 'destructive',
+        });
+        setIsProcessing(false);
         return;
     }
 
@@ -150,7 +174,7 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
         </Button>
         <Button 
           onClick={handleBuyCoins} 
-          disabled={!selectedPlanId || isProcessing}
+          disabled={!selectedPlanId || isProcessing || !config.publicKey}
           className="bg-primary hover:bg-primary/90 text-primary-foreground"
         >
           {isProcessing ? (
