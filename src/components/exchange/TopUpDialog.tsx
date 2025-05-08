@@ -186,7 +186,7 @@ const TopUpDialog: FC<TopUpDialogProps> = ({ isOpen, onClose: onDialogCloseProp,
         </Button>
         <Button 
           onClick={handleBuyCoins} 
-          disabled={!selectedPlanId || isProcessing || !config.publicKey}
+          disabled={!selectedPlanId || isProcessing || !config.publicKey || !config.email.includes('@')} // Added email validation check for safety
           className="bg-primary hover:bg-primary/90 text-primary-foreground"
         >
           {isProcessing ? (
