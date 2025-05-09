@@ -1,17 +1,17 @@
 /* src/components/sounds/SoundsPlayer.module.css */
 .playerContainer {
-  background-color: #1a1a1a; /* Dark background */
+  background-color: #121212; /* Darker background like Spotify */
   color: #ffffff;
   padding: 20px;
   border-radius: 12px;
   width: 100%;
-  max-width: 450px; /* Typical mobile width, adjust as needed */
+  max-width: 450px; 
   margin: 20px auto;
   font-family: Arial, Helvetica, sans-serif;
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); /* Deeper shadow */
 }
 
 .albumArtContainer {
@@ -19,8 +19,8 @@
 }
 
 .albumArt {
-  border-radius: 50%;
-  border: 3px solid #333;
+  border-radius: 8px; /* Spotify-like square album art */
+  border: 1px solid #282828; /* Subtle border */
 }
 
 .showInfo {
@@ -29,30 +29,32 @@
 }
 
 .stationName {
-  font-size: 0.9em;
-  color: #aaa;
-  letter-spacing: 1px;
+  font-size: 0.8em; /* Smaller */
+  color: #b3b3b3; /* Lighter grey */
+  letter-spacing: 1.5px; /* More spacing */
   text-transform: uppercase;
   margin-bottom: 5px;
+  font-weight: 500;
 }
 
 .orangeBar {
   width: 30px;
   height: 3px;
   background-color: #ff6600; /* Orange accent */
-  margin: 5px auto 10px;
+  margin: 8px auto 12px; /* Adjusted margin */
   border-radius: 1.5px;
 }
 
 .showTitle {
-  font-size: 1.4em;
+  font-size: 1.5em; /* Slightly larger */
   font-weight: bold;
   margin-bottom: 5px;
+  color: #fff; /* Brighter white */
 }
 
 .showArtist {
   font-size: 0.9em;
-  color: #ccc;
+  color: #b3b3b3; /* Lighter grey */
 }
 
 .progressContainer {
@@ -65,9 +67,9 @@
 
 .progressBarHolder {
   flex-grow: 1;
-  height: 6px;
-  background-color: #444;
-  border-radius: 3px;
+  height: 4px; /* Slimmer bar */
+  background-color: #535353; /* Spotify progress bar background */
+  border-radius: 2px;
   cursor: pointer;
   position: relative;
 }
@@ -75,14 +77,14 @@
 .progressBarBackground {
   width: 100%;
   height: 100%;
-  background-color: #444; /* Darker part of the bar */
-  border-radius: 3px;
+  background-color: #535353; 
+  border-radius: 2px;
 }
 
 .progressBarFill {
   height: 100%;
   background-color: #ff6600; /* Orange progress */
-  border-radius: 3px;
+  border-radius: 2px;
   position: absolute;
   top: 0;
   left: 0;
@@ -91,13 +93,14 @@
 .progressThumb {
   width: 12px;
   height: 12px;
-  background-color: #ff6600; /* Orange thumb */
+  background-color: #ff6600; 
   border-radius: 50%;
   position: absolute;
-  right: -6px; /* Half of its width to center on the end of the fill */
+  right: -6px; 
   top: 50%;
   transform: translateY(-50%);
-  border: 2px solid #1a1a1a; /* Match background for floating effect */
+  /* border: 2px solid #121212;  Removed border for cleaner look */
+  box-shadow: 0 0 5px rgba(255, 102, 0, 0.7); /* Glow effect */
 }
 
 .controls {
@@ -105,24 +108,24 @@
   justify-content: space-around;
   align-items: center;
   width: 100%;
-  max-width: 380px; /* Max width for controls area, adjusted for 5 buttons */
+  max-width: 380px; 
   margin-bottom: 25px;
-  padding: 0 5px; /* Reduced padding slightly */
+  padding: 0 5px;
 }
 
 .controlButton {
   background: none;
   border: none;
-  color: #ccc; /* Lighter grey for icons */
+  color: #b3b3b3; /* Lighter grey for icons */
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center; /* Center icon and label */
+  justify-content: center; 
   padding: 5px;
   transition: color 0.2s;
-  flex: 1; /* Allow buttons to take available space */
-  min-width: 0; /* Allow shrinking */
+  flex: 1; 
+  min-width: 0; 
 }
 
 .controlButton:hover {
@@ -130,20 +133,20 @@
 }
 
 .controlIcon {
-  width: 32px; /* Size for Rewind/Forward/Start/Live icons */
+  width: 32px; 
   height: 32px;
-  stroke-width: 2; /* Adjusted stroke for visual consistency */
-  margin-bottom: 2px; /* Space between icon and label if any */
+  stroke-width: 2; 
+  margin-bottom: 2px; 
 }
 
 
 .controlLabelSmall {
-  font-size: 0.6em; /* Smaller label for START/LIVE */
+  font-size: 0.7em; /* Slightly larger for START/LIVE labels */
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #ccc;
-  margin-top: 2px;
-  font-weight: bold;
+  color: #b3b3b3;
+  margin-top: 3px; /* More space from icon */
+  font-weight: 500;
 }
 
 .controlButton:hover .controlLabelSmall {
@@ -152,26 +155,27 @@
 
 
 .playPauseButton {
-  width: 56px; /* Slightly smaller to fit 5 buttons */
-  height: 56px;
+  width: 60px; /* Larger central button */
+  height: 60px;
   border-radius: 50%;
-  background-color: #333;
+  background-color: #ff6600; /* Orange play button */
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background-color 0.2s, transform 0.2s;
-  margin: 0 5px; /* Add some horizontal margin */
-  flex-shrink: 0; /* Prevent play/pause button from shrinking too much */
+  margin: 0 8px; /* More margin */
+  flex-shrink: 0; 
+  border: 2px solid #fff; /* White border like image */
 }
 
 .playPauseButton:hover {
-  background-color: #444;
+  background-color: #e65c00; /* Darker orange on hover */
   transform: scale(1.05);
 }
 
-.playPauseButton svg { /* Ensure Play/Pause icons are sized correctly */
-  width: 32px;
+.playPauseButton svg { 
+  width: 32px; /* Slightly smaller icon within larger button */
   height: 32px;
 }
 
@@ -179,11 +183,11 @@
   display: flex;
   justify-content: space-between;
   width: 100%;
-  background-color: #222; /* Slightly lighter dark for this section */
+  background-color: #181818; /* Darker section bg */
   padding: 15px;
   border-radius: 8px;
   margin-bottom: 20px;
-  font-size: 0.8em;
+  font-size: 0.85em; /* Slightly larger base font */
 }
 
 .onAir, .nextUp {
@@ -191,7 +195,7 @@
 }
 
 .onAir {
-  border-right: 1px solid #444;
+  border-right: 1px solid #333; /* Darker separator */
   padding-right: 10px;
 }
 
@@ -201,12 +205,13 @@
 
 .scheduleHeader {
   font-size: 0.9em;
-  color: #aaa;
+  color: #b3b3b3;
   margin-bottom: 5px;
+  font-weight: 500;
 }
 
 .onAirHighlight {
-  color: #ff6600; /* Orange accent */
+  color: #ff6600; 
   font-weight: bold;
 }
 .nextHighlight {
@@ -217,19 +222,19 @@
 
 .scheduleTitle {
   font-weight: bold;
-  color: #eee;
+  color: #fff; /* Brighter white */
   margin-bottom: 3px;
 }
 
 .scheduleSubtitle {
   font-size: 0.9em;
-  color: #bbb;
+  color: #a0a0a0; /* Slightly darker muted text */
 }
 
 .description {
   font-size: 0.85em;
-  color: #ccc;
-  line-height: 1.5;
+  color: #b3b3b3;
+  line-height: 1.6; /* More line height */
   margin-bottom: 20px;
   text-align: left;
   width: 100%;
@@ -239,7 +244,7 @@
 .readMore {
   background: none;
   border: none;
-  color: #ff6600; /* Orange accent */
+  color: #ff6600; 
   font-weight: bold;
   cursor: pointer;
   padding: 0 3px;
@@ -247,12 +252,13 @@
 
 .programmeWebsiteButton {
   background: none;
-  border: 1px solid #555;
-  color: #ddd;
+  border: 1px solid #535353; /* Lighter border */
+  color: #fff; /* White text */
   padding: 10px 20px;
-  border-radius: 6px;
+  border-radius: 20px; /* Pill shape */
   cursor: pointer;
   font-size: 0.9em;
+  font-weight: 500;
   transition: background-color 0.2s, border-color 0.2s;
   display: flex;
   align-items: center;
@@ -260,7 +266,7 @@
 }
 
 .programmeWebsiteButton:hover {
-  background-color: #333;
+  background-color: #282828; /* Darker hover */
   border-color: #777;
 }
 
@@ -271,25 +277,25 @@
     padding: 15px;
   }
   .showTitle {
-    font-size: 1.2em;
+    font-size: 1.3em; /* Adjusted */
   }
   .playPauseButton {
-    width: 48px; /* Smaller play/pause */
-    height: 48px;
+    width: 52px; 
+    height: 52px;
   }
   .playPauseButton svg {
     width: 28px;
     height: 28px;
   }
   .controlIcon {
-    width: 28px; /* Smaller control icons */
+    width: 28px; 
     height: 28px;
   }
   .controls {
-    width: 95%; /* Adjust controls width for smaller screens */
-    max-width: none; /* Allow full width on small screens */
+    width: 95%; 
+    max-width: none; 
     padding: 0;
-    gap: 3px; /* Reduce gap between control buttons */
+    gap: 3px; 
   }
 
   .scheduleInfo {
@@ -303,7 +309,7 @@
     padding-left: 0;
   }
   .onAir {
-    border-bottom: 1px solid #444;
+    border-bottom: 1px solid #333;
     padding-bottom: 15px;
   }
 }

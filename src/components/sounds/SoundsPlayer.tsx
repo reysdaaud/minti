@@ -12,6 +12,8 @@ const StartOverIcon: FC<{ className?: string }> = ({ className }) => (
   <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <path d="M29.995 13.438A10.001 10.001 0 1 0 26.5 26.5" />
     <path d="M29.999 7.5V13.5H24" />
+     <polyline points="13 18 10 15 13 12" />
+     <polyline points="13 18 10 15 13 12" transform="translate(2.5 0)" /> 
   </svg>
 );
 
@@ -35,8 +37,9 @@ const Forward20sIcon: FC<{ className?: string }> = ({ className }) => (
 
 const GoLiveIcon: FC<{ className?: string }> = ({ className }) => (
  <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M29.995 13.438A10.001 10.001 0 1 0 26.5 26.5" />
-    <path d="M29.999 7.5V13.5H24" />
+    {/* Reusing StartOverIcon's arrow part for the >> effect */}
+    <path d="M29.999 7.5V13.5H24"  transform="translate(-10 0)" /> 
+    <path d="M29.999 7.5V13.5H24"  transform="translate(-5 0)" />
     <circle cx="20" cy="20" r="3" fill="currentColor" />
   </svg>
 );
