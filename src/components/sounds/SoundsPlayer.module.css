@@ -165,17 +165,15 @@
   line-height: 14px;
 }
 
-/* Reduced padding and margin for smaller screens */
 @media screen and (max-width: 768px) {
   .audioPlayer {
-    padding: 12px;
-    margin: 10px auto; /* Reduced margin */
+    padding: 16px;
   }
 
   .progressContainer {
     padding: 0 8px;
     gap: 8px;
-    margin-top: 8px; /* Reduced margin */
+    margin-top: 12px;
   }
 
   .time {
@@ -192,26 +190,25 @@
     transform: scale(0.9);
   }
   .playButton {
-    width: 32px; /* Slightly smaller button */
+    width: 32px; 
     height: 32px;
   }
 }
 
 @media screen and (max-width: 480px) {
   .audioPlayer {
-    padding: 8px;
-    margin: 8px auto; /* Further reduced margin */
+    padding: 12px;
   }
 
   .progressContainer {
     padding: 0 4px;
     gap: 6px;
-    margin-top: 6px; /* Further reduced margin */
+    margin-top: 8px;
   }
 
   .time {
-    font-size: 9px; /* Reduced font-size */
-    min-width: 28px; /* Adjust min-width accordingly */
+    font-size: 10px;
+    min-width: 30px;
   }
 
   .controlGroup {
@@ -222,8 +219,8 @@
     padding: 4px;
     transform: scale(0.8);
   }
-  .playButton {
-    width: 28px; /* Even smaller button */
+   .playButton {
+    width: 28px; 
     height: 28px;
   }
 }
