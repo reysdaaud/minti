@@ -1,226 +1,300 @@
-.audioPlayer {
-  background: linear-gradient(145deg, #1a1a1a, #2a2a2a);
-  border-radius: 12px;
+/* src/components/sounds/SoundsPlayer.module.css */
+.playerContainer {
+  background-color: #1a1a1a; /* Dark background */
+  color: #ffffff;
   padding: 20px;
+  border-radius: 12px;
   width: 100%;
-  max-width: 1200px;
+  max-width: 450px; /* Typical mobile width, adjust as needed */
   margin: 20px auto;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  font-family: Arial, Helvetica, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
-.playerControls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
+.albumArtContainer {
+  margin-bottom: 15px;
 }
 
-.controlGroup {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+.albumArt {
+  border-radius: 50%;
+  border: 3px solid #333;
+}
+
+.showInfo {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.stationName {
+  font-size: 0.9em;
+  color: #aaa;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.orangeBar {
+  width: 30px;
+  height: 3px;
+  background-color: #ff6600; /* Orange accent */
+  margin: 5px auto 10px;
+  border-radius: 1.5px;
+}
+
+.showTitle {
+  font-size: 1.4em;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.showArtist {
+  font-size: 0.9em;
+  color: #ccc;
 }
 
 .progressContainer {
-  flex-grow: 1;
+  width: 100%;
   display: flex;
   align-items: center;
-  gap: 12px;
+  margin-bottom: 20px;
+  padding: 0 10px;
 }
 
-.time {
-  color: white;
-  font-size: 14px;
-  opacity: 0.7;
-  min-width: 45px;
-  text-align: center;
-}
-
-.playerSeekBarHolder {
+.progressBarHolder {
   flex-grow: 1;
+  height: 6px;
+  background-color: #444;
+  border-radius: 3px;
   cursor: pointer;
   position: relative;
+  margin-right: 10px; /* Space before LIVE indicator */
 }
 
-.bar {
-  height: 4px;
-  background: #4a4a4a;
-  border-radius: 2px;
-  position: relative;
-}
-
-.progressBar {
+.progressBarBackground {
+  width: 100%;
   height: 100%;
-  background: #ff4400;
-  border-radius: 2px;
-  position: relative;
+  background-color: #444; /* Darker part of the bar */
+  border-radius: 3px;
 }
 
-.seekDot {
+.progressBarFill {
+  height: 100%;
+  background-color: #ff6600; /* Orange progress */
+  border-radius: 3px;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.progressThumb {
   width: 12px;
   height: 12px;
-  background: #ff4400;
+  background-color: #ff6600; /* Orange thumb */
   border-radius: 50%;
   position: absolute;
-  right: -6px;
-  top: -4px;
-  opacity: 0;
-  transition: opacity 0.2s;
+  right: -6px; /* Half of its width to center on the end of the fill */
+  top: 50%;
+  transform: translateY(-50%);
+  border: 2px solid #1a1a1a; /* Match background for floating effect */
 }
 
-.playerSeekBarHolder:hover .seekDot {
-  opacity: 1;
-}
-
-.audioButton {
-  background: none;
-  border: none;
-  color: white;
-  cursor: pointer;
-  padding: 8px;
+.liveIndicator {
+  font-size: 0.8em;
+  color: #ff6600; /* Orange accent */
   display: flex;
   align-items: center;
-  justify-content: center;
-  transition: transform 0.2s;
-}
-
-.audioButton:hover {
-  transform: scale(1.1);
-}
-
-.buttonInner {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.playButton {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #ff4400;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: transform 0.2s, background-color 0.2s;
-}
-
-.playButton:hover {
-  transform: scale(1.1);
-  background: #ff5500;
-}
-
-.base_circle {
-  fill: transparent;
-  stroke: currentColor;
-  stroke-width: 2;
-}
-
-.highlight_circle {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.audioButton:hover .highlight_circle {
-  opacity: 0.2;
-}
-
-.playingText {
-  color: #ff8800 !important;
   font-weight: bold;
 }
 
-.playingIndicator {
-  stroke: #ff8800 !important;
-  stroke-width: 3px;
-  fill: rgba(255, 136, 0, 0.2);
+
+.controls {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 25px;
+  padding: 0 10px;
 }
 
-.volumeControl {
+.controlButton {
+  background: none;
+  border: none;
+  color: #ccc; /* Lighter grey for icons */
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 5px;
+  transition: color 0.2s;
+}
+
+.controlButton:hover {
+  color: #fff;
+}
+
+.controlButton svg {
+  margin-bottom: 3px; /* Space between icon and label */
+}
+
+.customIcon {
+  width: 28px; /* Adjust size as needed */
+  height: 28px;
+  stroke-width: 1.5; /* Thinner lines for these icons */
+}
+
+.controlLabel {
+  font-size: 0.65em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.playPauseButton {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: #333; /* Darker circle for play/pause */
+  color: #fff; /* White icon */
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  transition: background-color 0.2s, transform 0.2s;
 }
 
-.volumeSlider {
-  width: 80px;
-  height: 4px;
-  background: #4a4a4a;
-  border-radius: 2px;
+.playPauseButton:hover {
+  background-color: #444;
+  transform: scale(1.05);
+}
+
+.scheduleInfo {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  background-color: #222; /* Slightly lighter dark for this section */
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 0.8em;
+}
+
+.onAir, .nextUp {
+  width: 48%;
+}
+
+.onAir {
+  border-right: 1px solid #444;
+  padding-right: 10px;
+}
+
+.nextUp {
+  padding-left: 10px;
+}
+
+.scheduleHeader {
+  font-size: 0.9em;
+  color: #aaa;
+  margin-bottom: 5px;
+}
+
+.onAirHighlight {
+  color: #ff6600; /* Orange accent */
+  font-weight: bold;
+}
+.nextHighlight {
+  color: #ff6600;
+  font-weight: bold;
+}
+
+
+.scheduleTitle {
+  font-weight: bold;
+  color: #eee;
+  margin-bottom: 3px;
+}
+
+.scheduleSubtitle {
+  font-size: 0.9em;
+  color: #bbb;
+}
+
+.description {
+  font-size: 0.85em;
+  color: #ccc;
+  line-height: 1.5;
+  margin-bottom: 20px;
+  text-align: left;
+  width: 100%;
+  padding: 0 15px;
+}
+
+.readMore {
+  background: none;
+  border: none;
+  color: #ff6600; /* Orange accent */
+  font-weight: bold;
   cursor: pointer;
+  padding: 0 3px;
 }
 
-.intervalArrow {
-  fill: currentColor;
+.programmeWebsiteButton {
+  background: none;
+  border: 1px solid #555;
+  color: #ddd;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: background-color 0.2s, border-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.iconNumber {
-  position: absolute;
-  color: white;
-  font-size: 14px;
-  line-height: 14px;
+.programmeWebsiteButton:hover {
+  background-color: #333;
+  border-color: #777;
 }
 
-@media screen and (max-width: 768px) {
-  .audioPlayer {
-    padding: 16px;
-  }
 
-  .progressContainer {
-    padding: 0 8px;
-    gap: 8px;
-    margin-top: 12px;
+/* Responsive Adjustments */
+@media (max-width: 400px) {
+  .playerContainer {
+    padding: 15px;
   }
-
-  .time {
-    font-size: 12px;
-    min-width: 35px;
+  .showTitle {
+    font-size: 1.2em;
   }
-
-  .controlGroup {
-    gap: 12px;
+  .playPauseButton {
+    width: 50px;
+    height: 50px;
   }
-
-  .audioButton {
-    padding: 6px;
-    transform: scale(0.9);
-  }
-  .playButton {
-    width: 32px; 
-    height: 32px;
-  }
-}
-
-@media screen and (max-width: 480px) {
-  .audioPlayer {
-    padding: 12px;
-  }
-
-  .progressContainer {
-    padding: 0 4px;
-    gap: 6px;
-    margin-top: 8px;
-  }
-
-  .time {
-    font-size: 10px;
-    min-width: 30px;
-  }
-
-  .controlGroup {
-    gap: 8px;
-  }
-
-  .audioButton {
-    padding: 4px;
-    transform: scale(0.8);
-  }
-   .playButton {
-    width: 28px; 
+  .playPauseButton svg {
+    width: 28px; /* Scale down play/pause icon */
     height: 28px;
+  }
+  .customIcon {
+    width: 24px;
+    height: 24px;
+  }
+  .controlButton svg:not(.customIcon) { /* For RotateCcw and Radio */
+    width: 20px;
+    height: 20px;
+  }
+
+  .scheduleInfo {
+    flex-direction: column;
+    gap: 15px;
+  }
+  .onAir, .nextUp {
+    width: 100%;
+    border-right: none;
+    padding-right: 0;
+    padding-left: 0;
+  }
+  .onAir {
+    border-bottom: 1px solid #444;
+    padding-bottom: 15px;
   }
 }

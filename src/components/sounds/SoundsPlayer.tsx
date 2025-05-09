@@ -2,68 +2,113 @@
 'use client';
 
 import type { FC } from 'react';
-import { Play, Pause, Volume2, VolumeX, SkipForward, SkipBack } from 'lucide-react';
-import styles from './SoundsPlayer.module.css'; // Import the CSS module
+import { Play, Pause, RotateCcw, Radio, RadioTower } from 'lucide-react';
+import styles from './SoundsPlayer.module.css';
+import Image from 'next/image';
 
-// This is a placeholder component. 
-// The actual implementation of the audio player logic is not included here.
+// Placeholder SVG for Rewind/Forward 20s icons
+const Rewind20Icon: FC<{ className?: string }> = ({ className }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M10 17a5 5 0 1 0 0-10H6"/>
+    <path d="m10 7-4 4 4 4"/>
+    <text x="12" y="13.5" fontSize="8" fill="currentColor" textAnchor="middle" dominantBaseline="middle">20</text>
+  </svg>
+);
+
+const Forward20Icon: FC<{ className?: string }> = ({ className }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M14 17a5 5 0 1 1 0-10h4"/>
+    <path d="m14 7 4 4-4 4"/>
+    <text x="10" y="13.5" fontSize="8" fill="currentColor" textAnchor="middle" dominantBaseline="middle">20</text>
+  </svg>
+);
+
+
 const SoundsPlayer: FC = () => {
-  // Placeholder states and handlers
   const isPlaying = false;
-  const currentTime = "0:00";
-  const duration = "3:45";
   const progress = 30; // Example progress percentage
-  const volume = 75; // Example volume percentage
 
   const handlePlayPause = () => console.log('Play/Pause clicked');
-  const handleSeek = () => console.log('Seek action');
-  const handleVolumeChange = () => console.log('Volume change action');
-  const handleSkipForward = () => console.log('Skip forward');
-  const handleSkipBackward = () => console.log('Skip backward');
-
+  const handleSeek = (event: React.MouseEvent<HTMLDivElement>) => {
+    // Basic seek logic placeholder
+    const progressBar = event.currentTarget;
+    const clickPosition = event.clientX - progressBar.getBoundingClientRect().left;
+    const newProgress = (clickPosition / progressBar.offsetWidth) * 100;
+    console.log(`Seek to: ${newProgress.toFixed(2)}%`);
+  };
+  const handleControlClick = (action: string) => console.log(`${action} clicked`);
 
   return (
-    <div className={styles.audioPlayer}>
-      <div className={styles.playerControls}>
-        <div className={styles.controlGroup}>
-          <button onClick={handleSkipBackward} className={styles.audioButton} aria-label="Skip Backward">
-            <SkipBack size={20} />
-          </button>
-          <button onClick={handlePlayPause} className={styles.playButton} aria-label={isPlaying ? "Pause" : "Play"}>
-            {isPlaying ? <Pause size={20} /> : <Play size={20} />}
-          </button>
-          <button onClick={handleSkipForward} className={styles.audioButton} aria-label="Skip Forward">
-            <SkipForward size={20} />
-          </button>
-        </div>
+    <div className={styles.playerContainer}>
+      <div className={styles.albumArtContainer}>
+        <Image
+          src="https://picsum.photos/seed/radiohead/200/200"
+          alt="Radio 1 Dance"
+          width={120}
+          height={120}
+          className={styles.albumArt}
+          data-ai-hint="radio dj"
+        />
+      </div>
+      <div className={styles.showInfo}>
+        <p className={styles.stationName}>RADIO 1 DANCE</p>
+        <div className={styles.orangeBar}></div>
+        <h2 className={styles.showTitle}>Radio 1 Dance Morning</h2>
+        <p className={styles.showArtist}>with Arielle Free</p>
+      </div>
 
-        <div className={styles.progressContainer}>
-          <span className={styles.time}>{currentTime}</span>
-          <div className={styles.playerSeekBarHolder} onClick={handleSeek}>
-            <div className={styles.bar}>
-              <div className={styles.progressBar} style={{ width: `${progress}%` }}>
-                <div className={styles.seekDot}></div>
-              </div>
-            </div>
+      <div className={styles.progressContainer}>
+        <div className={styles.progressBarHolder} onClick={handleSeek}>
+          <div className={styles.progressBarBackground}></div>
+          <div className={styles.progressBarFill} style={{ width: `${progress}%` }}>
+            <div className={styles.progressThumb}></div>
           </div>
-          <span className={styles.time}>{duration}</span>
         </div>
-
-        <div className={styles.volumeControl}>
-          <button className={styles.audioButton} aria-label={volume > 0 ? "Mute" : "Unmute"}>
-            {volume > 0 ? <Volume2 size={20} /> : <VolumeX size={20} />}
-          </button>
-          <input 
-            type="range" 
-            min="0" 
-            max="100" 
-            value={volume} 
-            onChange={handleVolumeChange} 
-            className={styles.volumeSlider}
-            aria-label="Volume"
-          />
+        <div className={styles.liveIndicator}>
+          <RadioTower size={14} className="mr-1"/> LIVE
         </div>
       </div>
+
+      <div className={styles.controls}>
+        <button className={styles.controlButton} onClick={() => handleControlClick('Start')} aria-label="Start Over">
+          <RotateCcw size={24} />
+          <span className={styles.controlLabel}>START</span>
+        </button>
+        <button className={styles.controlButton} onClick={() => handleControlClick('Rewind 20s')} aria-label="Rewind 20 seconds">
+          <Rewind20Icon className={styles.customIcon} />
+        </button>
+        <button className={`${styles.controlButton} ${styles.playPauseButton}`} onClick={handlePlayPause} aria-label={isPlaying ? 'Pause' : 'Play'}>
+          {isPlaying ? <Pause size={36} /> : <Play size={36} />}
+        </button>
+        <button className={styles.controlButton} onClick={() => handleControlClick('Forward 20s')} aria-label="Forward 20 seconds">
+          <Forward20Icon className={styles.customIcon} />
+        </button>
+        <button className={styles.controlButton} onClick={() => handleControlClick('Go Live')} aria-label="Go Live">
+           <Radio size={24} />
+          <span className={styles.controlLabel}>LIVE</span>
+        </button>
+      </div>
+
+      <div className={styles.scheduleInfo}>
+        <div className={styles.onAir}>
+          <p className={styles.scheduleHeader}><span className={styles.onAirHighlight}>ON AIR:</span> 02:00 - 05:00</p>
+          <p className={styles.scheduleTitle}>Radio 1 Dance Morning</p>
+        </div>
+        <div className={styles.nextUp}>
+          <p className={styles.scheduleHeader}><span className={styles.nextHighlight}>NEXT:</span> 05:00 - 06:00</p>
+          <p className={styles.scheduleTitle}>Radio 1's Dance Anthems</p>
+          <p className={styles.scheduleSubtitle}>Nonstop classic and current dance</p>
+        </div>
+      </div>
+      
+      <div className={styles.description}>
+        <p>The best new, current and classic dance tracks with Arielle Free. <button className={styles.readMore}>Read more ▼</button></p>
+      </div>
+
+      <button className={styles.programmeWebsiteButton}>
+        Programme Website 
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-1"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+      </button>
     </div>
   );
 };
