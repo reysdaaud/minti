@@ -1,24 +1,26 @@
 
 'use client';
 import type { FC } from 'react';
-import { Home, LayoutGrid, CandlestickChart, PiggyBank, Wallet } from 'lucide-react';
+import { Home, LayoutGrid, CandlestickChart, Music2, Wallet } from 'lucide-react'; // Changed PiggyBank to Music2
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
 
 interface NavItem {
   label: string;
   icon: React.ElementType;
-  href: string;
+  href: string; // href might not be used if onTabChange handles navigation/view change
 }
 
-const BottomNavBar: FC = () => {
-  const [activeTab, setActiveTab] = useState('Home');
+interface BottomNavBarProps {
+  activeTab: string;
+  onTabChange: (tabLabel: string) => void;
+}
 
+const BottomNavBar: FC<BottomNavBarProps> = ({ activeTab, onTabChange }) => {
   const navItems: NavItem[] = [
     { label: 'Home', icon: Home, href: '#' },
     { label: 'Markets', icon: LayoutGrid, href: '#' },
     { label: 'Trade', icon: CandlestickChart, href: '#' },
-    { label: 'Earn', icon: PiggyBank, href: '#' },
+    { label: 'Sounds', icon: Music2, href: '#' }, // Changed from Earn to Sounds
     { label: 'Assets', icon: Wallet, href: '#' },
   ];
 
@@ -32,7 +34,7 @@ const BottomNavBar: FC = () => {
             className={`flex flex-col items-center justify-center h-full p-1 space-y-0.5 rounded-none transition-all duration-200 w-[19%]
               ${activeTab === item.label ? 'text-primary scale-105' : 'text-muted-foreground hover:text-foreground/80'}
             `}
-            onClick={() => setActiveTab(item.label)}
+            onClick={() => onTabChange(item.label)}
             aria-current={activeTab === item.label ? "page" : undefined}
           >
             <item.icon className={`h-5 w-5 mb-0.5 transition-transform duration-200 ${activeTab === item.label ? 'scale-110' : ''}`} />
