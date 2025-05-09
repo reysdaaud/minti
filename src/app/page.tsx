@@ -8,18 +8,18 @@ import BottomNavBar from '@/components/exchange/BottomNavBar';
 import CardBalance from '@/components/exchange/CardBalance';
 import SoundsPlayer from '@/components/sounds/SoundsPlayer';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSearchParams, useRouter as useNextRouter } from 'next/navigation'; // Changed to useNextRouter to avoid conflict
+import { useSearchParams, useRouter as useNextRouter } from 'next/navigation'; 
 import { useEffect, useState, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 
 export default function CryptoExchangePage() {
   const { user, loading: authLoading } = useAuth();
-  const nextRouter = useNextRouter(); // Renamed to avoid conflict with internal router variable
+  const nextRouter = useNextRouter(); 
   const searchParams = useSearchParams();
   const { toast } = useToast();
   
@@ -38,9 +38,8 @@ export default function CryptoExchangePage() {
         if (docSnap.exists()) {
           setCoinBalance(docSnap.data().coins || 0);
         } else {
-          // This case should ideally be handled during user creation/login
           setCoinBalance(0); 
-          console.warn("User document not found for balance updates.");
+          console.warn("User document not found for balance updates. This might be okay if user is new and backend will create it upon payment verification.");
         }
         setUserDocLoading(false);
       }, (error) => {
@@ -48,9 +47,9 @@ export default function CryptoExchangePage() {
         toast({ title: "Error", description: "Could not load your coin balance.", variant: "destructive" });
         setUserDocLoading(false);
       });
-      return () => unsubscribe(); // Cleanup listener on unmount
+      return () => unsubscribe(); 
     } else {
-      setCoinBalance(0); // Reset balance if no user
+      setCoinBalance(0); 
       setUserDocLoading(false);
     }
   }, [user, toast]);
@@ -58,12 +57,15 @@ export default function CryptoExchangePage() {
 
   // Handle Paystack callback verification
   const handleVerifyPayment = useCallback(async (paymentReference: string) => {
+    if (isVerifyingPayment) return; // Prevent multiple simultaneous verifications
     setIsVerifyingPayment(true);
     console.log('Detected payment reference for verification:', paymentReference);
-    const backendVerifyUrl = process.env.NEXT_PUBLIC_PAYMENT_BACKEND_URL_VERIFY || `http://localhost:5000/paystack/verify/${paymentReference}`;
+    
+    // Use the environment variable for the backend URL, or a default for local dev
+    const backendVerifyUrl = `${process.env.NEXT_PUBLIC_PAYMENT_BACKEND_URL || 'http://localhost:5000'}/paystack/verify/${paymentReference}`;
 
     try {
-      const response = await fetch(backendVerifyUrl, { // Use correct backend URL
+      const response = await fetch(backendVerifyUrl, { 
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -73,11 +75,12 @@ export default function CryptoExchangePage() {
       if (response.ok && data.status && data.data && data.data.status === 'success') {
         toast({
           title: 'Payment Successful!',
-          description: `Your purchase of ${data.data.metadata?.packageName || 'coins'} was successful. Your balance has been updated.`,
-          variant: 'default',
+          description: `Your purchase was successful. Your balance will update shortly.`,
+          variant: 'default', // Changed from 'success' to 'default' if 'success' variant doesn't exist
           duration: 7000,
         });
         // Balance updates via Firestore listener, no need to setCoinBalance here directly
+        // The backend server.js now handles updating Firestore.
       } else {
         toast({
           title: 'Payment Verification Failed',
@@ -90,37 +93,46 @@ export default function CryptoExchangePage() {
       console.error('Error verifying payment:', error);
       toast({
         title: 'Payment Verification Error',
-        description: error.message || 'An unexpected error occurred while verifying your payment.',
+        description: error.message || 'An unexpected error occurred while verifying your payment. Ensure the backend server is running.',
         variant: 'destructive',
       });
     } finally {
       setIsVerifyingPayment(false);
       // Clean the URL to prevent re-processing on refresh
       const currentPath = window.location.pathname;
-      nextRouter.replace(currentPath, { scroll: false }); 
+      // Create a new URL object to safely remove search params
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('trxref');
+      newUrl.searchParams.delete('reference');
+      nextRouter.replace(newUrl.pathname + newUrl.search, { scroll: false }); 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps  
-  }, [toast, nextRouter]); // Removed router from deps as nextRouter is stable, add specific deps if needed
+  }, [toast, nextRouter]); // Removed isVerifyingPayment from deps to avoid re-triggering if it changes during execution
 
   useEffect(() => {
     const paymentReference = searchParams.get('trxref') || searchParams.get('reference');
-    if (paymentReference && user && !isVerifyingPayment) {
-      // Check if already processed in this session to avoid multiple calls from strict mode double effect run
-      if (sessionStorage.getItem('lastVerifiedRef') !== paymentReference) {
-        sessionStorage.setItem('lastVerifiedRef', paymentReference);
+    // Only verify if user is loaded, reference exists, and not already verifying
+    if (paymentReference && user && !authLoading && !isVerifyingPayment) {
+      // Simple session flag to prevent re-verification on fast refresh / strict mode double call
+      const verificationKey = `verified_${paymentReference}`;
+      if (sessionStorage.getItem(verificationKey) !== 'true') {
+        sessionStorage.setItem(verificationKey, 'true');
         handleVerifyPayment(paymentReference);
       } else {
-         // Optional: If already processed this session, clear URL faster.
-         const currentPath = window.location.pathname;
-         if (searchParams.get('trxref') || searchParams.get('reference')) { // Check if params still exist
-            nextRouter.replace(currentPath, { scroll: false });
-         }
+        // If already processed this session, clear URL faster.
+        const currentPath = window.location.pathname;
+        const newUrl = new URL(window.location.href);
+        if (newUrl.searchParams.get('trxref') || newUrl.searchParams.get('reference')) { 
+            newUrl.searchParams.delete('trxref');
+            newUrl.searchParams.delete('reference');
+            nextRouter.replace(newUrl.pathname + newUrl.search, { scroll: false });
+        }
       }
     }
-  }, [searchParams, user, isVerifyingPayment, handleVerifyPayment, nextRouter]);
+  }, [searchParams, user, authLoading, isVerifyingPayment, handleVerifyPayment, nextRouter]);
 
 
-  if (authLoading || (!user && !authLoading) || userDocLoading) { // Show loader if auth is loading, or user not loaded and not in error, or user doc loading
+  if (authLoading || userDocLoading) { 
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -128,13 +140,11 @@ export default function CryptoExchangePage() {
     );
   }
   
-  if (!user && !authLoading) { // If not loading and no user, redirect to sign-in
-     // This should ideally be handled by a protected route HOC or middleware
-     // For now, a simple client-side redirect if user is null after loading.
+  if (!user && !authLoading) { 
      if (typeof window !== "undefined") {
       nextRouter.push('/auth/signin');
      }
-     return null; // Render nothing while redirecting
+     return null; 
   }
 
 
@@ -184,3 +194,5 @@ export default function CryptoExchangePage() {
     </div>
   );
 }
+
+    
