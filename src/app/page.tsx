@@ -20,11 +20,6 @@ export default function CryptoExchangePage() {
   const [coinBalance, setCoinBalance] = useState(0); 
   const [activeTab, setActiveTab] = useState('Home'); // State for active tab
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/auth/signin');
-    }
-  }, [user, loading, router]);
 
   useEffect(() => {
     if (user) {

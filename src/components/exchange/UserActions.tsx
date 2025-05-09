@@ -177,7 +177,7 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
                   onCloseDialog={handleCloseDialog}
                 />
                 <DialogClose 
-                    className="absolute right-4 top-4 z-[51] rounded-full p-1 flex items-center justify-center text-muted-foreground hover:text-foreground bg-background/50 hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background"
+                    className="absolute right-4 top-4 rounded-full p-1 flex items-center justify-center text-muted-foreground hover:text-foreground bg-background/50 hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background"
                     aria-label="Close top-up dialog"
                     onClick={handleCloseDialog}
                 >

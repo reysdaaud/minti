@@ -17,18 +17,11 @@ export default function SignInPage() {
     }
   }, [user, loading, router]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    if(loading || user){
+      return null
   }
 
-  if (user) {
-    return null; // Or a redirecting message, but useEffect handles it
-  }
-
+  
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm shadow-2xl">
