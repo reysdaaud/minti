@@ -8,7 +8,7 @@ import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface PaystackButtonProps {
-  amount: number; // Amount in KES (major unit), server.js will convert to kobo/cents
+  amount: number; 
   email: string; 
   userId: string;
   metadata: { 
@@ -60,15 +60,14 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onClose
     try {
       const payload = {
         email: email,
-        amount: amount, // Amount in KES (major unit). server.js will multiply by 100.
-        metadata: { // This metadata is sent to your backend
+        amount: amount, 
+        metadata: { 
           userId: userId,
           coins: propMetadata.coins,
           packageName: propMetadata.packageName,
         }
       };
 
-      // Ensure your backend server (e.g., server.js at http://localhost:5000) is running to handle this request.
       const backendInitializeUrl = process.env.NEXT_PUBLIC_PAYMENT_BACKEND_URL || 'http://localhost:5000/paystack/initialize';
 
       const response = await fetch(backendInitializeUrl, {
@@ -87,7 +86,6 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onClose
       const responseData = await response.json();
 
       if (responseData.status && responseData.data && responseData.data.authorization_url) {
-        // Open Paystack checkout in a new tab
         window.open(responseData.data.authorization_url, '_blank');
         toast({
           title: "Redirecting to Paystack",
@@ -95,7 +93,7 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onClose
           duration: 7000,
         });
         if (onClose) { 
-          onClose(); // Close the dialog after opening Paystack in a new tab
+          onClose(); 
         }
       } else {
         throw new Error(responseData.message || "Failed to get authorization URL from Paystack.");
@@ -103,17 +101,22 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onClose
 
     } catch (err: any) {
       console.error('[PaystackButton] Payment initialization error:', err);
-      setError(err.message || 'Failed to initialize payment. Please check your connection or try again.');
+      let errorMessage = 'Failed to initialize payment. Please check your connection or try again.';
+      // Check if the error is a network error (e.g., server not running)
+      if (err instanceof TypeError && err.message.toLowerCase().includes('failed to fetch')) {
+        errorMessage = 'Could not connect to the payment server. Please ensure the backend server (server.js) is running and accessible at ' + (process.env.NEXT_PUBLIC_PAYMENT_BACKEND_URL || 'http://localhost:5000') + '.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
       toast({
-        title: "Payment Error",
-        description: err.message || 'Failed to initialize payment. Please check console for details.',
+        title: "Payment Initialization Error",
+        description: errorMessage,
         variant: "destructive"
-      })
+      });
     } finally {
       setIsLoading(false);
-      // onClose is called specifically after successful new tab opening, or if an error before that point requires dialog closure.
-      // If the error is just a network blip and the dialog should stay open for retry, onClose might not be called here.
-      // Current logic: onClose is called if new tab is opened. If error before, dialog stays for user to see error.
     }
   };
 
@@ -143,5 +146,3 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onClose
 };
 
 export default PaystackButton;
-
-    
