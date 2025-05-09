@@ -6,21 +6,38 @@ import { Play, Pause } from 'lucide-react';
 import styles from './SoundsPlayer.module.css';
 import Image from 'next/image';
 
-// Placeholder SVG for Rewind 10s icon
-const Rewind10Icon: FC<{ className?: string }> = ({ className }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M10 17a5 5 0 1 0 0-10H6"/>
-    <path d="m10 7-4 4 4 4"/>
-    <text x="12" y="13.5" fontSize="8" fill="currentColor" textAnchor="middle" dominantBaseline="middle">10</text>
+// Custom SVG Icons based on the image provided
+
+const StartOverIcon: FC<{ className?: string }> = ({ className }) => (
+  <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M29.995 13.438A10.001 10.001 0 1 0 26.5 26.5" />
+    <path d="M29.999 7.5V13.5H24" />
   </svg>
 );
 
-// Placeholder SVG for Forward 10s icon
-const Forward10Icon: FC<{ className?: string }> = ({ className }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M14 17a5 5 0 1 1 0-10h4"/>
-    <path d="m14 7 4 4-4 4"/>
-    <text x="10" y="13.5" fontSize="8" fill="currentColor" textAnchor="middle" dominantBaseline="middle">10</text>
+const Rewind20sIcon: FC<{ className?: string }> = ({ className }) => (
+  <svg viewBox="0 0 40 40" fill="none" className={className}>
+    <circle cx="20" cy="20" r="18" stroke="currentColor" strokeWidth="2.5" />
+    <path d="M25 13a9 9 0 1 0-1.83 5.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M25.5 8.5V14.5H19.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    <text x="20" y="23" textAnchor="middle" fontSize="10" fill="currentColor" fontWeight="bold">20</text>
+  </svg>
+);
+
+const Forward20sIcon: FC<{ className?: string }> = ({ className }) => (
+  <svg viewBox="0 0 40 40" fill="none" className={className}>
+    <circle cx="20" cy="20" r="18" stroke="currentColor" strokeWidth="2.5" />
+    <path d="M15 13a9 9 0 1 1 1.83 5.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M14.5 8.5V14.5H20.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    <text x="20" y="23" textAnchor="middle" fontSize="10" fill="currentColor" fontWeight="bold">20</text>
+  </svg>
+);
+
+const GoLiveIcon: FC<{ className?: string }> = ({ className }) => (
+ <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M29.995 13.438A10.001 10.001 0 1 0 26.5 26.5" />
+    <path d="M29.999 7.5V13.5H24" />
+    <circle cx="20" cy="20" r="3" fill="currentColor" />
   </svg>
 );
 
@@ -31,7 +48,6 @@ const SoundsPlayer: FC = () => {
 
   const handlePlayPause = () => console.log('Play/Pause clicked');
   const handleSeek = (event: React.MouseEvent<HTMLDivElement>) => {
-    // Basic seek logic placeholder
     const progressBar = event.currentTarget;
     const clickPosition = event.clientX - progressBar.getBoundingClientRect().left;
     const newProgress = (clickPosition / progressBar.offsetWidth) * 100;
@@ -65,20 +81,25 @@ const SoundsPlayer: FC = () => {
             <div className={styles.progressThumb}></div>
           </div>
         </div>
-        {/* Live indicator removed as per request */}
       </div>
 
       <div className={styles.controls}>
-        <button className={styles.controlButton} onClick={() => handleControlClick('Rewind 10s')} aria-label="Rewind 10 seconds">
-          <Rewind10Icon className={styles.customIcon} />
-          <span className={styles.controlLabel}>Rewind</span>
+        <button className={styles.controlButton} onClick={() => handleControlClick('Start Over')} aria-label="Start Over">
+          <StartOverIcon className={styles.controlIcon} />
+          <span className={styles.controlLabelSmall}>START</span>
+        </button>
+        <button className={styles.controlButton} onClick={() => handleControlClick('Rewind 20s')} aria-label="Rewind 20 seconds">
+          <Rewind20sIcon className={styles.controlIcon} />
         </button>
         <button className={`${styles.controlButton} ${styles.playPauseButton}`} onClick={handlePlayPause} aria-label={isPlaying ? 'Pause' : 'Play'}>
-          {isPlaying ? <Pause size={36} /> : <Play size={36} />}
+          {isPlaying ? <Pause size={36} strokeWidth={2.5} /> : <Play size={36} strokeWidth={2.5} />}
         </button>
-        <button className={styles.controlButton} onClick={() => handleControlClick('Forward 10s')} aria-label="Forward 10 seconds">
-          <Forward10Icon className={styles.customIcon} />
-          <span className={styles.controlLabel}>Forward</span>
+        <button className={styles.controlButton} onClick={() => handleControlClick('Forward 20s')} aria-label="Forward 20 seconds">
+          <Forward20sIcon className={styles.controlIcon} />
+        </button>
+        <button className={styles.controlButton} onClick={() => handleControlClick('Go Live')} aria-label="Go Live">
+          <GoLiveIcon className={styles.controlIcon} />
+          <span className={styles.controlLabelSmall}>LIVE</span>
         </button>
       </div>
 

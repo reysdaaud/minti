@@ -70,7 +70,6 @@
   border-radius: 3px;
   cursor: pointer;
   position: relative;
-  /* margin-right: 10px; Space before LIVE indicator - removed */
 }
 
 .progressBarBackground {
@@ -101,16 +100,14 @@
   border: 2px solid #1a1a1a; /* Match background for floating effect */
 }
 
-/* Styles for .liveIndicator removed as it's no longer used */
-
 .controls {
   display: flex;
-  justify-content: space-around; /* Distributes space between the 3 buttons */
+  justify-content: space-around;
   align-items: center;
-  width: 80%; /* Control width to manage spacing */
-  max-width: 300px; /* Max width for controls area */
+  width: 100%;
+  max-width: 380px; /* Max width for controls area, adjusted for 5 buttons */
   margin-bottom: 25px;
-  padding: 0 10px;
+  padding: 0 5px; /* Reduced padding slightly */
 }
 
 .controlButton {
@@ -121,52 +118,61 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center; /* Center icon and label */
   padding: 5px;
   transition: color 0.2s;
+  flex: 1; /* Allow buttons to take available space */
+  min-width: 0; /* Allow shrinking */
 }
 
 .controlButton:hover {
   color: #fff;
 }
 
-.controlButton svg {
-  margin-bottom: 3px; /* Space between icon and label */
+.controlIcon {
+  width: 32px; /* Size for Rewind/Forward/Start/Live icons */
+  height: 32px;
+  stroke-width: 2; /* Adjusted stroke for visual consistency */
+  margin-bottom: 2px; /* Space between icon and label if any */
 }
 
-.customIcon {
-  width: 28px; /* Adjust size as needed */
-  height: 28px;
-  stroke-width: 1.5; /* Thinner lines for these icons */
-}
 
-.controlLabel {
-  font-size: 0.65em;
+.controlLabelSmall {
+  font-size: 0.6em; /* Smaller label for START/LIVE */
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #ccc; /* Ensure label is visible */
+  color: #ccc;
+  margin-top: 2px;
+  font-weight: bold;
 }
 
-.controlButton:hover .controlLabel {
-  color: #fff; /* Label color on hover */
+.controlButton:hover .controlLabelSmall {
+  color: #fff;
 }
 
 
 .playPauseButton {
-  width: 60px;
-  height: 60px;
+  width: 56px; /* Slightly smaller to fit 5 buttons */
+  height: 56px;
   border-radius: 50%;
-  background-color: #333; /* Darker circle for play/pause */
-  color: #fff; /* White icon */
+  background-color: #333;
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background-color 0.2s, transform 0.2s;
-  /* No flex-direction or span label needed for play/pause as it's icon-only */
+  margin: 0 5px; /* Add some horizontal margin */
+  flex-shrink: 0; /* Prevent play/pause button from shrinking too much */
 }
 
 .playPauseButton:hover {
   background-color: #444;
   transform: scale(1.05);
+}
+
+.playPauseButton svg { /* Ensure Play/Pause icons are sized correctly */
+  width: 32px;
+  height: 32px;
 }
 
 .scheduleInfo {
@@ -268,19 +274,22 @@
     font-size: 1.2em;
   }
   .playPauseButton {
-    width: 50px;
-    height: 50px;
+    width: 48px; /* Smaller play/pause */
+    height: 48px;
   }
   .playPauseButton svg {
-    width: 28px; /* Scale down play/pause icon */
+    width: 28px;
     height: 28px;
   }
-  .customIcon {
-    width: 24px;
-    height: 24px;
+  .controlIcon {
+    width: 28px; /* Smaller control icons */
+    height: 28px;
   }
   .controls {
-    width: 90%; /* Adjust controls width for smaller screens */
+    width: 95%; /* Adjust controls width for smaller screens */
+    max-width: none; /* Allow full width on small screens */
+    padding: 0;
+    gap: 3px; /* Reduce gap between control buttons */
   }
 
   .scheduleInfo {
