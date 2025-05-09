@@ -167,8 +167,7 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
             {/* Top-up Dialog Content */}
             {action.dialogKey === 'topup' && user && (
               <DialogContent
-                className="sm:max-w-2xl p-0 bg-transparent border-none shadow-none data-[state=open]:animate-none data-[state=closed]:animate-none max-h-[90vh] flex flex-col"
-                // Removed onPointerDownOutside and onInteractOutside
+                className="sm:max-w-2xl p-0 bg-background border-border shadow-xl data-[state=open]:animate-none data-[state=closed]:animate-none max-h-[90vh] flex flex-col"
               >
                 <VisuallyHidden><DialogTitle>Purchase Sondar Coins</DialogTitle></VisuallyHidden>
                 <Pay 
