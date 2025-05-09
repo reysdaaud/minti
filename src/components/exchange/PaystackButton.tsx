@@ -2,59 +2,35 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { usePaystackPayment } from 'react-paystack';
-import { auth } from '@/lib/firebase'; // Path to firebase config
-
-type Currency = 'NGN' | 'GHS' | 'USD' | 'KES';
-
-interface CustomField {
-  display_name: string;
-  variable_name: string;
-  value: string;
-}
-
-interface PaystackConfig {
-  reference: string;
-  email: string;
-  amount: number; // Amount in smallest currency unit (e.g., kobo, cents)
-  publicKey: string;
-  currency: Currency;
-  metadata: {
-    custom_fields: CustomField[];
-  };
-}
+import { auth } from '@/lib/firebase'; 
+import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 
 interface PaystackButtonProps {
-  amount: number; // Amount in KES cents
-  email: string; // User's email, ensured to be a non-null string by caller
+  amount: number; // Amount in KES (major unit), server.js will convert to cents
+  email: string; 
   userId: string;
-  metadata: { // Metadata passed from Pay.tsx
+  metadata: { 
     coins: number;
     packageName: string;
   };
-  onSuccess: (response: any) => Promise<void>; // Callback on successful payment
-  onClose?: () => void; // Optional: Paystack's own modal close callback
+  onClose?: () => void; 
 }
 
-const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onSuccess, onClose }: PaystackButtonProps) => {
+const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onClose }: PaystackButtonProps) => {
   const [error, setError] = useState<string | null>(null);
-  const [buttonText, setButtonText] = useState('Pay Now');
+  const [isLoading, setIsLoading] = useState(false);
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
-  
-  const user = auth.currentUser; // Firebase authenticated user
-  const paystackPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
+  const [buttonText, setButtonText] = useState('Pay Now');
+
+  const user = auth.currentUser;
 
   useEffect(() => {
     let currentError = null;
     let currentButtonText = 'Pay Now';
     let currentDisabled = false;
 
-    if (!paystackPublicKey) {
-      currentError = "Payment gateway is not configured. Please contact support.";
-      currentButtonText = 'Payment Unavailable';
-      currentDisabled = true;
-      console.error("[PaystackButton] Paystack public key (NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY) is not defined.");
-    } else if (!email) {
+    if (!email) {
       currentError = "A valid email address is required for payment.";
       currentButtonText = 'Email Required';
       currentDisabled = true;
@@ -68,90 +44,85 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onSucce
     setButtonText(currentButtonText);
     setIsButtonDisabled(currentDisabled);
 
-  }, [paystackPublicKey, email, user]);
+  }, [email, user]);
   
-  const config: PaystackConfig = {
-    reference: (new Date()).getTime().toString(),
-    email: email,
-    amount: amount, // Amount is expected in KES cents
-    publicKey: paystackPublicKey || '', // Fallback to empty string if undefined
-    currency: 'KES',
-    metadata: {
-      custom_fields: [
-        {
-          display_name: "User ID",
-          variable_name: "user_id",
-          value: userId
-        },
-        {
-          display_name: "Coins To Add",
-          variable_name: "coins_to_add",
-          value: propMetadata.coins.toString()
-        },
-        {
-          display_name: "Package Name",
-          variable_name: "package_name",
-          value: propMetadata.packageName
-        }
-      ]
-    }
-  };
-
-  const initializePayment = usePaystackPayment(config);
-
-  const handlePayment = () => {
-    // Re-check conditions just before payment attempt, although useEffect should cover it.
+  const handlePayment = async () => {
     if (isButtonDisabled || error) {
-        // If there's an existing error or button is meant to be disabled,
-        // ensure the error message reflects the current state if it changed.
-        if (!paystackPublicKey) setError("Payment gateway is not configured.");
-        else if (!email) setError("A valid email address is required.");
+        if (!email) setError("A valid email address is required.");
         else if (!user) setError("You need to be logged in.");
         return;
     }
-    setError(null); // Clear previous transient errors if any
+    setError(null);
+    setIsLoading(true);
 
     try {
-      initializePayment(
-        (response?: any) => { // onSuccess callback from usePaystackPayment
-          onSuccess(response); // Call the onSuccess prop passed to PaystackButton
-        },
-        () => { // onClose callback from usePaystackPayment (when Paystack modal is closed by user)
-          if (onClose) {
-            onClose();
-          }
+      const payload = {
+        email: email,
+        amount: amount, // Amount in KES (major unit). server.js will multiply by 100.
+        metadata: {
+          userId: userId,
+          coins: propMetadata.coins,
+          packageName: propMetadata.packageName,
         }
-      );
-    } catch (err) {
-      const paymentError = 'Failed to initialize payment. Please try again.';
-      setError(paymentError);
+      };
+
+      // Ensure your server.js is running on http://localhost:5000 or update this URL
+      const backendInitializeUrl = process.env.NEXT_PUBLIC_PAYMENT_BACKEND_URL || 'http://localhost:5000/paystack/initialize';
+
+      const response = await fetch(backendInitializeUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload), // server.js expects { email, amount, metadata }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: `Payment initialization failed: ${response.statusText}` }));
+        throw new Error(errorData.message || `Payment initialization failed: ${response.statusText}`);
+      }
+
+      const responseData = await response.json();
+
+      if (responseData.status && responseData.data && responseData.data.authorization_url) {
+        window.open(responseData.data.authorization_url, '_blank');
+        // It's good practice to inform the user that payment is opened in a new tab.
+        // The parent dialog will close via onClose.
+      } else {
+        throw new Error(responseData.message || "Failed to get authorization URL from Paystack.");
+      }
+
+    } catch (err: any) {
+      setError(err.message || 'Failed to initialize payment. Please try again.');
       console.error('[PaystackButton] Payment initialization error:', err);
+    } finally {
+      setIsLoading(false);
+      if (onClose) { // Always call onClose to close the dialog, regardless of success/failure in opening tab.
+        onClose(); 
+      }
     }
   };
 
   return (
     <div className="text-center">
-      {error && !isButtonDisabled && ( // Show error only if it's not a permanent disabled state error
+      {error && !isButtonDisabled && ( 
         <div className="text-destructive text-sm mb-4 p-3 bg-destructive/10 border border-destructive rounded-md">
           {error}
         </div>
       )}
-      <button
+      <Button
         onClick={handlePayment}
-        disabled={isButtonDisabled}
+        disabled={isButtonDisabled || isLoading}
         className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg text-lg font-semibold shadow-md hover:shadow-lg transition-shadow w-full disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {buttonText}
-      </button>
-      {/* Persistent messages for disabled states */}
-      {isButtonDisabled && paystackPublicKey && !email && (
-         <p className="text-xs text-destructive mt-2">A valid email address is required to proceed.</p>
-      )}
-       {isButtonDisabled && paystackPublicKey && email && !user && (
+        {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
+        {isLoading ? 'Processing...' : buttonText}
+      </Button>
+      {isButtonDisabled && email && !user && (
          <p className="text-xs text-destructive mt-2">Please log in to complete the payment.</p>
       )}
-       {isButtonDisabled && !paystackPublicKey && (
-         <p className="text-xs text-destructive mt-2">Payment gateway is currently unavailable. Please contact support.</p>
+       {isButtonDisabled && !email && (
+         <p className="text-xs text-destructive mt-2">A valid email address is required to proceed.</p>
       )}
     </div>
   );

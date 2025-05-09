@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 // Enable offline persistence
 try {
@@ -41,8 +42,8 @@ const COIN_PACKAGES: CoinPackage[] = [
 
 interface PayProps {
   userId: string;
-  userEmail: string | null; // Email can be null from auth
-  onPaymentCompleted: (coinsAdded: number) => void;
+  userEmail: string | null; 
+  onPaymentCompleted: (coinsAdded: number) => void; // This might be re-evaluated based on new flow
   onCloseDialog: () => void;
 }
 
@@ -51,6 +52,7 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
   const [currentBalance, setCurrentBalance] = useState(0);
   const [loading, setLoading] = useState(false); 
   const [error, setError] = useState('');
+  const { toast } = useToast(); // Initialize toast
 
   const cleanErrors = () => {
     setError('');
@@ -68,7 +70,9 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
       
       if (!docSnap.exists()) {
         setCurrentBalance(0);
-        await setDoc(userRef, { email: userEmail, coins: 0, createdAt: serverTimestamp() });
+        // Initialize user if not exists, or ensure PaystackButton handles this for its metadata if needed.
+        // For now, assuming user initialization happens at login.
+        await setDoc(userRef, { email: userEmail, coins: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
       } else {
         setCurrentBalance(docSnap.data().coins || 0);
       }
@@ -81,8 +85,11 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
   };
 
   useEffect(() => {
-    fetchUserBalance();
-  }, [userId]);
+    if (userId) { // Ensure userId is present before fetching
+        fetchUserBalance();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]); // Only re-run if userId changes
 
   const handlePackageSelect = (pkgId: string) => {
     cleanErrors();
@@ -90,62 +97,12 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
     setSelectedPackage(foundPackage || null);
   };
 
-  const handlePaymentSuccess = async (response: any) => {
-    try {
-      cleanErrors();
-      setLoading(true); 
+  // This function is no longer directly called by PaystackButton's onSuccess.
+  // Payment success is now handled by the callback URL and server-side verification.
+  // The `onPaymentCompleted` prop from UserActions might need to be re-thought for timing.
+  // For now, it's not called from here.
+  // const handlePaymentSuccess = async (response: any) => { ... } // Removed this as direct handler
 
-      if (!selectedPackage || !userId) {
-        throw new Error('Invalid payment data. Package or User ID missing.');
-      }
-
-      const userRef = doc(db, 'users', userId);
-      const userDoc = await getDoc(userRef); 
-      
-      const paymentData = {
-        amountKES: selectedPackage.amountKES,
-        coinsAdded: selectedPackage.coins,
-        timestamp: serverTimestamp(),
-        reference: response.reference || response.transaction,
-        status: 'success',
-        packageName: selectedPackage.description,
-      };
-
-      const currentCoins = userDoc.exists() ? (userDoc.data().coins || 0) : 0;
-      const newBalance = currentCoins + selectedPackage.coins;
-
-      if (!userDoc.exists()) { 
-        await setDoc(userRef, {
-          email: userEmail,
-          coins: newBalance,
-          lastPayment: paymentData,
-          paymentHistory: [paymentData],
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-      } else {
-        await updateDoc(userRef, {
-          coins: newBalance,
-          lastPayment: paymentData,
-          paymentHistory: [...(userDoc.data().paymentHistory || []), paymentData],
-          updatedAt: serverTimestamp(),
-        });
-      }
-      
-      setCurrentBalance(newBalance); 
-      onPaymentCompleted(selectedPackage.coins); 
-      // Dialog closing is now handled by onPaymentCompleted in UserActions or Paystack's own modal close.
-      
-    } catch (err: any) {
-      console.error("Error processing payment success:", err);
-      setError(
-        `Payment recorded with Paystack (Ref: ${response.reference || response.transaction}) but database update failed. ` +
-        `Please contact support with this reference. Error: ${err.message}`
-      );
-    } finally {
-      setLoading(false); 
-    }
-  };
 
   if (loading && !selectedPackage && !error) { 
     return (
@@ -199,7 +156,7 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
           value={selectedPackage?.id} 
           onValueChange={handlePackageSelect}
           className="space-y-3"
-          disabled={!userEmail} // Disable package selection if no email
+          disabled={!userEmail || loading} 
         >
           {COIN_PACKAGES.map((pkg) => (
             <Label
@@ -212,7 +169,7 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
                           ${!userEmail ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer pointer-events-auto'}`}
             >
               <div className="flex items-center mb-2 sm:mb-0">
-                <RadioGroupItem value={pkg.id} id={pkg.id} className="mr-3 mt-1 sm:mt-0 self-start sm:self-center" disabled={!userEmail} />
+                <RadioGroupItem value={pkg.id} id={pkg.id} className="mr-3 mt-1 sm:mt-0 self-start sm:self-center" disabled={!userEmail || loading} />
                 <div>
                   <h3 className="text-base font-semibold text-foreground">{pkg.description}</h3>
                   <p className="text-lg font-bold text-primary mb-1">{pkg.coins.toLocaleString()} coins</p>
@@ -228,7 +185,7 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
           ))}
         </RadioGroup>
 
-        {selectedPackage && userEmail && ( // Only show payment button if a package is selected AND email is available
+        {selectedPackage && userEmail && (
           <div className="mt-6 pt-4 border-t border-border">
             <div className="bg-muted/30 p-3 rounded-lg mb-4 text-xs">
               <h3 className="text-sm font-semibold mb-1 text-foreground">Order Summary:</h3>
@@ -237,27 +194,19 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
               <div className="flex justify-between"><span className="text-muted-foreground">Coins to receive:</span> <span className="font-medium text-foreground">{selectedPackage.coins.toLocaleString()}</span></div>
             </div>
             
-            {loading && selectedPackage ? ( 
-                 <div className="flex items-center justify-center py-6">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary mr-3" />
-                    <p className="text-lg text-muted-foreground">Processing payment...</p>
-                </div>
-            ) : (
-              <PaystackButton
-                amount={selectedPackage.amountKES * 100} // Convert KES to cents
-                email={userEmail} // userEmail is now guaranteed to be string here
+            <PaystackButton
+                amount={selectedPackage.amountKES} // Pass amount in KES (major unit)
+                email={userEmail}
                 userId={userId}
-                onSuccess={handlePaymentSuccess}
                 metadata={{
                   coins: selectedPackage.coins,
                   packageName: selectedPackage.description
                 }}
-                // onClose prop can be used for Paystack's modal own close, e.g. onClose={() => console.log('Paystack modal closed')}
+                onClose={onCloseDialog} // This will close the Pay dialog after Paystack tab is opened
               />
-            )}
             
             <p className="mt-4 text-xs text-center text-muted-foreground px-4">
-              Payments are securely processed by Paystack. By clicking "Pay Now", you agree to our Terms of Service.
+              You will be redirected to Paystack in a new tab to complete your payment securely.
             </p>
           </div>
         )}
