@@ -2,24 +2,25 @@
 'use client';
 
 import type { FC } from 'react';
-import { Play, Pause, RotateCcw, Radio, RadioTower } from 'lucide-react';
+import { Play, Pause } from 'lucide-react';
 import styles from './SoundsPlayer.module.css';
 import Image from 'next/image';
 
-// Placeholder SVG for Rewind/Forward 20s icons
-const Rewind20Icon: FC<{ className?: string }> = ({ className }) => (
+// Placeholder SVG for Rewind 10s icon
+const Rewind10Icon: FC<{ className?: string }> = ({ className }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <path d="M10 17a5 5 0 1 0 0-10H6"/>
     <path d="m10 7-4 4 4 4"/>
-    <text x="12" y="13.5" fontSize="8" fill="currentColor" textAnchor="middle" dominantBaseline="middle">20</text>
+    <text x="12" y="13.5" fontSize="8" fill="currentColor" textAnchor="middle" dominantBaseline="middle">10</text>
   </svg>
 );
 
-const Forward20Icon: FC<{ className?: string }> = ({ className }) => (
+// Placeholder SVG for Forward 10s icon
+const Forward10Icon: FC<{ className?: string }> = ({ className }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <path d="M14 17a5 5 0 1 1 0-10h4"/>
     <path d="m14 7 4 4-4 4"/>
-    <text x="10" y="13.5" fontSize="8" fill="currentColor" textAnchor="middle" dominantBaseline="middle">20</text>
+    <text x="10" y="13.5" fontSize="8" fill="currentColor" textAnchor="middle" dominantBaseline="middle">10</text>
   </svg>
 );
 
@@ -64,28 +65,20 @@ const SoundsPlayer: FC = () => {
             <div className={styles.progressThumb}></div>
           </div>
         </div>
-        <div className={styles.liveIndicator}>
-          <RadioTower size={14} className="mr-1"/> LIVE
-        </div>
+        {/* Live indicator removed as per request */}
       </div>
 
       <div className={styles.controls}>
-        <button className={styles.controlButton} onClick={() => handleControlClick('Start')} aria-label="Start Over">
-          <RotateCcw size={24} />
-          <span className={styles.controlLabel}>START</span>
-        </button>
-        <button className={styles.controlButton} onClick={() => handleControlClick('Rewind 20s')} aria-label="Rewind 20 seconds">
-          <Rewind20Icon className={styles.customIcon} />
+        <button className={styles.controlButton} onClick={() => handleControlClick('Rewind 10s')} aria-label="Rewind 10 seconds">
+          <Rewind10Icon className={styles.customIcon} />
+          <span className={styles.controlLabel}>Rewind</span>
         </button>
         <button className={`${styles.controlButton} ${styles.playPauseButton}`} onClick={handlePlayPause} aria-label={isPlaying ? 'Pause' : 'Play'}>
           {isPlaying ? <Pause size={36} /> : <Play size={36} />}
         </button>
-        <button className={styles.controlButton} onClick={() => handleControlClick('Forward 20s')} aria-label="Forward 20 seconds">
-          <Forward20Icon className={styles.customIcon} />
-        </button>
-        <button className={styles.controlButton} onClick={() => handleControlClick('Go Live')} aria-label="Go Live">
-           <Radio size={24} />
-          <span className={styles.controlLabel}>LIVE</span>
+        <button className={styles.controlButton} onClick={() => handleControlClick('Forward 10s')} aria-label="Forward 10 seconds">
+          <Forward10Icon className={styles.customIcon} />
+          <span className={styles.controlLabel}>Forward</span>
         </button>
       </div>
 

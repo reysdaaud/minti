@@ -70,7 +70,7 @@
   border-radius: 3px;
   cursor: pointer;
   position: relative;
-  margin-right: 10px; /* Space before LIVE indicator */
+  /* margin-right: 10px; Space before LIVE indicator - removed */
 }
 
 .progressBarBackground {
@@ -101,20 +101,14 @@
   border: 2px solid #1a1a1a; /* Match background for floating effect */
 }
 
-.liveIndicator {
-  font-size: 0.8em;
-  color: #ff6600; /* Orange accent */
-  display: flex;
-  align-items: center;
-  font-weight: bold;
-}
-
+/* Styles for .liveIndicator removed as it's no longer used */
 
 .controls {
   display: flex;
-  justify-content: space-around;
+  justify-content: space-around; /* Distributes space between the 3 buttons */
   align-items: center;
-  width: 100%;
+  width: 80%; /* Control width to manage spacing */
+  max-width: 300px; /* Max width for controls area */
   margin-bottom: 25px;
   padding: 0 10px;
 }
@@ -149,7 +143,13 @@
   font-size: 0.65em;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  color: #ccc; /* Ensure label is visible */
 }
+
+.controlButton:hover .controlLabel {
+  color: #fff; /* Label color on hover */
+}
+
 
 .playPauseButton {
   width: 60px;
@@ -161,6 +161,7 @@
   align-items: center;
   justify-content: center;
   transition: background-color 0.2s, transform 0.2s;
+  /* No flex-direction or span label needed for play/pause as it's icon-only */
 }
 
 .playPauseButton:hover {
@@ -278,9 +279,8 @@
     width: 24px;
     height: 24px;
   }
-  .controlButton svg:not(.customIcon) { /* For RotateCcw and Radio */
-    width: 20px;
-    height: 20px;
+  .controls {
+    width: 90%; /* Adjust controls width for smaller screens */
   }
 
   .scheduleInfo {
