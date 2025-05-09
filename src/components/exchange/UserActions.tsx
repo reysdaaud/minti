@@ -142,13 +142,14 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
             {/* Top-up Dialog Content */}
             {action.dialogKey === 'topup' && user && (
               <DialogContent className="sm:max-w-2xl p-0 bg-transparent border-none shadow-none data-[state=open]:animate-none data-[state=closed]:animate-none">
-                {/* Pay component handles its own styling including background and card */}
+                <DialogHeader className="sr-only"> {/* Make header screen-reader only */}
+                  <DialogTitle>Purchase Sondar Coins</DialogTitle> {/* Accessible title */}
+                </DialogHeader>
                 <Pay 
                   userId={user.uid} 
                   userEmail={user.email} 
                   onPaymentCompleted={handleTopUpCompleted} 
                 />
-                 {/* Explicit close button for the Pay dialog if needed, or rely on Pay's internal logic/ESC key */}
                  <DialogClose asChild className="absolute right-2 top-2 z-50">
                     <Button variant="ghost" size="icon" className="text-background hover:bg-background/20 rounded-full">
                         <X className="h-5 w-5" />
