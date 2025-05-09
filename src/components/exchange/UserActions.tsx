@@ -99,11 +99,6 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
   };
 
   const handleTopUpCompleted = (coinsPurchased: number) => {
-    // The Pay.tsx component (via PaystackButton) is now responsible for closing the dialog
-    // by calling onCloseDialog (which is handleCloseDialog here) BEFORE Paystack modal opens.
-    // If payment is successful, Pay.tsx calls this function.
-    // We still call handleCloseDialog here as a fallback / to ensure state consistency,
-    // though it might already be closed.
     handleCloseDialog(); 
     setCoinBalance(prevBalance => prevBalance + coinsPurchased);
     toast({
@@ -171,22 +166,21 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
 
             {/* Top-up Dialog Content */}
             {action.dialogKey === 'topup' && user && (
-              <DialogContent className="sm:max-w-2xl p-0 bg-transparent border-none shadow-none data-[state=open]:animate-none data-[state=closed]:animate-none max-h-[90vh] flex flex-col">
-                {/* VisuallyHidden DialogTitle for accessibility, as Pay component has its own header */}
+              <DialogContent
+                className="sm:max-w-2xl p-0 bg-transparent border-none shadow-none data-[state=open]:animate-none data-[state=closed]:animate-none max-h-[90vh] flex flex-col"
+                // Removed onPointerDownOutside and onInteractOutside
+              >
                 <VisuallyHidden><DialogTitle>Purchase Sondar Coins</DialogTitle></VisuallyHidden>
                 <Pay 
                   userId={user.uid} 
                   userEmail={user.email} 
                   onPaymentCompleted={handleTopUpCompleted} 
-                  onCloseDialog={handleCloseDialog} // Pass the main dialog close handler
+                  onCloseDialog={handleCloseDialog}
                 />
-                 {/* This DialogClose is for the ShadCN Dialog. It should be separate from Paystack's modal. */}
-                 {/* The PaystackButton's onCloseParentDialog will call handleCloseDialog which closes this DialogContent */}
-                 {/* We can also provide an explicit close button for this dialog itself */}
                 <DialogClose 
                     className="absolute right-4 top-4 z-[51] rounded-full p-1 flex items-center justify-center text-muted-foreground hover:text-foreground bg-background/50 hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background"
                     aria-label="Close top-up dialog"
-                    onClick={handleCloseDialog} // Ensure it calls the main close handler
+                    onClick={handleCloseDialog}
                 >
                     <X className="h-5 w-5" />
                 </DialogClose>
@@ -198,7 +192,6 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
                  <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle>{action.label}</DialogTitle>
-                         {/* Default close button from DialogContent will be used here (via ShadCN DialogContent) */}
                     </DialogHeader>
                     <div className="py-4">
                         <p className="text-muted-foreground">This feature ({action.label}) is coming soon!</p>
