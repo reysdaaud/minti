@@ -205,11 +205,11 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
             <Label
               key={pkg.id}
               htmlFor={pkg.id}
-              className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg hover:border-primary/70
+              className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border-2 rounded-lg transition-all duration-200 ease-in-out hover:shadow-lg hover:border-primary/70
                           ${selectedPackage?.id === pkg.id 
                             ? 'border-primary ring-2 ring-primary bg-primary/5 shadow-xl scale-[1.02]' 
                             : 'border-border bg-card hover:bg-muted/30'}
-                          ${!userEmail ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          ${!userEmail ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer pointer-events-auto'}`}
             >
               <div className="flex items-center mb-2 sm:mb-0">
                 <RadioGroupItem value={pkg.id} id={pkg.id} className="mr-3 mt-1 sm:mt-0 self-start sm:self-center" disabled={!userEmail} />
