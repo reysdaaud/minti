@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import PaystackButton from './PaystackButton';
-import { db } from '../../lib/firebase'; // Adjusted path
+import { db } from '../../lib/firebase'; 
 import { doc, getDoc, updateDoc, setDoc, enableIndexedDbPersistence, serverTimestamp } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label"
 
 // Enable offline persistence
 try {
-  if (typeof window !== "undefined") { // Ensure runs only in browser
+  if (typeof window !== "undefined") { 
     enableIndexedDbPersistence(db).catch((err) => {
       if (err.code === 'failed-precondition') {
         console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
@@ -34,22 +34,22 @@ interface CoinPackage {
 }
 
 const COIN_PACKAGES: CoinPackage[] = [
-  { id: 'pack1', amountKES: 10, coins: 100, description: "Basic Pack" },  // KSh 10 = 100 coins
-  { id: 'pack2', amountKES: 20, coins: 220, description: "Popular Pack", bonusText: "Includes 10% bonus coins" }, // KSh 20 = 220 coins
-  { id: 'pack3', amountKES: 50, coins: 600, description: "Premium Pack", bonusText: "Includes 20% bonus coins" }, // KSh 50 = 600 coins
+  { id: 'pack1', amountKES: 10, coins: 100, description: "Basic Pack" },
+  { id: 'pack2', amountKES: 20, coins: 220, description: "Popular Pack", bonusText: "Includes 10% bonus coins" },
+  { id: 'pack3', amountKES: 50, coins: 600, description: "Premium Pack", bonusText: "Includes 20% bonus coins" },
 ];
 
 interface PayProps {
   userId: string;
-  userEmail: string | null;
+  userEmail: string | null; // Email can be null from auth
   onPaymentCompleted: (coinsAdded: number) => void;
-  onCloseDialog: () => void; // New prop
+  onCloseDialog: () => void;
 }
 
 export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDialog }: PayProps) {
   const [selectedPackage, setSelectedPackage] = useState<CoinPackage | null>(null);
   const [currentBalance, setCurrentBalance] = useState(0);
-  const [loading, setLoading] = useState(false); // For initial balance load and payment processing
+  const [loading, setLoading] = useState(false); 
   const [error, setError] = useState('');
 
   const cleanErrors = () => {
@@ -68,7 +68,6 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
       
       if (!docSnap.exists()) {
         setCurrentBalance(0);
-         // Optionally create user document if it doesn't exist
         await setDoc(userRef, { email: userEmail, coins: 0, createdAt: serverTimestamp() });
       } else {
         setCurrentBalance(docSnap.data().coins || 0);
@@ -94,20 +93,20 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
   const handlePaymentSuccess = async (response: any) => {
     try {
       cleanErrors();
-      setLoading(true); // Indicate processing
+      setLoading(true); 
 
       if (!selectedPackage || !userId) {
         throw new Error('Invalid payment data. Package or User ID missing.');
       }
 
       const userRef = doc(db, 'users', userId);
-      const userDoc = await getDoc(userRef); // Get latest doc before update
+      const userDoc = await getDoc(userRef); 
       
       const paymentData = {
         amountKES: selectedPackage.amountKES,
         coinsAdded: selectedPackage.coins,
-        timestamp: serverTimestamp(), // Use server timestamp for consistency
-        reference: response.reference || response.transaction, // Paystack might use 'transaction'
+        timestamp: serverTimestamp(),
+        reference: response.reference || response.transaction,
         status: 'success',
         packageName: selectedPackage.description,
       };
@@ -133,12 +132,9 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
         });
       }
       
-      setCurrentBalance(newBalance); // Update local state
-      onPaymentCompleted(selectedPackage.coins); // This will call toast and parent dialog close via UserActions
-      // The onCloseDialog is ALREADY handled by PaystackButton's onCloseParentDialog,
-      // which is called before initializePayment.
-      // If onPaymentCompleted itself closes the dialog (as it does in UserActions),
-      // this is fine.
+      setCurrentBalance(newBalance); 
+      onPaymentCompleted(selectedPackage.coins); 
+      // Dialog closing is now handled by onPaymentCompleted in UserActions or Paystack's own modal close.
       
     } catch (err: any) {
       console.error("Error processing payment success:", err);
@@ -146,13 +142,12 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
         `Payment recorded with Paystack (Ref: ${response.reference || response.transaction}) but database update failed. ` +
         `Please contact support with this reference. Error: ${err.message}`
       );
-      // Do not close dialog here, user needs to see the error.
     } finally {
-      setLoading(false); // Stop processing indicator
+      setLoading(false); 
     }
   };
 
-  if (loading && !selectedPackage && !error) { // Show main loading indicator only initially if no error
+  if (loading && !selectedPackage && !error) { 
     return (
       <div className="max-w-4xl mx-auto p-6 text-center flex flex-col items-center justify-center min-h-[300px]">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -172,7 +167,7 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
       <CardContent className="p-6 space-y-6 bg-background flex-grow overflow-y-auto">
         {error && (
           <div 
-            onClick={error.includes("load your balance") ? fetchUserBalance : undefined} // Allow retry only for balance load error
+            onClick={error.includes("load your balance") ? fetchUserBalance : undefined}
             className={`bg-destructive/10 border-l-4 border-destructive text-destructive p-4 mb-6 rounded-md ${error.includes("load your balance") ? "cursor-pointer hover:bg-destructive/20" : ""} transition-colors`}
             role="alert"
           >
@@ -183,7 +178,7 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
         )}
 
         <div className="bg-muted/50 p-4 rounded-lg mb-6 text-center">
-          {loading && !selectedPackage ? ( // Loading for balance
+          {loading && !selectedPackage ? ( 
             <div className="flex items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-primary mr-2" />
               <p className="text-lg text-muted-foreground">Loading balance...</p>
@@ -193,10 +188,18 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
           )}
         </div>
 
+        {!userEmail && (
+          <div className="bg-destructive/10 border-l-4 border-destructive text-destructive p-4 mb-6 rounded-md" role="alert">
+            <p className="font-bold">Email Required</p>
+            <p className="text-sm">A valid email address is required to make payments. Please ensure your account has a verified email.</p>
+          </div>
+        )}
+
         <RadioGroup 
           value={selectedPackage?.id} 
           onValueChange={handlePackageSelect}
           className="space-y-3"
+          disabled={!userEmail} // Disable package selection if no email
         >
           {COIN_PACKAGES.map((pkg) => (
             <Label
@@ -205,10 +208,11 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
               className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg hover:border-primary/70
                           ${selectedPackage?.id === pkg.id 
                             ? 'border-primary ring-2 ring-primary bg-primary/5 shadow-xl scale-[1.02]' 
-                            : 'border-border bg-card hover:bg-muted/30'}`}
+                            : 'border-border bg-card hover:bg-muted/30'}
+                          ${!userEmail ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <div className="flex items-center mb-2 sm:mb-0">
-                <RadioGroupItem value={pkg.id} id={pkg.id} className="mr-3 mt-1 sm:mt-0 self-start sm:self-center" />
+                <RadioGroupItem value={pkg.id} id={pkg.id} className="mr-3 mt-1 sm:mt-0 self-start sm:self-center" disabled={!userEmail} />
                 <div>
                   <h3 className="text-base font-semibold text-foreground">{pkg.description}</h3>
                   <p className="text-lg font-bold text-primary mb-1">{pkg.coins.toLocaleString()} coins</p>
@@ -224,7 +228,7 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
           ))}
         </RadioGroup>
 
-        {selectedPackage && (
+        {selectedPackage && userEmail && ( // Only show payment button if a package is selected AND email is available
           <div className="mt-6 pt-4 border-t border-border">
             <div className="bg-muted/30 p-3 rounded-lg mb-4 text-xs">
               <h3 className="text-sm font-semibold mb-1 text-foreground">Order Summary:</h3>
@@ -233,22 +237,22 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
               <div className="flex justify-between"><span className="text-muted-foreground">Coins to receive:</span> <span className="font-medium text-foreground">{selectedPackage.coins.toLocaleString()}</span></div>
             </div>
             
-            {loading && selectedPackage ? ( // Loading indicator for payment processing
+            {loading && selectedPackage ? ( 
                  <div className="flex items-center justify-center py-6">
                     <Loader2 className="h-8 w-8 animate-spin text-primary mr-3" />
                     <p className="text-lg text-muted-foreground">Processing payment...</p>
                 </div>
             ) : (
               <PaystackButton
-                amount={selectedPackage.amountKES * 100} // Convert KES to cents for Paystack
-                email={userEmail}
+                amount={selectedPackage.amountKES * 100} // Convert KES to cents
+                email={userEmail} // userEmail is now guaranteed to be string here
                 userId={userId}
                 onSuccess={handlePaymentSuccess}
                 metadata={{
                   coins: selectedPackage.coins,
                   packageName: selectedPackage.description
                 }}
-                onCloseParentDialog={onCloseDialog} // Pass the handler to close the main top-up dialog
+                // onClose prop can be used for Paystack's modal own close, e.g. onClose={() => console.log('Paystack modal closed')}
               />
             )}
             

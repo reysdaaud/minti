@@ -3,8 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { usePaystackPayment } from 'react-paystack';
-import { auth } from '../../lib/firebase'; 
-import { Button } from '@/components/ui/button'; 
+import { auth } from '@/lib/firebase'; // Path to firebase config
 
 type Currency = 'NGN' | 'GHS' | 'USD' | 'KES';
 
@@ -14,100 +13,70 @@ interface CustomField {
   value: string;
 }
 
-interface PaystackMetadata { 
-  custom_fields: CustomField[];
-}
-
 interface PaystackConfig {
   reference: string;
   email: string;
-  amount: number; 
+  amount: number; // Amount in smallest currency unit (e.g., kobo, cents)
   publicKey: string;
   currency: Currency;
-  metadata: PaystackMetadata;
+  metadata: {
+    custom_fields: CustomField[];
+  };
 }
 
 interface PaystackButtonProps {
-  amount: number; 
-  email: string | null; 
+  amount: number; // Amount in KES cents
+  email: string; // User's email, ensured to be a non-null string by caller
   userId: string;
-  metadata: { 
+  metadata: { // Metadata passed from Pay.tsx
     coins: number;
     packageName: string;
   };
-  onSuccess: (response: any) => Promise<void>;
-  onClose?: () => void; // Paystack's own modal close
-  onCloseParentDialog?: () => void; // To close the top-up dialog in UserActions.tsx
+  onSuccess: (response: any) => Promise<void>; // Callback on successful payment
+  onClose?: () => void; // Optional: Paystack's own modal close callback
 }
 
-const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onSuccess, onClose, onCloseParentDialog }: PaystackButtonProps) => {
-  const [componentError, setComponentError] = useState<string | null>(null); // Renamed from error to avoid conflict with hook error
-  const user = auth.currentUser;
+const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onSuccess, onClose }: PaystackButtonProps) => {
+  const [error, setError] = useState<string | null>(null);
+  const [buttonText, setButtonText] = useState('Pay Now');
+  const [isButtonDisabled, setIsButtonDisabled] = useState(false);
   
-  const envPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
-  // Updated hardcoded live key as per user request
-  const hardcodedUserLiveKey = "pk_live_624bc2353b87de04be7d1dc3ca3fbdeab34dfa94"; 
-
-  let paystackKeyToUse: string = ''; // Initialize to empty string
-  let keySourceMessage: string = '';
-
-  if (envPublicKey && (envPublicKey.startsWith('pk_live_') || envPublicKey.startsWith('sk_live_'))) {
-    paystackKeyToUse = envPublicKey;
-    keySourceMessage = `Using LIVE Paystack key from environment variable: ${envPublicKey.substring(0,10)}...`;
-    if (envPublicKey.startsWith('sk_live_')) {
-      console.warn("[PaystackButton - CRITICAL SECURITY WARNING] Environment variable NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY provides a SECRET live key. This is a SEVERE security risk and should ONLY be for temporary testing as explicitly requested by the user. REMOVE BEFORE PRODUCTION.");
-      keySourceMessage += " (SECRET KEY)";
-    }
-  } else if (envPublicKey && envPublicKey.startsWith('pk_test_')) {
-    paystackKeyToUse = envPublicKey;
-    keySourceMessage = `Using TEST Paystack key from environment variable: ${envPublicKey.substring(0,10)}... (TEST MODE)`;
-    console.warn("[PaystackButton] Environment variable NEXT_PUBLIC_PAYstack_PUBLIC_KEY provides a TEST key. Payments will be in test mode.");
-  } else {
-    paystackKeyToUse = hardcodedUserLiveKey;
-    keySourceMessage = `Using hardcoded LIVE Paystack key: ${hardcodedUserLiveKey.substring(0,10)}...`;
-    if (hardcodedUserLiveKey.startsWith('sk_live_')) {
-         console.warn(`[PaystackButton - CRITICAL SECURITY WARNING] Using a hardcoded SECRET live key ('${hardcodedUserLiveKey.substring(0,10)}...') on the client side. This is for TESTING ONLY as explicitly requested by the user and is a SEVERE SECURITY RISK. Remove before production.`);
-        keySourceMessage += " (SECRET KEY)";
-    } else if (hardcodedUserLiveKey.startsWith('pk_live_')) {
-        console.warn(`[PaystackButton] NOTICE: Application is using a hardcoded PUBLIC live key. For better security and flexibility, it is recommended to use environment variables for live keys in production environments.`);
-    }
-
-    if (envPublicKey) {
-      console.warn(`[PaystackButton] Environment variable NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ('${envPublicKey}') is not a valid live/test key. Falling back to the hardcoded key specified by the user. For production, ensure the environment variable is correctly set to your live PUBLIC key.`);
-    } else {
-      console.warn(`[PaystackButton] NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY environment variable not found. Using the hardcoded key specified by the user. For production, set this environment variable with your live PUBLIC key.`);
-    }
-  }
-
-  // Final sanity check:
-  if (!paystackKeyToUse || (!paystackKeyToUse.startsWith('pk_live_') && !paystackKeyToUse.startsWith('pk_test_') && !paystackKeyToUse.startsWith('sk_live_'))) {
-    const originalKey = paystackKeyToUse;
-    paystackKeyToUse = ''; // Set to empty to ensure it's treated as invalid
-    keySourceMessage = `CRITICAL CONFIGURATION ERROR: No valid Paystack key found. Original attempted key: '${originalKey || 'undefined'}'. Payments will be disabled. Please check your configuration and environment variables.`;
-    console.error(`[PaystackButton] ${keySourceMessage}`);
-  }
-
+  const user = auth.currentUser; // Firebase authenticated user
+  const paystackPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
 
   useEffect(() => {
-    console.log(`[PaystackButton Active Key Source] ${keySourceMessage}`);
-    console.log(`[PaystackButton Effective Key Used] ${paystackKeyToUse ? paystackKeyToUse.substring(0,10) + '...' : 'N/A (Invalid/Missing)'}`);
-    if (paystackKeyToUse.startsWith('pk_test_')) {
-        console.warn("[PaystackButton] WARNING: Application is currently using a TEST Paystack key. All transactions will be in test mode and will not process real payments.");
-    } else if (paystackKeyToUse.startsWith('sk_live_')) {
-         console.error("[PaystackButton - CRITICAL USAGE] Attempting to use a LIVE SECRET KEY for client-side Paystack initialization. This is highly insecure and against Paystack's recommended practices. This configuration is due to explicit user instruction for testing and MUST be changed for any production environment. Paystack's client library may not support secret keys for initialization, potentially leading to 'invalid key' errors or unexpected behavior.");
-    } else if (paystackKeyToUse.startsWith('pk_live_')) {
-        console.log("[PaystackButton] Application is using a LIVE PUBLIC Paystack key.");
+    let currentError = null;
+    let currentButtonText = 'Pay Now';
+    let currentDisabled = false;
+
+    if (!paystackPublicKey) {
+      currentError = "Payment gateway is not configured. Please contact support.";
+      currentButtonText = 'Payment Unavailable';
+      currentDisabled = true;
+      console.error("[PaystackButton] Paystack public key (NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY) is not defined.");
+    } else if (!email) {
+      currentError = "A valid email address is required for payment.";
+      currentButtonText = 'Email Required';
+      currentDisabled = true;
+    } else if (!user) {
+      currentError = "You need to be logged in to make a payment.";
+      currentButtonText = 'Login Required';
+      currentDisabled = true;
     }
-  }, [paystackKeyToUse, keySourceMessage]);
+    
+    setError(currentError);
+    setButtonText(currentButtonText);
+    setIsButtonDisabled(currentDisabled);
 
-
+  }, [paystackPublicKey, email, user]);
+  
   const config: PaystackConfig = {
     reference: (new Date()).getTime().toString(),
-    email: email || user?.email || '', 
-    amount: amount, 
-    publicKey: paystackKeyToUse,
+    email: email,
+    amount: amount, // Amount is expected in KES cents
+    publicKey: paystackPublicKey || '', // Fallback to empty string if undefined
     currency: 'KES',
-    metadata: { 
+    metadata: {
       custom_fields: [
         {
           display_name: "User ID",
@@ -115,13 +84,13 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onSucce
           value: userId
         },
         {
-          display_name: "Coins",
-          variable_name: "coins",
-          value: propMetadata.coins.toString() 
+          display_name: "Coins To Add",
+          variable_name: "coins_to_add",
+          value: propMetadata.coins.toString()
         },
         {
-          display_name: "Package",
-          variable_name: "package_name", 
+          display_name: "Package Name",
+          variable_name: "package_name",
           value: propMetadata.packageName
         }
       ]
@@ -131,75 +100,59 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onSucce
   const initializePayment = usePaystackPayment(config);
 
   const handlePayment = () => {
-    setComponentError(null); 
-    if (!config.email) { 
-      setComponentError('Please provide a valid email address or ensure your account email is verified.');
-      return;
+    // Re-check conditions just before payment attempt, although useEffect should cover it.
+    if (isButtonDisabled || error) {
+        // If there's an existing error or button is meant to be disabled,
+        // ensure the error message reflects the current state if it changed.
+        if (!paystackPublicKey) setError("Payment gateway is not configured.");
+        else if (!email) setError("A valid email address is required.");
+        else if (!user) setError("You need to be logged in.");
+        return;
     }
-    
-    if (!config.publicKey || (!config.publicKey.startsWith('pk_test_') && !config.publicKey.startsWith('pk_live_') && !config.publicKey.startsWith('sk_live_'))) {
-      setComponentError('Paystack payment cannot be initialized. Configuration error: Invalid or missing Paystack key.');
-      console.error('[PaystackButton] Invalid Paystack Key for initialization attempt:', config.publicKey);
-      return;
-    }
-    
-    if (onCloseParentDialog) {
-        onCloseParentDialog();
-    }
+    setError(null); // Clear previous transient errors if any
 
     try {
-      if (config.publicKey.startsWith('sk_live_')) {
-        console.warn(`[PaystackButton - PAYMENT ATTEMPT WITH SECRET KEY] Initializing payment with a SECRET KEY ('${config.publicKey.substring(0,10)}...') on the client side. This is for TESTING ONLY as requested and is a SEVERE SECURITY RISK. This may not work as Paystack's client-side library expects a public key and can result in an 'invalid key' error from Paystack.`);
-      }
-
       initializePayment(
-        (response?: any) => { 
-          setComponentError(null);
-          onSuccess(response); 
+        (response?: any) => { // onSuccess callback from usePaystackPayment
+          onSuccess(response); // Call the onSuccess prop passed to PaystackButton
         },
-        () => { 
-          if (onClose) { 
+        () => { // onClose callback from usePaystackPayment (when Paystack modal is closed by user)
+          if (onClose) {
             onClose();
           }
         }
       );
     } catch (err) {
-      setComponentError('Failed to initialize payment. Please try again.');
+      const paymentError = 'Failed to initialize payment. Please try again.';
+      setError(paymentError);
       console.error('[PaystackButton] Payment initialization error:', err);
     }
   };
 
-  const isKeyConfiguredAndValid = !!config.publicKey && (config.publicKey.startsWith('pk_test_') || config.publicKey.startsWith('pk_live_') || config.publicKey.startsWith('sk_live_'));
-  const isUserEmailAvailable = !!user?.email;
-
-  let buttonText = 'Pay Now';
-  if (!isKeyConfiguredAndValid) {
-    buttonText = 'Paystack Key Error';
-  } else if (!isUserEmailAvailable) {
-    buttonText = 'Verify Email to Pay';
-  }
-
-
   return (
     <div className="text-center">
-      {componentError && (
+      {error && !isButtonDisabled && ( // Show error only if it's not a permanent disabled state error
         <div className="text-destructive text-sm mb-4 p-3 bg-destructive/10 border border-destructive rounded-md">
-          {componentError}
+          {error}
         </div>
       )}
-      <Button
+      <button
         onClick={handlePayment}
-        disabled={!isKeyConfiguredAndValid || !isUserEmailAvailable}
-        className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg text-lg font-semibold shadow-md hover:shadow-lg transition-shadow w-full"
+        disabled={isButtonDisabled}
+        className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg text-lg font-semibold shadow-md hover:shadow-lg transition-shadow w-full disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {buttonText}
-      </Button>
-       {!isKeyConfiguredAndValid && (
-         <p className="text-xs text-destructive mt-2">A valid Paystack key is not configured. Payments are disabled. Please check application setup or console for details.</p>
-       )}
-       {isKeyConfiguredAndValid && !isUserEmailAvailable && (
-         <p className="text-xs text-destructive mt-2">Please ensure your email is verified to make a purchase.</p>
-       )}
+      </button>
+      {/* Persistent messages for disabled states */}
+      {isButtonDisabled && paystackPublicKey && !email && (
+         <p className="text-xs text-destructive mt-2">A valid email address is required to proceed.</p>
+      )}
+       {isButtonDisabled && paystackPublicKey && email && !user && (
+         <p className="text-xs text-destructive mt-2">Please log in to complete the payment.</p>
+      )}
+       {isButtonDisabled && !paystackPublicKey && (
+         <p className="text-xs text-destructive mt-2">Payment gateway is currently unavailable. Please contact support.</p>
+      )}
     </div>
   );
 };
