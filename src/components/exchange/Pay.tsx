@@ -2,57 +2,61 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import PaystackButton from './PaystackButton';
-import { db } from '../../lib/firebase'; 
-import { doc, getDoc, updateDoc, setDoc, enableIndexedDbPersistence, serverTimestamp } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
+import PaystackButton from './PaystackButton'; // The updated PaystackButton
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc, enableIndexedDbPersistence, serverTimestamp } from 'firebase/firestore'; // Added serverTimestamp
 import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Label } from "@/components/ui/label"
-import { useToast } from '@/hooks/use-toast'; // Import useToast
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { useToast } from '@/hooks/use-toast';
 
-// Enable offline persistence
+// Enable offline persistence if not already done elsewhere or if specific to this component
 try {
   if (typeof window !== "undefined") { 
     enableIndexedDbPersistence(db).catch((err) => {
       if (err.code === 'failed-precondition') {
-        console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
+        // console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
       } else if (err.code === 'unimplemented') {
-        console.warn('The current browser does not support persistence.');
+        // console.warn('The current browser does not support persistence.');
       }
     });
   }
 } catch (error) {
-  console.warn('Error enabling persistence:', error);
+  // console.warn('Error enabling persistence:', error);
 }
 
 interface CoinPackage {
   id: string;
-  amountKES: number; // Amount in KES (major unit)
+  amount: number; // Amount in KES (major unit, e.g., 10 for KES 10)
   coins: number;
   description: string;
   bonusText?: string;
 }
 
+// Adjusted COIN_PACKAGES to match user's new structure: KES 1000, KES 2000, KES 5000
+// The 'amount' is the actual KES value. PaystackButton will multiply by 100.
 const COIN_PACKAGES: CoinPackage[] = [
-  { id: 'pack1', amountKES: 10, coins: 100, description: "Basic Pack" },
-  { id: 'pack2', amountKES: 20, coins: 220, description: "Popular Pack", bonusText: "Includes 10% bonus coins" },
-  { id: 'pack3', amountKES: 50, coins: 600, description: "Premium Pack", bonusText: "Includes 20% bonus coins" },
+  { id: 'pack1', amount: 10, coins: 100, description: "Basic Pack (KES 10)" },
+  { id: 'pack2', amount: 20, coins: 220, description: "Popular Pack (KES 20)", bonusText: "Includes 10% bonus coins" },
+  { id: 'pack3', amount: 50, coins: 600, description: "Premium Pack (KES 50)", bonusText: "Includes 20% bonus coins" },
 ];
+
 
 interface PayProps {
   userId: string;
   userEmail: string | null; 
-  onPaymentCompleted: (coinsAdded: number) => void; // This might be re-evaluated based on new flow
-  onCloseDialog: () => void;
+  onCloseDialog: () => void; // To close the parent DialogContent
 }
 
-export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDialog }: PayProps) {
+export default function Pay({ userId, userEmail, onCloseDialog }: PayProps) {
   const [selectedPackage, setSelectedPackage] = useState<CoinPackage | null>(null);
   const [currentBalance, setCurrentBalance] = useState(0);
-  const [loading, setLoading] = useState(false); 
+  const [loadingBalance, setLoadingBalance] = useState(false); // Renamed from loading to avoid clash
   const [error, setError] = useState('');
-  const { toast } = useToast(); // Initialize toast
+  const router = useRouter();
+  const { toast } = useToast();
 
   const cleanErrors = () => {
     setError('');
@@ -61,35 +65,34 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
   const fetchUserBalance = async () => {
     try {
       cleanErrors();
-      setLoading(true);
+      setLoadingBalance(true);
       
-      if (!userId) throw new Error('No user ID provided');
+      if (!userId) throw new Error('No user ID provided for balance fetch');
       
       const userRef = doc(db, 'users', userId);
       const docSnap = await getDoc(userRef);
       
       if (!docSnap.exists()) {
         setCurrentBalance(0);
-        // Initialize user if not exists, or ensure PaystackButton handles this for its metadata if needed.
-        // For now, assuming user initialization happens at login.
-        await setDoc(userRef, { email: userEmail, coins: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        // User doc might be created on first login or first payment by PaystackButton's success handler
       } else {
         setCurrentBalance(docSnap.data().coins || 0);
       }
     } catch (err: any) {
       console.error("Error fetching user balance:", err);
       setError(`Failed to load your balance. ${err.message}`);
+      toast({ title: "Error", description: `Failed to load balance: ${err.message}`, variant: "destructive"});
     } finally {
-      setLoading(false);
+      setLoadingBalance(false);
     }
   };
 
   useEffect(() => {
-    if (userId) { // Ensure userId is present before fetching
+    if (userId) {
         fetchUserBalance();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]); // Only re-run if userId changes
+  }, [userId]);
 
   const handlePackageSelect = (pkgId: string) => {
     cleanErrors();
@@ -97,14 +100,24 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
     setSelectedPackage(foundPackage || null);
   };
 
-  // This function is no longer directly called by PaystackButton's onSuccess.
-  // Payment success is now handled by the callback URL and server-side verification.
-  // The `onPaymentCompleted` prop from UserActions might need to be re-thought for timing.
-  // For now, it's not called from here.
-  // const handlePaymentSuccess = async (response: any) => { ... } // Removed this as direct handler
+  const handlePaymentFlowComplete = (success: boolean) => {
+    if (success) {
+      // Balance should update via Firestore listener on the main page
+      // Or PaystackButton's onSuccess can update a shared state if direct update needed here
+      fetchUserBalance(); // Re-fetch balance to update UI immediately if no listener
+      toast({
+        title: "Purchase Complete",
+        description: "Your transaction is being processed and your balance will update shortly.",
+        duration: 7000,
+      });
+      // Navigation to dashboard is an option here, or let user stay
+      // router.push('/'); // Example: navigate to home/dashboard
+    }
+    onCloseDialog(); // Close the "Buy Coins" dialog in all cases
+  };
 
 
-  if (loading && !selectedPackage && !error) { 
+  if (loadingBalance && !selectedPackage && !error) { 
     return (
       <div className="max-w-4xl mx-auto p-6 text-center flex flex-col items-center justify-center min-h-[300px]">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -135,7 +148,7 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
         )}
 
         <div className="bg-muted/50 p-4 rounded-lg mb-6 text-center">
-          {loading && !selectedPackage ? ( 
+          {loadingBalance ? ( 
             <div className="flex items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-primary mr-2" />
               <p className="text-lg text-muted-foreground">Loading balance...</p>
@@ -156,7 +169,7 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
           value={selectedPackage?.id} 
           onValueChange={handlePackageSelect}
           className="space-y-3"
-          disabled={!userEmail || loading} 
+          disabled={!userEmail || loadingBalance} 
         >
           {COIN_PACKAGES.map((pkg) => (
             <Label
@@ -169,7 +182,7 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
                           ${!userEmail ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer pointer-events-auto'}`}
             >
               <div className="flex items-center mb-2 sm:mb-0">
-                <RadioGroupItem value={pkg.id} id={pkg.id} className="mr-3 mt-1 sm:mt-0 self-start sm:self-center" disabled={!userEmail || loading} />
+                <RadioGroupItem value={pkg.id} id={pkg.id} className="mr-3 mt-1 sm:mt-0 self-start sm:self-center" disabled={!userEmail || loadingBalance} />
                 <div>
                   <h3 className="text-base font-semibold text-foreground">{pkg.description}</h3>
                   <p className="text-lg font-bold text-primary mb-1">{pkg.coins.toLocaleString()} coins</p>
@@ -179,7 +192,7 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
                 </div>
               </div>
               <p className="text-base font-semibold text-foreground sm:ml-4 self-end sm:self-center">
-                KES {pkg.amountKES.toLocaleString()}
+                KES {pkg.amount.toLocaleString()}
               </p>
             </Label>
           ))}
@@ -190,23 +203,23 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
             <div className="bg-muted/30 p-3 rounded-lg mb-4 text-xs">
               <h3 className="text-sm font-semibold mb-1 text-foreground">Order Summary:</h3>
               <div className="flex justify-between"><span className="text-muted-foreground">Package:</span> <span className="font-medium text-foreground">{selectedPackage.description}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Price:</span> <span className="font-medium text-foreground">KES {selectedPackage.amountKES.toLocaleString()}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Price:</span> <span className="font-medium text-foreground">KES {selectedPackage.amount.toLocaleString()}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Coins to receive:</span> <span className="font-medium text-foreground">{selectedPackage.coins.toLocaleString()}</span></div>
             </div>
             
             <PaystackButton
-                amount={selectedPackage.amountKES} // Pass amount in KES (major unit)
+                amount={selectedPackage.amount} // Pass KES major unit
                 email={userEmail}
                 userId={userId}
                 metadata={{
                   coins: selectedPackage.coins,
                   packageName: selectedPackage.description
                 }}
-                onClose={onCloseDialog} // This will close the Pay dialog after Paystack tab is opened
+                onPaymentFlowComplete={handlePaymentFlowComplete}
               />
             
             <p className="mt-4 text-xs text-center text-muted-foreground px-4">
-              You will be redirected to Paystack in a new tab to complete your payment securely.
+              You will be redirected to Paystack to complete your payment securely.
             </p>
           </div>
         )}

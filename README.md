@@ -11,7 +11,7 @@ This is a Next.js starter project for NeoWallet, a modern digital banking soluti
 
 ### Environment Variables
 
-This project requires several environment variables for connecting to Firebase, Paystack, and other services.
+This project requires several environment variables for connecting to Firebase and Paystack.
 
 1.  Create a `.env.local` file in the root of the project. You can copy the contents of `.env.example` as a template:
     ```bash
@@ -20,29 +20,26 @@ This project requires several environment variables for connecting to Firebase, 
 2.  Fill in the values in `.env.local` with your actual credentials and API keys.
 
     **Frontend (Next.js - `src/app/**`):**
-    *   `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`: Your Paystack Public Key (e.g., `pk_test_xxxxxxxxxxxx` or `pk_live_xxxxxxxxxxxx`).
-    *   `NEXT_PUBLIC_PAYMENT_BACKEND_URL`: The URL of your payment backend server. For local development, this is usually `http://localhost:5000`.
+    *   `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`: Your Paystack Public Key (e.g., `pk_test_xxxxxxxxxxxx` or `pk_live_xxxxxxxxxxxx`). This key is used directly in the frontend for Paystack integration.
+    *   Firebase configuration details (apiKey, authDomain, etc.) are typically embedded in `src/lib/firebase.tsx` or loaded via environment variables if you choose to abstract them further for different Firebase projects.
 
-    **Backend (Express - `server.js`):**
-    *   `FIREBASE_PROJECT_ID`: Your Firebase Project ID.
-    *   `FIREBASE_PRIVATE_KEY`: Your Firebase Admin SDK Private Key. Make sure to replace newline characters `\n` with actual newlines if copying from a JSON file, or handle it appropriately (the `server.js` replaces `\\n` with `\n`).
-    *   `FIREBASE_CLIENT_EMAIL`: Your Firebase Admin SDK Client Email.
-    *   `PAYSTACK_SECRET_KEY`: Your Paystack Secret Key (e.g., `sk_test_xxxxxxxxxxxx` or `sk_live_xxxxxxxxxxxx`). **Keep this secret and never expose it on the client-side.**
-    *   `PORT`: (Optional) The port for the backend server to run on. Defaults to `5000`.
-    *   `PAYSTACK_CALLBACK_URL`: (Optional) The default Paystack callback URL if not dynamically determined.
+    **Important Security Note for Paystack Keys:**
+    *   Your **Paystack Secret Key** (`sk_test_...` or `sk_live_...`) should **NEVER** be exposed in your frontend code or committed to your repository. For a production application, operations requiring the secret key (like server-side verification, refunds) MUST be handled by a secure backend server.
+    *   The current implementation uses a client-side only approach with `react-paystack` which relies on the public key. While this simplifies development, for robust transaction verification and security, a backend is typically involved.
 
-### Firebase Admin SDK Setup
+### Firebase Setup
 
-The backend server (`server.js`) uses the Firebase Admin SDK to interact with Firestore (e.g., updating user coin balances).
-1.  Go to your Firebase Project Settings > Service accounts.
-2.  Generate a new private key and download the JSON file.
-3.  Use the `projectId`, `privateKey`, and `clientEmail` from this JSON file for the environment variables mentioned above.
+The application uses Firebase for authentication (Google Sign-In) and Firestore for storing user data (like coin balances).
+1.  Set up a Firebase project at [https://console.firebase.google.com/](https://console.firebase.google.com/).
+2.  Enable Google Sign-In in the Firebase Authentication section.
+3.  Set up Firestore database and configure security rules as needed.
+4.  The Firebase configuration (apiKey, authDomain, etc.) is in `src/lib/firebase.tsx`. Ensure these match your Firebase project settings.
 
 ### Running the Application Locally
 
-The application consists of a Next.js frontend and an Express.js backend (`server.js`) for payment processing.
+The application is a Next.js frontend.
 
-To run both the frontend and backend concurrently:
+To run the Next.js frontend:
 
 ```bash
 npm run dev
@@ -52,9 +49,6 @@ yarn dev
 
 This command will:
 1.  Start the Next.js development server (usually on `http://localhost:9002`).
-2.  Start the Express.js backend server (`server.js`) (usually on `http://localhost:5000`).
-
-**Important:** The backend server (`server.js`) **must be running** for payment initialization and verification to work. If you encounter "Failed to fetch" errors related to `http://localhost:5000/paystack/initialize`, it's likely the backend server is not running or is inaccessible.
 
 To get started with development, take a look at `src/app/page.tsx`.
 
@@ -64,20 +58,20 @@ To get started with development, take a look at `src/app/page.tsx`.
 npm run build
 npm run start
 ```
-This will build the Next.js application. You will need to ensure your `server.js` is also deployed and running in your production environment, and that `NEXT_PUBLIC_PAYMENT_BACKEND_URL` points to your deployed backend URL.
+This will build and start the Next.js application.
 
 ## Key Components
 
 -   **Authentication**: Handled via Firebase Authentication (Google Sign-In). See `src/lib/firebase.tsx` and `src/app/auth/signin/page.tsx`.
--   **Payment Processing**: Uses Paystack.
-    -   Frontend: `src/components/exchange/Pay.tsx` and `src/components/exchange/PaystackButton.tsx` handle the UI and initial call to the backend.
-    -   Backend: `server.js` handles Paystack API communication (initialization, verification) and Firestore updates.
--   **State Management**: Primarily uses React Context API (`src/contexts/AuthContext.tsx`) and component state.
+-   **Payment Processing**: Uses Paystack via the `react-paystack` library for client-side integration.
+    -   Frontend: `src/components/exchange/Pay.tsx` and `src/components/exchange/PaystackButton.tsx` handle the UI and payment flow. Firestore updates for coin balances occur client-side after successful payment.
+-   **State Management**: Primarily uses React Context API (`src/contexts/AuthContext.tsx` which re-exports from `src/lib/firebase.tsx`) and component state.
 -   **UI Components**: Built with ShadCN UI (`src/components/ui/`) and custom components (`src/components/exchange/`).
 -   **Styling**: Tailwind CSS (`tailwind.config.ts`) and global styles (`src/app/globals.css`).
 
 ## Troubleshooting
 
--   **"Failed to fetch" payment error**: Ensure your backend server (`server.js`) is running. Use `npm run dev` to start both servers. Check your browser's developer console for more specific network error messages.
--   **Paystack "Invalid Key" error**: Double-check your `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` in `.env.local` (for the frontend) and `PAYSTACK_SECRET_KEY` (for the backend). Ensure you are using the correct key type (public for frontend, secret for backend) and that they are for the correct mode (test/live).
--   **CORS errors**: The `server.js` includes CORS configuration. If you change frontend/backend ports or deploy to different domains, you might need to update the `origin` list in `server.js`.
+-   **Paystack "Invalid Key" error**: Double-check your `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` in `.env.local`. Ensure it's the correct public key (test or live) and is not accidentally a secret key.
+-   **Paystack Not Initializing**: Ensure `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` is correctly set and accessible by the `PaystackButton.tsx` component. Check the browser console for any specific errors from the `react-paystack` library.
+-   **CORS errors**: While the backend server is removed, if you integrate with other external APIs directly from the client, ensure they have appropriate CORS policies.
+-   **Firebase Issues**: Verify your Firebase project configuration in `src/lib/firebase.tsx` is correct and that your Firestore security rules allow the operations performed by the app.
