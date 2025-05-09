@@ -17,21 +17,29 @@ const StartOverIcon: FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-const Rewind20sIcon: FC<{ className?: string }> = ({ className }) => (
-  <svg viewBox="0 0 40 40" fill="none" className={className}>
-    <circle cx="20" cy="20" r="18" stroke="currentColor" strokeWidth="2.5" />
-    <path d="M25 13a9 9 0 1 0-1.83 5.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M25.5 8.5V14.5H19.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-    <text x="20" y="23" textAnchor="middle" fontSize="10" fill="currentColor" fontWeight="bold">20</text>
+const Rewind10sIcon: FC<{ className?: string }> = ({ className }) => (
+  <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Outer circle for consistency, if desired, or remove if icon should not have it */}
+    {/* <circle cx="20" cy="20" r="18" stroke="currentColor" strokeWidth="2.5" /> */}
+    {/* Arc for rewind (counter-clockwise) */}
+    <path d="M29 20 A9 9 0 1 0 20 11" /> {/* Start right, go up-left */}
+    {/* Arrowhead at the end of the arc (20,11) */}
+    <polyline points="17 11 20 11 20 14" />
+    {/* Text "10" */}
+    <text x="20" y="25" textAnchor="middle" fontSize="11" fontWeight="bold" stroke="none" fill="currentColor">10</text>
   </svg>
 );
 
-const Forward20sIcon: FC<{ className?: string }> = ({ className }) => (
-  <svg viewBox="0 0 40 40" fill="none" className={className}>
-    <circle cx="20" cy="20" r="18" stroke="currentColor" strokeWidth="2.5" />
-    <path d="M15 13a9 9 0 1 1 1.83 5.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M14.5 8.5V14.5H20.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-    <text x="20" y="23" textAnchor="middle" fontSize="10" fill="currentColor" fontWeight="bold">20</text>
+const Forward10sIcon: FC<{ className?: string }> = ({ className }) => (
+  <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Outer circle for consistency, if desired, or remove if icon should not have it */}
+    {/* <circle cx="20" cy="20" r="18" stroke="currentColor" strokeWidth="2.5" /> */}
+    {/* Arc for forward (clockwise) */}
+    <path d="M11 20 A9 9 0 1 1 20 11" /> {/* Start left, go up-right */}
+    {/* Arrowhead at the end of the arc (20,11) */}
+    <polyline points="23 11 20 11 20 14" />
+    {/* Text "10" */}
+    <text x="20" y="25" textAnchor="middle" fontSize="11" fontWeight="bold" stroke="none" fill="currentColor">10</text>
   </svg>
 );
 
@@ -91,14 +99,14 @@ const SoundsPlayer: FC = () => {
           <StartOverIcon className={styles.controlIcon} />
           <span className={styles.controlLabelSmall}>START</span>
         </button>
-        <button className={styles.controlButton} onClick={() => handleControlClick('Rewind 20s')} aria-label="Rewind 20 seconds">
-          <Rewind20sIcon className={styles.controlIcon} />
+        <button className={styles.controlButton} onClick={() => handleControlClick('Rewind 10s')} aria-label="Rewind 10 seconds">
+          <Rewind10sIcon className={styles.controlIcon} />
         </button>
         <button className={`${styles.controlButton} ${styles.playPauseButton}`} onClick={handlePlayPause} aria-label={isPlaying ? 'Pause' : 'Play'}>
           {isPlaying ? <Pause size={36} strokeWidth={2.5} /> : <Play size={36} strokeWidth={2.5} />}
         </button>
-        <button className={styles.controlButton} onClick={() => handleControlClick('Forward 20s')} aria-label="Forward 20 seconds">
-          <Forward20sIcon className={styles.controlIcon} />
+        <button className={styles.controlButton} onClick={() => handleControlClick('Forward 10s')} aria-label="Forward 10 seconds">
+          <Forward10sIcon className={styles.controlIcon} />
         </button>
         <button className={styles.controlButton} onClick={() => handleControlClick('Go Live')} aria-label="Go Live">
           <GoLiveIcon className={styles.controlIcon} />
