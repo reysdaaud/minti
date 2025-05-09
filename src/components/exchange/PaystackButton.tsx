@@ -45,7 +45,8 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onSucce
   const user = auth.currentUser;
   
   const envPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
-  const hardcodedUserLiveKey = "sk_live_7148c4754ef026a94b9015605a4707dc3c3cf8c3"; 
+  // Updated hardcoded live key as per user request
+  const hardcodedUserLiveKey = "pk_live_624bc2353b87de04be7d1dc3ca3fbdeab34dfa94"; 
 
   let paystackKeyToUse: string = ''; // Initialize to empty string
   let keySourceMessage: string = '';
@@ -60,7 +61,7 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onSucce
   } else if (envPublicKey && envPublicKey.startsWith('pk_test_')) {
     paystackKeyToUse = envPublicKey;
     keySourceMessage = `Using TEST Paystack key from environment variable: ${envPublicKey.substring(0,10)}... (TEST MODE)`;
-    console.warn("[PaystackButton] Environment variable NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY provides a TEST key. Payments will be in test mode.");
+    console.warn("[PaystackButton] Environment variable NEXT_PUBLIC_PAYstack_PUBLIC_KEY provides a TEST key. Payments will be in test mode.");
   } else {
     paystackKeyToUse = hardcodedUserLiveKey;
     keySourceMessage = `Using hardcoded LIVE Paystack key: ${hardcodedUserLiveKey.substring(0,10)}...`;
