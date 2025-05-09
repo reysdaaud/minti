@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
+// import { ScrollArea } from "@/components/ui/scroll-area"; // Not directly needed if CardContent scrolls
 
 // Enable offline persistence
 try {
@@ -156,14 +157,14 @@ export default function Pay({ userId, userEmail, onPaymentCompleted }: PayProps)
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto shadow-2xl border-none overflow-hidden">
+    <Card className="w-full max-w-2xl mx-auto shadow-2xl border-none overflow-hidden flex flex-col max-h-[90vh]">
       <CardHeader className="bg-gradient-to-br from-primary/80 to-primary p-6">
         <CardTitle className="text-3xl font-bold text-center text-primary-foreground">Buy Sondar Coins</CardTitle>
         <CardDescription className="text-center text-primary-foreground/80 text-sm pt-1">
           Boost your wallet by selecting a coin package below.
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-6 space-y-6 bg-background">
+      <CardContent className="p-6 space-y-6 bg-background flex-grow overflow-y-auto">
         {error && (
           <div 
             onClick={fetchUserBalance} // Allow retry
@@ -196,7 +197,7 @@ export default function Pay({ userId, userEmail, onPaymentCompleted }: PayProps)
             <Label
               key={pkg.id}
               htmlFor={pkg.id}
-              className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg hover:border-primary/70
+              className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg hover:border-primary/70
                           ${selectedPackage?.id === pkg.id 
                             ? 'border-primary ring-2 ring-primary bg-primary/5 shadow-xl scale-[1.02]' 
                             : 'border-border bg-card hover:bg-muted/30'}`}
@@ -204,14 +205,14 @@ export default function Pay({ userId, userEmail, onPaymentCompleted }: PayProps)
               <div className="flex items-center mb-2 sm:mb-0">
                 <RadioGroupItem value={pkg.id} id={pkg.id} className="mr-3 mt-1 sm:mt-0 self-start sm:self-center" />
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground">{pkg.description}</h3>
-                  <p className="text-2xl font-bold text-primary my-1">{pkg.coins.toLocaleString()} coins</p>
+                  <h3 className="text-base font-semibold text-foreground">{pkg.description}</h3>
+                  <p className="text-lg font-bold text-primary mb-1">{pkg.coins.toLocaleString()} coins</p>
                   {pkg.bonusText && (
-                    <p className="text-sm text-green-600 font-medium">{pkg.bonusText}</p>
+                    <p className="text-xs text-green-600 font-medium">{pkg.bonusText}</p>
                   )}
                 </div>
               </div>
-              <p className="text-lg font-semibold text-foreground sm:ml-4 self-end sm:self-center">
+              <p className="text-base font-semibold text-foreground sm:ml-4 self-end sm:self-center">
                 KES {pkg.amountKES.toLocaleString()}
               </p>
             </Label>
@@ -219,9 +220,9 @@ export default function Pay({ userId, userEmail, onPaymentCompleted }: PayProps)
         </RadioGroup>
 
         {selectedPackage && (
-          <div className="mt-8 pt-6 border-t border-border">
-            <div className="bg-muted/30 p-4 rounded-lg mb-6 text-sm">
-              <h3 className="text-md font-semibold mb-2 text-foreground">Order Summary:</h3>
+          <div className="mt-6 pt-4 border-t border-border">
+            <div className="bg-muted/30 p-3 rounded-lg mb-4 text-xs">
+              <h3 className="text-sm font-semibold mb-1 text-foreground">Order Summary:</h3>
               <div className="flex justify-between"><span className="text-muted-foreground">Package:</span> <span className="font-medium text-foreground">{selectedPackage.description}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Price:</span> <span className="font-medium text-foreground">KES {selectedPackage.amountKES.toLocaleString()}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Coins to receive:</span> <span className="font-medium text-foreground">{selectedPackage.coins.toLocaleString()}</span></div>
@@ -238,7 +239,7 @@ export default function Pay({ userId, userEmail, onPaymentCompleted }: PayProps)
               }}
             />
             
-            <p className="mt-6 text-xs text-center text-muted-foreground px-4">
+            <p className="mt-4 text-xs text-center text-muted-foreground px-4">
               Payments are securely processed by Paystack. By clicking "Pay Now", you agree to our Terms of Service.
             </p>
           </div>
