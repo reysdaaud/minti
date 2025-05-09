@@ -12,6 +12,7 @@ import Pay from './Pay'; // Import the new Pay component
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { X } from 'lucide-react';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
 
 interface ActionItem {
@@ -79,7 +80,7 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
   };
 
   const handleTopUpCompleted = (coinsPurchased: number) => {
-    handleCloseDialog(); // Close the top-up dialog
+    handleCloseDialog(); // Close the top-up dialog if not already closed
     setCoinBalance(prevBalance => prevBalance + coinsPurchased);
     toast({
       title: 'Top-up Successful!',
@@ -142,15 +143,16 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
             {/* Top-up Dialog Content */}
             {action.dialogKey === 'topup' && user && (
               <DialogContent className="sm:max-w-2xl p-0 bg-transparent border-none shadow-none data-[state=open]:animate-none data-[state=closed]:animate-none">
-                <DialogHeader className="sr-only"> {/* Make header screen-reader only */}
-                  <DialogTitle>Purchase Sondar Coins</DialogTitle> {/* Accessible title */}
+                <DialogHeader>
+                  <VisuallyHidden><DialogTitle>Purchase Sondar Coins</DialogTitle></VisuallyHidden>
                 </DialogHeader>
                 <Pay 
                   userId={user.uid} 
                   userEmail={user.email} 
                   onPaymentCompleted={handleTopUpCompleted} 
+                  onCloseDialog={handleCloseDialog} // Pass the close handler
                 />
-                 <DialogClose asChild className="absolute right-2 top-2 z-50">
+                 <DialogClose asChild className="absolute right-2 top-2 z-[51]"> {/* Ensure close button is above Pay component if Pay is z-50 */}
                     <Button variant="ghost" size="icon" className="text-background hover:bg-background/20 rounded-full">
                         <X className="h-5 w-5" />
                         <span className="sr-only">Close</span>

@@ -9,7 +9,6 @@ import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-// import { ScrollArea } from "@/components/ui/scroll-area"; // Not directly needed if CardContent scrolls
 
 // Enable offline persistence
 try {
@@ -44,9 +43,10 @@ interface PayProps {
   userId: string;
   userEmail: string | null;
   onPaymentCompleted: (coinsAdded: number) => void;
+  onCloseDialog: () => void; // New prop
 }
 
-export default function Pay({ userId, userEmail, onPaymentCompleted }: PayProps) {
+export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDialog }: PayProps) {
   const [selectedPackage, setSelectedPackage] = useState<CoinPackage | null>(null);
   const [currentBalance, setCurrentBalance] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -134,7 +134,7 @@ export default function Pay({ userId, userEmail, onPaymentCompleted }: PayProps)
       }
       
       setCurrentBalance(newBalance);
-      onPaymentCompleted(selectedPackage.coins);
+      onPaymentCompleted(selectedPackage.coins); // This will also call onCloseDialog via UserActions
       
     } catch (err: any) {
       console.error("Error processing payment success:", err);
@@ -157,14 +157,14 @@ export default function Pay({ userId, userEmail, onPaymentCompleted }: PayProps)
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto shadow-2xl border-none overflow-hidden flex flex-col max-h-[90vh]">
+    <Card className="w-full max-w-2xl mx-auto shadow-2xl border-none overflow-hidden flex flex-col max-h-[calc(100vh-4rem)] h-full"> {/* Adjusted max-h for viewport */}
       <CardHeader className="bg-gradient-to-br from-primary/80 to-primary p-6">
         <CardTitle className="text-3xl font-bold text-center text-primary-foreground">Buy Sondar Coins</CardTitle>
         <CardDescription className="text-center text-primary-foreground/80 text-sm pt-1">
           Boost your wallet by selecting a coin package below.
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-6 space-y-6 bg-background flex-grow overflow-y-auto">
+      <CardContent className="p-6 space-y-6 bg-background flex-grow overflow-y-auto"> {/* Ensure this can scroll */}
         {error && (
           <div 
             onClick={fetchUserBalance} // Allow retry
@@ -237,6 +237,7 @@ export default function Pay({ userId, userEmail, onPaymentCompleted }: PayProps)
                 coins: selectedPackage.coins,
                 packageName: selectedPackage.description
               }}
+              onCloseParentDialog={onCloseDialog} // Pass the handler
             />
             
             <p className="mt-4 text-xs text-center text-muted-foreground px-4">
