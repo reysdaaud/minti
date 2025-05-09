@@ -61,6 +61,7 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
 
   const handleCloseDialog = () => {
     setOpenDialogKey(null);
+    setFormData(defaultFormData); // Reset transfer form on any dialog close
   };
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -70,22 +71,41 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
 
   const handleSendMoney = () => {
     console.log('Send Money clicked', formData);
+    // Basic validation
+    if (!formData.recipient || !formData.amount) {
+        toast({
+            title: "Missing Information",
+            description: "Please enter recipient and amount.",
+            variant: "destructive",
+        });
+        return;
+    }
+    if (isNaN(parseFloat(formData.amount)) || parseFloat(formData.amount) <= 0) {
+        toast({
+            title: "Invalid Amount",
+            description: "Please enter a valid positive amount.",
+            variant: "destructive",
+        });
+        return;
+    }
+    
     toast({
       title: 'Transfer Initiated',
       description: `Transferring ${formData.amount} to ${formData.recipient}.`,
     });
-    // Reset form and close dialog if needed
-    // setFormData(defaultFormData);
-    // handleCloseDialog();
+    // In a real app, you would handle the transfer logic here.
+    // For now, we just close the dialog and reset the form.
+    handleCloseDialog();
   };
 
   const handleTopUpCompleted = (coinsPurchased: number) => {
-    handleCloseDialog(); // Close the top-up dialog if not already closed
+    handleCloseDialog(); // Close the top-up dialog
     setCoinBalance(prevBalance => prevBalance + coinsPurchased);
     toast({
       title: 'Top-up Successful!',
       description: `You've successfully purchased ${coinsPurchased.toLocaleString()} coins. Your balance has been updated.`,
-      variant: 'default',
+      variant: 'default', // 'default' is often green or neutral positive
+      duration: 5000, // Optional: keep toast longer
     });
   };
 
@@ -93,7 +113,11 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
     <section className="py-6">
       <div className="flex flex-row justify-around items-center space-x-2 sm:space-x-3 p-3 bg-card border border-border rounded-lg shadow-md">
         {actions.map((action) => (
-          <Dialog key={action.dialogKey} open={openDialogKey === action.dialogKey} onOpenChange={(isOpen) => !isOpen && handleCloseDialog()}>
+          <Dialog key={action.dialogKey} open={openDialogKey === action.dialogKey} onOpenChange={(isOpen) => {
+            if (!isOpen) {
+              handleCloseDialog();
+            }
+          }}>
             <DialogTrigger asChild>
               <Button
                 variant="ghost"
@@ -142,21 +166,19 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
 
             {/* Top-up Dialog Content */}
             {action.dialogKey === 'topup' && user && (
-              <DialogContent className="sm:max-w-2xl p-0 bg-transparent border-none shadow-none data-[state=open]:animate-none data-[state=closed]:animate-none">
-                <DialogHeader>
+              <DialogContent className="sm:max-w-2xl p-0 bg-transparent border-none shadow-none data-[state=open]:animate-none data-[state=closed]:animate-none max-h-[90vh] flex flex-col">
+                <DialogHeader> {/* This DialogHeader is for accessibility only (VisuallyHidden title) */}
                   <VisuallyHidden><DialogTitle>Purchase Sondar Coins</DialogTitle></VisuallyHidden>
                 </DialogHeader>
                 <Pay 
                   userId={user.uid} 
                   userEmail={user.email} 
                   onPaymentCompleted={handleTopUpCompleted} 
-                  onCloseDialog={handleCloseDialog} // Pass the close handler
+                  onCloseDialog={handleCloseDialog}
                 />
-                 <DialogClose asChild className="absolute right-2 top-2 z-[51]"> {/* Ensure close button is above Pay component if Pay is z-50 */}
-                    <Button variant="ghost" size="icon" className="text-background hover:bg-background/20 rounded-full">
-                        <X className="h-5 w-5" />
-                        <span className="sr-only">Close</span>
-                    </Button>
+                 <DialogClose className="absolute right-2 top-2 z-[51] rounded-full h-10 w-10 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background">
+                    <X className="h-5 w-5" />
+                    <span className="sr-only">Close</span>
                 </DialogClose>
               </DialogContent>
             )}
@@ -166,12 +188,7 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
                  <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle>{action.label}</DialogTitle>
-                         <DialogClose asChild>
-                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground absolute right-4 top-4">
-                                <X className="h-5 w-5" />
-                                <span className="sr-only">Close</span>
-                            </Button>
-                        </DialogClose>
+                         {/* Default close button from DialogContent will be used here, or add a custom one if needed */}
                     </DialogHeader>
                     <div className="py-4">
                         <p className="text-muted-foreground">This feature ({action.label}) is coming soon!</p>
