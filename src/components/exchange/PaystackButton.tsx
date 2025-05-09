@@ -22,7 +22,7 @@ interface PaystackConfig {
   reference: string;
   email: string;
   amount: number; 
-  publicKey: string;
+  publicKey: string; // This will hold the key, which might be a secret key for user's testing
   currency: Currency;
   metadata: PaystackMetadata;
 }
@@ -45,58 +45,68 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onSucce
   const user = auth.currentUser;
   
   const envPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
-  // This is the live key the user explicitly wants to use if the environment variable isn't set or isn't a live key.
-  const hardcodedUserLiveKey = "pk_live_624bc2353b87de04be7d1dc3ca3fbdeab34dfa94"; 
+  // IMPORTANT: User has requested to use a SECRET KEY for LIVE testing. This is a major security risk.
+  // The key provided by the user is sk_live_7148c4754ef026a94b9015605a4707dc3c3cf8c3
+  const hardcodedUserLiveKey = "sk_live_7148c4754ef026a94b9015605a4707dc3c3cf8c3"; 
   const defaultTestKey = 'pk_test_fae492482c870c83a5d33ba8f260880c22a5b24f'; // Fallback test key
 
-  let paystackPublicKey: string;
+  let paystackKeyToUse: string;
   let keySourceMessage: string;
 
-  if (envPublicKey && envPublicKey.startsWith('pk_live_')) {
-    paystackPublicKey = envPublicKey;
-    keySourceMessage = `Using live Paystack key from environment variable: ${envPublicKey.substring(0,10)}...`;
+  if (envPublicKey && (envPublicKey.startsWith('pk_live_') || envPublicKey.startsWith('sk_live_'))) {
+    paystackKeyToUse = envPublicKey;
+    keySourceMessage = `Using LIVE Paystack key from environment variable: ${envPublicKey.substring(0,10)}...`;
+    if (envPublicKey.startsWith('sk_live_')) {
+      console.warn("[PaystackButton - CRITICAL SECURITY WARNING] Environment variable NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY provides a SECRET live key. This is a SEVERE security risk and should ONLY be for temporary testing as explicitly requested by the user. REMOVE BEFORE PRODUCTION.");
+      keySourceMessage += " (SECRET KEY)";
+    }
   } else if (envPublicKey && envPublicKey.startsWith('pk_test_')) {
-    // If env var is a test key, use it but warn.
-    paystackPublicKey = envPublicKey;
-    keySourceMessage = `Using test Paystack key from environment variable: ${envPublicKey.substring(0,10)}... (TEST MODE)`;
+    paystackKeyToUse = envPublicKey;
+    keySourceMessage = `Using TEST Paystack key from environment variable: ${envPublicKey.substring(0,10)}... (TEST MODE)`;
     console.warn("[PaystackButton] Environment variable NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY provides a TEST key. Payments will be in test mode.");
   } else {
-    // If env var is not set, or not a valid live/test key, use the hardcoded user-provided live key.
-    paystackPublicKey = hardcodedUserLiveKey;
+    // Fallback to the user-provided hardcoded key if env var is not set or not a valid live/test key.
+    paystackKeyToUse = hardcodedUserLiveKey;
     keySourceMessage = `Using hardcoded LIVE Paystack key: ${hardcodedUserLiveKey.substring(0,10)}...`;
+    if (hardcodedUserLiveKey.startsWith('sk_live_')) {
+         console.warn(`[PaystackButton - CRITICAL SECURITY WARNING] Using a hardcoded SECRET live key ('${hardcodedUserLiveKey.substring(0,10)}...') on the client side. This is for TESTING ONLY as explicitly requested by the user and is a SEVERE SECURITY RISK. Remove before production.`);
+        keySourceMessage += " (SECRET KEY)";
+    } else if (hardcodedUserLiveKey.startsWith('pk_live_')) {
+        console.warn(`[PaystackButton] NOTICE: Application is using a hardcoded PUBLIC live key. For better security and flexibility, it is recommended to use environment variables for live keys in production environments.`);
+    }
+
     if (envPublicKey) {
-      console.warn(`[PaystackButton] Environment variable NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ('${envPublicKey}') is not a valid live key. Falling back to the hardcoded live key specified by the user. For production, ensure the environment variable is correctly set to your live key.`);
+      console.warn(`[PaystackButton] Environment variable NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ('${envPublicKey}') is not a valid live/test key. Falling back to the hardcoded key specified by the user. For production, ensure the environment variable is correctly set to your live PUBLIC key.`);
     } else {
-      console.warn(`[PaystackButton] NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY environment variable not found. Using the hardcoded live key specified by the user. For production, set this environment variable.`);
+      console.warn(`[PaystackButton] NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY environment variable not found. Using the hardcoded key specified by the user. For production, set this environment variable with your live PUBLIC key.`);
     }
   }
 
-  // Final sanity check: if the determined paystackPublicKey is somehow not a valid pk_ format, fall back to a known test key.
-  // This should ideally not be reached if hardcodedUserLiveKey is correct.
-  if (!paystackPublicKey || (!paystackPublicKey.startsWith('pk_live_') && !paystackPublicKey.startsWith('pk_test_'))) {
-    console.error(`[PaystackButton] CRITICAL CONFIGURATION ERROR: The determined Paystack public key ('${paystackPublicKey}') is invalid. Defaulting to a generic test key. Please check your configuration and environment variables.`);
-    paystackPublicKey = defaultTestKey;
+  // Final sanity check:
+  if (!paystackKeyToUse || (!paystackKeyToUse.startsWith('pk_live_') && !paystackKeyToUse.startsWith('pk_test_') && !paystackKeyToUse.startsWith('sk_live_'))) {
+    console.error(`[PaystackButton] CRITICAL CONFIGURATION ERROR: The determined Paystack key ('${paystackKeyToUse}') is invalid. Defaulting to a generic test key. Please check your configuration and environment variables.`);
+    paystackKeyToUse = defaultTestKey;
     keySourceMessage = `Using DEFAULT FALLBACK TEST Paystack key due to critical configuration error: ${defaultTestKey.substring(0,10)}... (TEST MODE - UNINTENDED)`;
   }
 
 
   useEffect(() => {
-    // This log helps confirm which key is active when the component mounts or paystackPublicKey changes.
     console.log(`[PaystackButton Active Key] ${keySourceMessage}`);
-    if (paystackPublicKey.startsWith('pk_test_')) {
+    if (paystackKeyToUse.startsWith('pk_test_')) {
         console.warn("[PaystackButton] WARNING: Application is currently using a TEST Paystack key. All transactions will be in test mode and will not process real payments.");
-    } else if (paystackPublicKey.startsWith('pk_live_') && keySourceMessage.includes("hardcoded")) {
-        console.warn("[PaystackButton] NOTICE: Application is using a hardcoded LIVE Paystack key. For better security and flexibility, it is recommended to use environment variables for live keys in production environments.");
+    } else if (paystackKeyToUse.startsWith('sk_live_')) {
+         // Warning is already prominent when keySourceMessage is built.
+    } else if (paystackKeyToUse.startsWith('pk_live_') && keySourceMessage.includes("hardcoded")) {
+        // Warning for hardcoded public live key is already present.
     }
-
-  }, [paystackPublicKey, keySourceMessage]);
+  }, [paystackKeyToUse, keySourceMessage]);
 
 
   const config: PaystackConfig = {
     reference: (new Date()).getTime().toString(),
     email: email || user?.email || '', 
     amount: amount, 
-    publicKey: paystackPublicKey,
+    publicKey: paystackKeyToUse, // This is now correctly `paystackKeyToUse`
     currency: 'KES',
     metadata: { 
       custom_fields: [
@@ -127,14 +137,27 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onSucce
       setError('Please provide a valid email address or ensure your account email is verified.');
       return;
     }
-    // Check specifically if the key to be used for initialization is valid.
-    if (!config.publicKey || (!config.publicKey.startsWith('pk_test_') && !config.publicKey.startsWith('pk_live_'))) {
-      setError('Paystack payment cannot be initialized. Configuration error: Invalid public key.');
-      console.error('Invalid Paystack Public Key for initialization attempt:', config.publicKey);
+    
+    if (!config.publicKey || (!config.publicKey.startsWith('pk_test_') && !config.publicKey.startsWith('pk_live_') && !config.publicKey.startsWith('sk_live_'))) {
+      setError('Paystack payment cannot be initialized. Configuration error: Invalid public/secret key.');
+      console.error('Invalid Paystack Key for initialization attempt:', config.publicKey);
       return;
     }
     
     try {
+      // It seems Paystack's usePaystackPayment hook expects a 'publicKey' field in its config,
+      // even if we are (unsafely) passing a secret key for testing.
+      // The hook itself might handle it or expect the backend to use the secret key.
+      // For client-side initialization, Paystack always requires a key starting with 'pk_'.
+      // If a 'sk_' key is passed here, Paystack's client-side library will likely reject it.
+      // The user's explicit request is to use the sk_live key.
+      // We will pass it as `publicKey` to the hook and log the severe security warning again.
+
+      if (config.publicKey.startsWith('sk_live_')) {
+        console.warn(`[PaystackButton - PAYMENT ATTEMPT WITH SECRET KEY] Initializing payment with a SECRET KEY ('${config.publicKey.substring(0,10)}...') on the client side. This is for TESTING ONLY as requested and is a SEVERE SECURITY RISK. This may not work as Paystack's client-side library expects a public key.`);
+      }
+
+
       if (onCloseParentDialog) {
         onCloseParentDialog();
       }
@@ -156,19 +179,21 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onSucce
     }
   };
 
+  const canPay = !!config.email && !!config.publicKey && (config.publicKey.startsWith('pk_test_') || config.publicKey.startsWith('pk_live_') || config.publicKey.startsWith('sk_live_'));
+
   return (
     <div className="text-center">
       {error && (
-        <div className="text-red-500 text-sm mb-4 p-3 bg-red-100 border border-red-400 rounded-md">
+        <div className="text-destructive text-sm mb-4 p-3 bg-destructive/10 border border-destructive rounded-md">
           {error}
         </div>
       )}
       <Button
         onClick={handlePayment}
-        disabled={!config.email || (!config.publicKey.startsWith('pk_test_') && !config.publicKey.startsWith('pk_live_'))}
+        disabled={!canPay}
         className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg text-lg font-semibold shadow-md hover:shadow-lg transition-shadow w-full"
       >
-        {(config.email && (config.publicKey.startsWith('pk_test_') || config.publicKey.startsWith('pk_live_'))) ? 'Pay Now' : 'Processing...'}
+        {canPay ? 'Pay Now' : 'Processing...'}
       </Button>
     </div>
   );
