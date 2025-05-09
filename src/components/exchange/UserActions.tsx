@@ -99,13 +99,18 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
   };
 
   const handleTopUpCompleted = (coinsPurchased: number) => {
-    handleCloseDialog(); // Close the top-up dialog
+    // The Pay.tsx component (via PaystackButton) is now responsible for closing the dialog
+    // by calling onCloseDialog (which is handleCloseDialog here) BEFORE Paystack modal opens.
+    // If payment is successful, Pay.tsx calls this function.
+    // We still call handleCloseDialog here as a fallback / to ensure state consistency,
+    // though it might already be closed.
+    handleCloseDialog(); 
     setCoinBalance(prevBalance => prevBalance + coinsPurchased);
     toast({
       title: 'Top-up Successful!',
       description: `You've successfully purchased ${coinsPurchased.toLocaleString()} coins. Your balance has been updated.`,
-      variant: 'default', // 'default' is often green or neutral positive
-      duration: 5000, // Optional: keep toast longer
+      variant: 'default', 
+      duration: 5000,
     });
   };
 
@@ -167,18 +172,23 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
             {/* Top-up Dialog Content */}
             {action.dialogKey === 'topup' && user && (
               <DialogContent className="sm:max-w-2xl p-0 bg-transparent border-none shadow-none data-[state=open]:animate-none data-[state=closed]:animate-none max-h-[90vh] flex flex-col">
-                <DialogHeader> {/* This DialogHeader is for accessibility only (VisuallyHidden title) */}
-                  <VisuallyHidden><DialogTitle>Purchase Sondar Coins</DialogTitle></VisuallyHidden>
-                </DialogHeader>
+                {/* VisuallyHidden DialogTitle for accessibility, as Pay component has its own header */}
+                <VisuallyHidden><DialogTitle>Purchase Sondar Coins</DialogTitle></VisuallyHidden>
                 <Pay 
                   userId={user.uid} 
                   userEmail={user.email} 
                   onPaymentCompleted={handleTopUpCompleted} 
-                  onCloseDialog={handleCloseDialog}
+                  onCloseDialog={handleCloseDialog} // Pass the main dialog close handler
                 />
-                 <DialogClose className="absolute right-2 top-2 z-[51] rounded-full h-10 w-10 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background">
+                 {/* This DialogClose is for the ShadCN Dialog. It should be separate from Paystack's modal. */}
+                 {/* The PaystackButton's onCloseParentDialog will call handleCloseDialog which closes this DialogContent */}
+                 {/* We can also provide an explicit close button for this dialog itself */}
+                <DialogClose 
+                    className="absolute right-4 top-4 z-[51] rounded-full p-1 flex items-center justify-center text-muted-foreground hover:text-foreground bg-background/50 hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background"
+                    aria-label="Close top-up dialog"
+                    onClick={handleCloseDialog} // Ensure it calls the main close handler
+                >
                     <X className="h-5 w-5" />
-                    <span className="sr-only">Close</span>
                 </DialogClose>
               </DialogContent>
             )}
@@ -188,7 +198,7 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
                  <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle>{action.label}</DialogTitle>
-                         {/* Default close button from DialogContent will be used here, or add a custom one if needed */}
+                         {/* Default close button from DialogContent will be used here (via ShadCN DialogContent) */}
                     </DialogHeader>
                     <div className="py-4">
                         <p className="text-muted-foreground">This feature ({action.label}) is coming soon!</p>

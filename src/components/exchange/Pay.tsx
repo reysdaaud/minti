@@ -49,7 +49,7 @@ interface PayProps {
 export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDialog }: PayProps) {
   const [selectedPackage, setSelectedPackage] = useState<CoinPackage | null>(null);
   const [currentBalance, setCurrentBalance] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // For initial balance load and payment processing
   const [error, setError] = useState('');
 
   const cleanErrors = () => {
@@ -94,19 +94,19 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
   const handlePaymentSuccess = async (response: any) => {
     try {
       cleanErrors();
-      setLoading(true);
+      setLoading(true); // Indicate processing
 
       if (!selectedPackage || !userId) {
         throw new Error('Invalid payment data. Package or User ID missing.');
       }
 
       const userRef = doc(db, 'users', userId);
-      const userDoc = await getDoc(userRef); // Get latest doc
+      const userDoc = await getDoc(userRef); // Get latest doc before update
       
       const paymentData = {
         amountKES: selectedPackage.amountKES,
         coinsAdded: selectedPackage.coins,
-        timestamp: serverTimestamp(), // Use server timestamp
+        timestamp: serverTimestamp(), // Use server timestamp for consistency
         reference: response.reference || response.transaction, // Paystack might use 'transaction'
         status: 'success',
         packageName: selectedPackage.description,
@@ -115,7 +115,7 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
       const currentCoins = userDoc.exists() ? (userDoc.data().coins || 0) : 0;
       const newBalance = currentCoins + selectedPackage.coins;
 
-      if (!userDoc.exists()) { // Should be rare if fetchUserBalance created it
+      if (!userDoc.exists()) { 
         await setDoc(userRef, {
           email: userEmail,
           coins: newBalance,
@@ -133,8 +133,12 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
         });
       }
       
-      setCurrentBalance(newBalance);
-      onPaymentCompleted(selectedPackage.coins); // This will also call onCloseDialog via UserActions
+      setCurrentBalance(newBalance); // Update local state
+      onPaymentCompleted(selectedPackage.coins); // This will call toast and parent dialog close via UserActions
+      // The onCloseDialog is ALREADY handled by PaystackButton's onCloseParentDialog,
+      // which is called before initializePayment.
+      // If onPaymentCompleted itself closes the dialog (as it does in UserActions),
+      // this is fine.
       
     } catch (err: any) {
       console.error("Error processing payment success:", err);
@@ -142,12 +146,13 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
         `Payment recorded with Paystack (Ref: ${response.reference || response.transaction}) but database update failed. ` +
         `Please contact support with this reference. Error: ${err.message}`
       );
+      // Do not close dialog here, user needs to see the error.
     } finally {
-      setLoading(false);
+      setLoading(false); // Stop processing indicator
     }
   };
 
-  if (loading && !selectedPackage) { // Show main loading indicator only initially
+  if (loading && !selectedPackage && !error) { // Show main loading indicator only initially if no error
     return (
       <div className="max-w-4xl mx-auto p-6 text-center flex flex-col items-center justify-center min-h-[300px]">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -157,31 +162,31 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto shadow-2xl border-none overflow-hidden flex flex-col max-h-[calc(100vh-4rem)] h-full"> {/* Adjusted max-h for viewport */}
+    <Card className="w-full max-w-2xl mx-auto shadow-2xl border-none overflow-hidden flex flex-col max-h-[calc(100vh-4rem)] h-full">
       <CardHeader className="bg-gradient-to-br from-primary/80 to-primary p-6">
         <CardTitle className="text-3xl font-bold text-center text-primary-foreground">Buy Sondar Coins</CardTitle>
         <CardDescription className="text-center text-primary-foreground/80 text-sm pt-1">
           Boost your wallet by selecting a coin package below.
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-6 space-y-6 bg-background flex-grow overflow-y-auto"> {/* Ensure this can scroll */}
+      <CardContent className="p-6 space-y-6 bg-background flex-grow overflow-y-auto">
         {error && (
           <div 
-            onClick={fetchUserBalance} // Allow retry
-            className="bg-destructive/10 border-l-4 border-destructive text-destructive p-4 mb-6 cursor-pointer hover:bg-destructive/20 transition-colors rounded-md"
+            onClick={error.includes("load your balance") ? fetchUserBalance : undefined} // Allow retry only for balance load error
+            className={`bg-destructive/10 border-l-4 border-destructive text-destructive p-4 mb-6 rounded-md ${error.includes("load your balance") ? "cursor-pointer hover:bg-destructive/20" : ""} transition-colors`}
             role="alert"
           >
             <p className="font-bold">An Error Occurred</p>
             <p className="text-sm">{error}</p>
-            {error.includes("load your balance") && <p className="text-xs mt-2">Click this message to retry.</p>}
+            {error.includes("load your balance") && <p className="text-xs mt-2">Click this message to retry loading balance.</p>}
           </div>
         )}
 
         <div className="bg-muted/50 p-4 rounded-lg mb-6 text-center">
-          {loading && selectedPackage ? ( // More subtle loading when package is selected
+          {loading && !selectedPackage ? ( // Loading for balance
             <div className="flex items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-primary mr-2" />
-              <p className="text-lg text-muted-foreground">Processing...</p>
+              <p className="text-lg text-muted-foreground">Loading balance...</p>
             </div>
           ) : (
             <p className="text-lg">Current Balance: <span className="font-bold text-primary">{currentBalance.toLocaleString()} coins</span></p>
@@ -228,17 +233,24 @@ export default function Pay({ userId, userEmail, onPaymentCompleted, onCloseDial
               <div className="flex justify-between"><span className="text-muted-foreground">Coins to receive:</span> <span className="font-medium text-foreground">{selectedPackage.coins.toLocaleString()}</span></div>
             </div>
             
-            <PaystackButton
-              amount={selectedPackage.amountKES * 100} // Convert KES to cents for Paystack
-              email={userEmail}
-              userId={userId}
-              onSuccess={handlePaymentSuccess}
-              metadata={{
-                coins: selectedPackage.coins,
-                packageName: selectedPackage.description
-              }}
-              onCloseParentDialog={onCloseDialog} // Pass the handler
-            />
+            {loading && selectedPackage ? ( // Loading indicator for payment processing
+                 <div className="flex items-center justify-center py-6">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary mr-3" />
+                    <p className="text-lg text-muted-foreground">Processing payment...</p>
+                </div>
+            ) : (
+              <PaystackButton
+                amount={selectedPackage.amountKES * 100} // Convert KES to cents for Paystack
+                email={userEmail}
+                userId={userId}
+                onSuccess={handlePaymentSuccess}
+                metadata={{
+                  coins: selectedPackage.coins,
+                  packageName: selectedPackage.description
+                }}
+                onCloseParentDialog={onCloseDialog} // Pass the handler to close the main top-up dialog
+              />
+            )}
             
             <p className="mt-4 text-xs text-center text-muted-foreground px-4">
               Payments are securely processed by Paystack. By clicking "Pay Now", you agree to our Terms of Service.

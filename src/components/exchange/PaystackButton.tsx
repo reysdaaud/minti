@@ -36,8 +36,8 @@ interface PaystackButtonProps {
     packageName: string;
   };
   onSuccess: (response: any) => Promise<void>;
-  onClose?: () => void;
-  onCloseParentDialog?: () => void; 
+  onClose?: () => void; // Paystack's own modal close
+  onCloseParentDialog?: () => void; // To close the top-up dialog in UserActions.tsx
 }
 
 const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onSuccess, onClose, onCloseParentDialog }: PaystackButtonProps) => {
@@ -45,10 +45,9 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onSucce
   const user = auth.currentUser;
   
   const envPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
-  // IMPORTANT: User has requested to use a SECRET KEY for LIVE testing. This is a major security risk.
-  // The key provided by the user is sk_live_7148c4754ef026a94b9015605a4707dc3c3cf8c3
+  // User's latest provided live secret key
   const hardcodedUserLiveKey = "sk_live_7148c4754ef026a94b9015605a4707dc3c3cf8c3"; 
-  const defaultTestKey = 'pk_test_fae492482c870c83a5d33ba8f260880c22a5b24f'; // Fallback test key
+  const defaultTestKey = 'pk_test_fae492482c870c83a5d33ba8f260880c22a5b24f'; // Fallback public test key
 
   let paystackKeyToUse: string;
   let keySourceMessage: string;
@@ -84,20 +83,22 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onSucce
 
   // Final sanity check:
   if (!paystackKeyToUse || (!paystackKeyToUse.startsWith('pk_live_') && !paystackKeyToUse.startsWith('pk_test_') && !paystackKeyToUse.startsWith('sk_live_'))) {
-    console.error(`[PaystackButton] CRITICAL CONFIGURATION ERROR: The determined Paystack key ('${paystackKeyToUse}') is invalid. Defaulting to a generic test key. Please check your configuration and environment variables.`);
+    console.error(`[PaystackButton] CRITICAL CONFIGURATION ERROR: The determined Paystack key ('${paystackKeyToUse}') is invalid or missing. Defaulting to a generic public test key. Please check your configuration and environment variables.`);
     paystackKeyToUse = defaultTestKey;
     keySourceMessage = `Using DEFAULT FALLBACK TEST Paystack key due to critical configuration error: ${defaultTestKey.substring(0,10)}... (TEST MODE - UNINTENDED)`;
   }
 
 
   useEffect(() => {
-    console.log(`[PaystackButton Active Key] ${keySourceMessage}`);
+    console.log(`[PaystackButton Active Key Source] ${keySourceMessage}`);
+    console.log(`[PaystackButton Effective Key Used] ${paystackKeyToUse.substring(0,10)}...`);
     if (paystackKeyToUse.startsWith('pk_test_')) {
         console.warn("[PaystackButton] WARNING: Application is currently using a TEST Paystack key. All transactions will be in test mode and will not process real payments.");
     } else if (paystackKeyToUse.startsWith('sk_live_')) {
          // Warning is already prominent when keySourceMessage is built.
-    } else if (paystackKeyToUse.startsWith('pk_live_') && keySourceMessage.includes("hardcoded")) {
-        // Warning for hardcoded public live key is already present.
+         console.error("[PaystackButton - CRITICAL USAGE] Attempting to use a LIVE SECRET KEY for client-side Paystack initialization. This is highly insecure and against Paystack's recommended practices. This configuration is due to explicit user instruction for testing and MUST be changed for any production environment. Paystack's client library may not support secret keys for initialization, potentially leading to 'invalid key' errors or unexpected behavior.");
+    } else if (paystackKeyToUse.startsWith('pk_live_')) {
+        console.log("[PaystackButton] Application is using a LIVE PUBLIC Paystack key.");
     }
   }, [paystackKeyToUse, keySourceMessage]);
 
@@ -105,7 +106,7 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onSucce
   const config: PaystackConfig = {
     reference: (new Date()).getTime().toString(),
     email: email || user?.email || '', 
-    amount: amount, 
+    amount: amount, // Amount should be in the smallest currency unit (e.g., Kobo, Cents)
     publicKey: paystackKeyToUse, // This is now correctly `paystackKeyToUse`
     currency: 'KES',
     metadata: { 
@@ -139,43 +140,36 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onSucce
     }
     
     if (!config.publicKey || (!config.publicKey.startsWith('pk_test_') && !config.publicKey.startsWith('pk_live_') && !config.publicKey.startsWith('sk_live_'))) {
-      setError('Paystack payment cannot be initialized. Configuration error: Invalid public/secret key.');
-      console.error('Invalid Paystack Key for initialization attempt:', config.publicKey);
+      setError('Paystack payment cannot be initialized. Configuration error: Invalid or missing Paystack key.');
+      console.error('[PaystackButton] Invalid Paystack Key for initialization attempt:', config.publicKey);
       return;
     }
     
-    try {
-      // It seems Paystack's usePaystackPayment hook expects a 'publicKey' field in its config,
-      // even if we are (unsafely) passing a secret key for testing.
-      // The hook itself might handle it or expect the backend to use the secret key.
-      // For client-side initialization, Paystack always requires a key starting with 'pk_'.
-      // If a 'sk_' key is passed here, Paystack's client-side library will likely reject it.
-      // The user's explicit request is to use the sk_live key.
-      // We will pass it as `publicKey` to the hook and log the severe security warning again.
-
-      if (config.publicKey.startsWith('sk_live_')) {
-        console.warn(`[PaystackButton - PAYMENT ATTEMPT WITH SECRET KEY] Initializing payment with a SECRET KEY ('${config.publicKey.substring(0,10)}...') on the client side. This is for TESTING ONLY as requested and is a SEVERE SECURITY RISK. This may not work as Paystack's client-side library expects a public key.`);
-      }
-
-
-      if (onCloseParentDialog) {
+    // Close the parent dialog (e.g., top-up dialog) before opening Paystack's modal
+    if (onCloseParentDialog) {
         onCloseParentDialog();
+    }
+
+    try {
+      if (config.publicKey.startsWith('sk_live_')) {
+        console.warn(`[PaystackButton - PAYMENT ATTEMPT WITH SECRET KEY] Initializing payment with a SECRET KEY ('${config.publicKey.substring(0,10)}...') on the client side. This is for TESTING ONLY as requested and is a SEVERE SECURITY RISK. This may not work as Paystack's client-side library expects a public key and can result in an 'invalid key' error from Paystack.`);
       }
 
       initializePayment(
-        (response?: any) => { 
+        (response?: any) => { // onSuccess callback from usePaystackPayment
           setError(null);
-          onSuccess(response); 
+          onSuccess(response); // Call the prop onSuccess
         },
-        () => { 
-          if (onClose) {
+        () => { // onClose callback from usePaystackPayment
+          if (onClose) { // Call the prop onClose if provided
             onClose();
           }
+          // Note: The parent dialog should have already been closed by onCloseParentDialog
         }
       );
     } catch (err) {
       setError('Failed to initialize payment. Please try again.');
-      console.error('Payment initialization error:', err);
+      console.error('[PaystackButton] Payment initialization error:', err);
     }
   };
 
@@ -190,11 +184,14 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onSucce
       )}
       <Button
         onClick={handlePayment}
-        disabled={!canPay}
+        disabled={!canPay || !user?.email} // Also disable if user email is not available
         className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg text-lg font-semibold shadow-md hover:shadow-lg transition-shadow w-full"
       >
-        {canPay ? 'Pay Now' : 'Processing...'}
+        {canPay && user?.email ? 'Pay Now' : 'Processing...'}
       </Button>
+       {!user?.email && (
+         <p className="text-xs text-destructive mt-2">Please ensure your email is verified to make a purchase.</p>
+       )}
     </div>
   );
 };
