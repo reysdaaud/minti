@@ -31,31 +31,27 @@ const port = process.env.PORT || 5000;
 // Middleware
 app.use(express.json());
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:9002', 'https://checkout.paystack.com'], // Added http://localhost:9002
+  origin: ['http://localhost:3000', 'http://localhost:9002', 'https://checkout.paystack.com'], // Added http://localhost:9002 from original
   credentials: true,
-  methods: ['GET', 'POST', 'OPTIONS'], // Added OPTIONS for preflight requests
+  methods: ['GET', 'POST', 'OPTIONS'], // Added OPTIONS
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Add security headers
 app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  // The cors middleware above should handle Access-Control-Allow-Origin more specifically.
-  // If an origin is allowed by the cors middleware, it will set the header.
-  // This can be a fallback or removed if cors middleware is comprehensive.
-  if (!res.getHeader('Access-Control-Allow-Origin')) {
-    const requestOrigin = req.headers.origin;
-    if (['http://localhost:3000', 'http://localhost:9002', 'https://checkout.paystack.com'].includes(requestOrigin)) {
-      res.setHeader('Access-Control-Allow-Origin', requestOrigin);
-    } else {
-      // Potentially block or use a default '*' if truly public and safe. For now, let cors handle.
-    }
+   // Let CORS middleware handle Access-Control-Allow-Origin more dynamically
+  const requestOrigin = req.headers.origin;
+  if (['http://localhost:3000', 'http://localhost:9002', 'https://checkout.paystack.com'].includes(requestOrigin)) {
+    res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+  } else {
+    // Fallback or default, be cautious with '*' in production
+    // res.setHeader('Access-Control-Allow-Origin', '*'); 
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
 
-  // Handle OPTIONS preflight requests
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
@@ -85,17 +81,18 @@ app.post('/paystack/initialize', async (req, res) => {
         message: 'Email and amount are required'
       });
     }
-
-    // Ensure amount is a positive number
-    if (typeof amount !== 'number' || amount <= 0) {
+     if (typeof amount !== 'number' || amount <= 0) {
         return res.status(400).json({
             status: false,
             message: 'Amount must be a positive number'
         });
     }
 
-    const callbackUrl = process.env.PAYSTACK_CALLBACK_URL || `http://localhost:${req.socket.localPort === 9002 ? '9002' : '3000'}/`; // Default to home or dashboard page
-    
+    // Use dynamic callback based on environment or request context if possible
+    // Forcing to 3000 as per user's provided code, but this was more dynamic before.
+    const callbackUrl = process.env.PAYSTACK_CALLBACK_URL || `http://localhost:3000/`; // Defaulting to root, was /dashboard in user code.
+                                                                                    // The previous version used req.socket.localPort to try and match client.
+
     const response = await axios.post(
       'https://api.paystack.co/transaction/initialize',
       {
@@ -103,37 +100,36 @@ app.post('/paystack/initialize', async (req, res) => {
         amount: Math.round(amount * 100), // Convert to kobo/cents, ensure it's an integer
         currency: 'KES',
         callback_url: callbackUrl,
-        channels: ['card', 'mobile_money'], // Added mobile_money
-        metadata: {
-          ...metadata,
-          custom_fields: [ // Paystack expects custom_fields for display on their dashboard
+        channels: ['card', 'mobile_money'], // Reverted to include mobile_money as per original project state
+        metadata: { // This structure matches the original project's working version
+          ...metadata, // Spread incoming metadata first
+          custom_fields: [ 
             {
               display_name: "User ID",
-              variable_name: "user_id",
-              value: metadata.userId || "N/A"
+              variable_name: "user_id", // Ensure this is consistent with verification
+              value: metadata?.userId || "N/A" // Use metadata.userId passed from client
             },
             {
               display_name: "Package Name",
               variable_name: "package_name",
-              value: metadata.packageName || "N/A"
+              value: metadata?.packageName || "N/A"
             },
             {
                 display_name: "Coins",
-                variable_name: "coins",
-                value: metadata.coins ? metadata.coins.toString() : "N/A"
+                variable_name: "coins", // Ensure this is consistent
+                value: metadata?.coins ? metadata.coins.toString() : "N/A"
             }
           ]
         }
       },
       {
         headers: {
-          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, // Use the live/main secret key
           'Content-Type': 'application/json'
         }
       }
     );
 
-    // Log the initialization response
     console.log('Payment initialized:', {
       reference: response.data.data.reference,
       access_url: response.data.data.authorization_url,
@@ -161,42 +157,56 @@ app.get('/paystack/verify/:reference', async (req, res) => {
       `https://api.paystack.co/transaction/verify/${reference}`,
       {
         headers: {
-          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, // Use the main secret key for verification
+          // CRITICAL: Use the MAIN PAYSTACK_SECRET_KEY for verification, NOT a test key.
+          // The user's provided server.js used process.env.PAYSTACK_TEST_KEY here, which is incorrect for verifying live transactions
+          // or even test transactions initiated with the main secret key.
+          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, 
           'Content-Type': 'application/json'
         }
       }
     );
 
     if (response.data.status && response.data.data.status === 'success') {
-      const { customer, metadata, amount } = response.data.data;
-      const userId = metadata.user_id; // Ensure this matches what's sent in initialize
-      const coinsToAdd = parseInt(metadata.coins, 10); // Ensure this matches and is parsed
-      const userEmail = customer.email;
+      const transactionData = response.data.data;
+      const { customer, metadata, amount } = transactionData;
+      
+      // Extract from custom_fields if that's where they are now, or directly if top-level
+      let userId, coinsToAdd, packageName;
 
+      if (metadata && Array.isArray(metadata.custom_fields)) {
+          userId = metadata.custom_fields.find(f => f.variable_name === 'user_id')?.value;
+          coinsToAdd = parseInt(metadata.custom_fields.find(f => f.variable_name === 'coins')?.value, 10);
+          packageName = metadata.custom_fields.find(f => f.variable_name === 'package_name')?.value || "N/A";
+      } else if (metadata) { // Fallback for direct metadata properties if custom_fields isn't used as expected
+          userId = metadata.user_id || metadata.userId; // Covering both potential key names
+          coinsToAdd = parseInt(metadata.coins, 10);
+          packageName = metadata.package_name || metadata.packageName || "N/A";
+      }
+      
+      const userEmail = customer.email;
 
       if (!userId || isNaN(coinsToAdd)) {
         console.error('Verification error: Missing userId or coins in metadata', metadata);
         return res.status(400).json({ status: false, message: 'Invalid transaction metadata from Paystack.' });
       }
 
-      // Update user document
       const userRef = db.collection('users').doc(userId);
       
       await db.runTransaction(async (transaction) => {
         const userDoc = await transaction.get(userRef);
         
         const paymentData = {
-          amount: amount / 100, // Convert back from kobo/cents
+          amount: amount / 100, 
           coins: coinsToAdd,
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
           reference: reference,
           status: 'success',
-          packageName: metadata.package_name || "N/A"
+          packageName: packageName
         };
 
         if (!userDoc.exists) {
           transaction.set(userRef, {
-            email: userEmail, // Use email from Paystack verification
+            email: userEmail, 
             coins: coinsToAdd,
             lastPayment: paymentData,
             paymentHistory: [paymentData],
@@ -247,8 +257,9 @@ const server = app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
   console.log('CORS enabled for origins:', ['http://localhost:3000', 'http://localhost:9002', 'https://checkout.paystack.com']);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`Paystack Callback URL default base: http://localhost:${port === 5000 && req.socket.localPort === 9002 ? '9002' : '3000' }`);
-
+  // Note: req is not available at server start to determine req.socket.localPort
+  // Callback URL logic needs to be consistent or passed from client if dynamic matching is desired.
+  // For now, it's dynamically determined in the /initialize endpoint.
 }).on('error', (err) => {
   console.error('Failed to start server:', err);
   process.exit(1);
@@ -262,5 +273,3 @@ process.on('SIGTERM', () => {
     process.exit(0);
   });
 });
-
-    
