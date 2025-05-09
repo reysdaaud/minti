@@ -57,6 +57,9 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onClose
     setError(null);
     setIsLoading(true);
 
+    const backendInitializeUrl = process.env.NEXT_PUBLIC_PAYMENT_BACKEND_URL || 'http://localhost:5000/paystack/initialize';
+    console.log(`[PaystackButton] Attempting to initialize payment via: ${backendInitializeUrl}`);
+
     try {
       const payload = {
         email: email,
@@ -67,8 +70,6 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onClose
           packageName: propMetadata.packageName,
         }
       };
-
-      const backendInitializeUrl = process.env.NEXT_PUBLIC_PAYMENT_BACKEND_URL || 'http://localhost:5000/paystack/initialize';
 
       const response = await fetch(backendInitializeUrl, {
         method: 'POST',
@@ -86,6 +87,7 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onClose
       const responseData = await response.json();
 
       if (responseData.status && responseData.data && responseData.data.authorization_url) {
+        // Open Paystack in a new tab
         window.open(responseData.data.authorization_url, '_blank');
         toast({
           title: "Redirecting to Paystack",
@@ -102,9 +104,14 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onClose
     } catch (err: any) {
       console.error('[PaystackButton] Payment initialization error:', err);
       let errorMessage = 'Failed to initialize payment. Please check your connection or try again.';
-      // Check if the error is a network error (e.g., server not running)
-      if (err instanceof TypeError && err.message.toLowerCase().includes('failed to fetch')) {
-        errorMessage = 'Could not connect to the payment server. Please ensure the backend server (server.js) is running and accessible at ' + (process.env.NEXT_PUBLIC_PAYMENT_BACKEND_URL || 'http://localhost:5000') + '.';
+      
+      if (err instanceof TypeError && (err.message.toLowerCase().includes('failed to fetch') || err.message.toLowerCase().includes('networkerror'))) {
+        errorMessage = `Could not connect to the payment server at ${backendInitializeUrl}. 
+        Please ensure:
+        1. The backend server (server.js) is running.
+        2. If you've set NEXT_PUBLIC_PAYMENT_BACKEND_URL in your environment, it's correct.
+        3. There are no firewall or network issues preventing connection to this URL from your browser.
+        Original error: ${err.message}`;
       } else if (err.message) {
         errorMessage = err.message;
       }
@@ -113,7 +120,8 @@ const PaystackButton = ({ amount, email, userId, metadata: propMetadata, onClose
       toast({
         title: "Payment Initialization Error",
         description: errorMessage,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 10000, // Longer duration for detailed error
       });
     } finally {
       setIsLoading(false);
