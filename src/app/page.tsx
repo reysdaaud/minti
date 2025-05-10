@@ -8,7 +8,7 @@ import BottomNavBar from '@/components/exchange/BottomNavBar';
 import CardBalance from '@/components/exchange/CardBalance';
 import SoundsPlayer from '@/components/sounds/SoundsPlayer';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSearchParams, useRouter as useNextRouter } from 'next/navigation'; 
+import { useSearchParams, useRouter as useNextRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,68 +19,68 @@ import { db } from '@/lib/firebase';
 
 export default function CryptoExchangePage() {
   const { user, loading: authLoading } = useAuth();
-  const nextRouter = useNextRouter(); 
+  const nextRouter = useNextRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  
-  const [coinBalance, setCoinBalance] = useState(0); 
+
+  const [coinBalance, setCoinBalance] = useState(0);
   const [activeTab, setActiveTab] = useState('Home');
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
-  const [userDocLoading, setUserDocLoading] = useState(true);
+  const [userDocLoading, setUserDocLoading] = useState(true); // For Firestore data
 
 
-  // Fetch initial coin balance and listen for real-time updates
   useEffect(() => {
-    if (user) {
-      setUserDocLoading(true);
+    if (!authLoading && !user) {
+      // Auth state determined, no user, redirect to sign-in
+      nextRouter.push('/auth/signin');
+    } else if (!authLoading && user) {
+      // User is authenticated, proceed to fetch user-specific data
+      setUserDocLoading(true); // Start loading user doc data
       const userRef = doc(db, 'users', user.uid);
       const unsubscribe = onSnapshot(userRef, (docSnap) => {
         if (docSnap.exists()) {
           setCoinBalance(docSnap.data().coins || 0);
         } else {
-          setCoinBalance(0); 
-          console.warn("User document not found for balance updates. This might be okay if user is new and backend will create it upon payment verification.");
+          setCoinBalance(0);
+          console.warn("User document not found for balance updates. This might be okay if user is new and backend will create it upon payment verification or AuthProvider initializes it.");
         }
-        setUserDocLoading(false);
+        setUserDocLoading(false); // Finished loading user doc data
       }, (error) => {
         console.error("Error listening to user balance:", error);
         toast({ title: "Error", description: "Could not load your coin balance.", variant: "destructive" });
-        setUserDocLoading(false);
+        setUserDocLoading(false); // Finished loading user doc data (with error)
       });
-      return () => unsubscribe(); 
+      return () => unsubscribe();
     } else {
-      setCoinBalance(0); 
-      setUserDocLoading(false);
+      // authLoading is true, or some other initial state.
+      // Reset user-specific states if auth is not ready or user is null
+      setUserDocLoading(false); 
+      setCoinBalance(0);
     }
-  }, [user, toast]);
+  }, [user, authLoading, nextRouter, toast]);
 
 
   // Handle Paystack callback verification
   const handleVerifyPayment = useCallback(async (paymentReference: string) => {
-    if (isVerifyingPayment) return; // Prevent multiple simultaneous verifications
+    if (isVerifyingPayment) return;
     setIsVerifyingPayment(true);
     console.log('Detected payment reference for verification:', paymentReference);
-    
-    // Use the environment variable for the backend URL, or a default for local dev
+
     const backendVerifyUrl = `${process.env.NEXT_PUBLIC_PAYMENT_BACKEND_URL || 'http://localhost:5000'}/paystack/verify/${paymentReference}`;
 
     try {
-      const response = await fetch(backendVerifyUrl, { 
+      const response = await fetch(backendVerifyUrl, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
-
       const data = await response.json();
-
       if (response.ok && data.status && data.data && data.data.status === 'success') {
         toast({
           title: 'Payment Successful!',
           description: `Your purchase was successful. Your balance will update shortly.`,
-          variant: 'default', 
+          variant: 'default',
           duration: 7000,
         });
-        // Balance updates via Firestore listener, no need to setCoinBalance here directly
-        // The backend server.js now handles updating Firestore.
       } else {
         toast({
           title: 'Payment Verification Failed',
@@ -98,31 +98,24 @@ export default function CryptoExchangePage() {
       });
     } finally {
       setIsVerifyingPayment(false);
-      // Clean the URL to prevent re-processing on refresh
-      const currentPath = window.location.pathname;
-      // Create a new URL object to safely remove search params
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete('trxref');
       newUrl.searchParams.delete('reference');
-      nextRouter.replace(newUrl.pathname + newUrl.search, { scroll: false }); 
+      nextRouter.replace(newUrl.pathname + newUrl.search, { scroll: false });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps  
-  }, [toast, nextRouter]); // Removed isVerifyingPayment from deps to avoid re-triggering if it changes during execution
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toast, nextRouter]); 
 
   useEffect(() => {
     const paymentReference = searchParams.get('trxref') || searchParams.get('reference');
-    // Only verify if user is loaded, reference exists, and not already verifying
     if (paymentReference && user && !authLoading && !isVerifyingPayment) {
-      // Simple session flag to prevent re-verification on fast refresh / strict mode double call
       const verificationKey = `verified_${paymentReference}`;
       if (sessionStorage.getItem(verificationKey) !== 'true') {
         sessionStorage.setItem(verificationKey, 'true');
         handleVerifyPayment(paymentReference);
       } else {
-        // If already processed this session, clear URL faster.
-        const currentPath = window.location.pathname;
         const newUrl = new URL(window.location.href);
-        if (newUrl.searchParams.get('trxref') || newUrl.searchParams.get('reference')) { 
+        if (newUrl.searchParams.get('trxref') || newUrl.searchParams.get('reference')) {
             newUrl.searchParams.delete('trxref');
             newUrl.searchParams.delete('reference');
             nextRouter.replace(newUrl.pathname + newUrl.search, { scroll: false });
@@ -131,35 +124,40 @@ export default function CryptoExchangePage() {
     }
   }, [searchParams, user, authLoading, isVerifyingPayment, handleVerifyPayment, nextRouter]);
 
-  // Redirect to sign-in if not authenticated
-  useEffect(() => {
-    if (!authLoading && !user) {
-      if (typeof window !== "undefined") { // Ensure this runs only on client
-        nextRouter.push('/auth/signin');
-      }
-    }
-  }, [user, authLoading, nextRouter]);
 
-
-  if (authLoading || userDocLoading) { 
+  if (authLoading) {
+    // Primary auth check still in progress
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-2 text-muted-foreground">Loading authentication...</p>
       </div>
     );
   }
-  
-  // If user is null and auth is not loading, useEffect above will handle redirection.
-  // Return null or a loader here to prevent rendering the page content before redirection.
-  if (!user && !authLoading) { 
-     return (
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        </div>
-      );
+
+  // At this point, authLoading is false.
+  // If !user, the useEffect for redirection should have initiated a redirect.
+  // Show a loader while that redirect is in progress or if user is null.
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-2 text-muted-foreground">Redirecting to sign-in...</p>
+      </div>
+    );
   }
 
+  // User is authenticated (user is not null). Now check if user-specific document data is loading.
+  if (userDocLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-2 text-muted-foreground">Loading user data...</p>
+      </div>
+    );
+  }
 
+  // All checks passed, user authenticated and their specific data (like balance) is loaded or attempted.
   const renderContent = () => {
     switch (activeTab) {
       case 'Home':
@@ -179,7 +177,7 @@ export default function CryptoExchangePage() {
               </CardContent>
             </Card>
             <CardBalance />
-            <UserActions setCoinBalance={setCoinBalance} /> 
+            <UserActions setCoinBalance={setCoinBalance} />
             <MarketSection />
           </>
         );
@@ -206,5 +204,3 @@ export default function CryptoExchangePage() {
     </div>
   );
 }
-
-    
