@@ -1,3 +1,4 @@
+
 // src/app/page.tsx
 'use client';
 
@@ -24,7 +25,7 @@ export default function CryptoExchangePage() {
   const { toast } = useToast();
 
   const [coinBalance, setCoinBalance] = useState(0);
-  const [activeTab, setActiveTab] = useState('Home');
+  const [activeTab, setActiveTab] = useState('Home'); // Default to Home
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const [userDocLoading, setUserDocLoading] = useState(true); // For Firestore data
 
@@ -64,8 +65,11 @@ export default function CryptoExchangePage() {
     if (isVerifyingPayment) return; // Prevent multiple simultaneous verifications
     setIsVerifyingPayment(true);
     console.log('Attempting to verify payment reference client-side:', paymentReference);
-
+    
+    // WARNING: Using SECRET KEY on the client side. This is a SEVERE SECURITY RISK.
+    // This should be replaced with a backend call in production.
     const envSecretKey = process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE;
+    // User's live secret key (e.g., sk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx)
     const hardcodedSecretKey = "sk_live_7148c4754ef026a94b9015605a4707dc3c3cf8c3"; 
 
     let paystackSecretKey = envSecretKey || hardcodedSecretKey;
@@ -207,7 +211,7 @@ export default function CryptoExchangePage() {
       newUrl.searchParams.delete('reference');
       nextRouter.replace(newUrl.pathname + newUrl.search, { scroll: false });
     }
-  }, [toast, nextRouter, user]);
+  }, [toast, nextRouter, user, isVerifyingPayment]);
 
 
   useEffect(() => {
@@ -257,6 +261,11 @@ export default function CryptoExchangePage() {
   }
 
   const renderContent = () => {
+    // The targetTab from BottomNavBar now dictates content
+    // Home -> Home content
+    // Markets -> MarketSection (was Search in Spotify nav)
+    // Sounds -> SoundsPlayer (was Library in Spotify nav)
+    // Assets -> placeholder or CardBalance/UserActions (was Premium in Spotify nav)
     switch (activeTab) {
       case 'Home':
         return (
@@ -276,13 +285,28 @@ export default function CryptoExchangePage() {
             </Card>
             <CardBalance />
             <UserActions setCoinBalance={setCoinBalance} />
-            <MarketSection />
+            <MarketSection /> 
           </>
         );
-      case 'Sounds':
+      case 'Sounds': // Corresponds to "Library" in new nav
         return <SoundsPlayer />;
-      case 'Markets':
-        return <MarketSection />
+      case 'Markets': // Corresponds to "Search" in new nav
+        return <MarketSection /> 
+      case 'Assets': // Corresponds to "Premium" in new nav
+        return (
+            <div className="text-center py-10">
+                <CardBalance />
+                <UserActions setCoinBalance={setCoinBalance} />
+                <p className="text-muted-foreground mt-4">Premium features coming soon.</p>
+            </div>
+        );
+      case 'Trade': // This tab is no longer in the nav bar items
+        return (
+             <div className="text-center py-10">
+                <p className="text-muted-foreground">Trade section is currently not directly accessible via main navigation.</p>
+                <MarketSection />
+            </div>
+        );
       default:
         return (
           <div className="text-center py-10">
