@@ -66,10 +66,7 @@ export default function CryptoExchangePage() {
     setIsVerifyingPayment(true);
     console.log('Attempting to verify payment reference client-side:', paymentReference);
     
-    // WARNING: Using SECRET KEY on the client side. This is a SEVERE SECURITY RISK.
-    // This should be replaced with a backend call in production.
     const envSecretKey = process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE;
-    // User's live secret key (e.g., sk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx)
     const hardcodedSecretKey = "sk_live_7148c4754ef026a94b9015605a4707dc3c3cf8c3"; 
 
     let paystackSecretKey = envSecretKey || hardcodedSecretKey;
@@ -142,7 +139,7 @@ export default function CryptoExchangePage() {
         const newPaymentRecord = {
           amount: amountPaid,
           coins: coinsToAdd,
-          timestamp: serverTimestamp(),
+          timestamp: new Date(), // Use client-side Date object for arrayUnion compatibility
           reference: paymentReference,
           status: 'success',
           packageName: packageName || 'N/A',
@@ -326,3 +323,4 @@ export default function CryptoExchangePage() {
     </div>
   );
 }
+
