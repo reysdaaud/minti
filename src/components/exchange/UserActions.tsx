@@ -8,7 +8,7 @@ import { useState, type ChangeEvent } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import Pay from './Pay'; // Import the new Pay component
+import Pay from './Pay'; 
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { X } from 'lucide-react';
@@ -18,7 +18,7 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 interface ActionItem {
   label: string;
   icon: React.ElementType;
-  dialogKey: 'transfer' | 'topup' | 'paybills' | 'withdraw'; // To manage dialog states
+  dialogKey: 'transfer' | 'topup' | 'paybills' | 'withdraw'; 
 }
 
 interface TransferFormData {
@@ -61,7 +61,7 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
 
   const handleCloseDialog = () => {
     setOpenDialogKey(null);
-    setFormData(defaultFormData); // Reset transfer form on any dialog close
+    setFormData(defaultFormData); 
   };
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -71,7 +71,7 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
 
   const handleSendMoney = () => {
     console.log('Send Money clicked', formData);
-    // Basic validation
+    
     if (!formData.recipient || !formData.amount) {
         toast({
             title: "Missing Information",
@@ -93,31 +93,29 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
       title: 'Transfer Initiated',
       description: `Transferring ${formData.amount} to ${formData.recipient}.`,
     });
-    // In a real app, you would handle the transfer logic here.
-    // For now, we just close the dialog and reset the form.
     handleCloseDialog();
   };
 
-  const handleTopUpCompleted = (success: boolean, coinsPurchased?: number) => {
+  const handleTopUpCompleted = (success: boolean) => {
+    // The success parameter indicates if the PaystackButton's internal logic
+    // (like updating Firestore) completed, not necessarily if Paystack payment itself was successful.
+    // The PaystackButton handles its own success/failure toasts related to Paystack API.
+    // This callback is mainly for closing the dialog.
     handleCloseDialog(); 
-    if (success && coinsPurchased) {
-      setCoinBalance(prevBalance => prevBalance + coinsPurchased);
-      toast({
-        title: 'Top-up Successful!',
-        description: `You've successfully purchased ${coinsPurchased.toLocaleString()} coins. Your balance has been updated.`,
+    if (success) {
+      // The page's useEffect listening to Firestore will update the balance display.
+      // A general success message can be shown here if desired, but PaystackButton likely already did.
+       toast({
+        title: 'Action Complete',
+        description: 'Your top-up process has finished. Your balance will update if the payment was successful.',
         variant: 'default', 
         duration: 5000,
       });
-    } else if (success) { // Payment might be successful but coinsPurchased not passed if error during Firestore update
-        toast({
-            title: 'Payment Processed',
-            description: 'Your payment was processed. Your balance will update shortly. If it doesn\'t, please contact support.',
-            variant: 'default',
-            duration: 7000
-        });
     }
-    // No toast for !success as PaystackButton handles its own close/cancel toasts
+    // No specific toast for !success from here, as PaystackButton or Pay component would handle
+    // payment cancellation or Paystack-specific errors.
   };
+
 
   return (
     <section className="py-6">
@@ -142,7 +140,7 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
               </Button>
             </DialogTrigger>
             
-            {/* Transfer Dialog Content */}
+            
             {action.dialogKey === 'transfer' && (
               <DialogContent className="w-full max-w-xs p-0 rounded-[20px] send-money-dialog-content overflow-hidden">
                  <DialogHeader className="p-6 pb-4 flex flex-row justify-between items-center">
@@ -174,10 +172,11 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
               </DialogContent>
             )}
 
-            {/* Top-up Dialog Content */}
+            
             {action.dialogKey === 'topup' && user && (
               <DialogContent
                 className="sm:max-w-2xl p-0 bg-background border-border shadow-xl data-[state=open]:animate-none data-[state=closed]:animate-none max-h-[90vh] flex flex-col"
+                style={{ zIndex: 51 }} // Ensure dialog content is above overlay (z-50) but allows Paystack modal (typically very high z-index)
               >
                 <VisuallyHidden><DialogTitle>Purchase Sondar Coins</DialogTitle></VisuallyHidden>
                 <Pay 
@@ -187,7 +186,7 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
                   onCloseDialog={handleCloseDialog}
                 />
                 <DialogClose 
-                    className="absolute right-4 top-4 rounded-full p-1 flex items-center justify-center text-muted-foreground hover:text-foreground bg-background/50 hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background z-[51]"
+                    className="absolute right-4 top-4 rounded-full p-1 flex items-center justify-center text-muted-foreground hover:text-foreground bg-background/50 hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background z-[52]" // Close button z-index slightly higher than content
                     aria-label="Close top-up dialog"
                     onClick={handleCloseDialog}
                 >
@@ -196,7 +195,7 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
               </DialogContent>
             )}
             
-            {/* Placeholder for Pay Bills and Withdraw dialogs */}
+            
             {(action.dialogKey === 'paybills' || action.dialogKey === 'withdraw') && (
                  <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
