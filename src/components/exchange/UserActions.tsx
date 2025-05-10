@@ -98,15 +98,25 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
     handleCloseDialog();
   };
 
-  const handleTopUpCompleted = (coinsPurchased: number) => {
+  const handleTopUpCompleted = (success: boolean, coinsPurchased?: number) => {
     handleCloseDialog(); 
-    setCoinBalance(prevBalance => prevBalance + coinsPurchased);
-    toast({
-      title: 'Top-up Successful!',
-      description: `You've successfully purchased ${coinsPurchased.toLocaleString()} coins. Your balance has been updated.`,
-      variant: 'default', 
-      duration: 5000,
-    });
+    if (success && coinsPurchased) {
+      setCoinBalance(prevBalance => prevBalance + coinsPurchased);
+      toast({
+        title: 'Top-up Successful!',
+        description: `You've successfully purchased ${coinsPurchased.toLocaleString()} coins. Your balance has been updated.`,
+        variant: 'default', 
+        duration: 5000,
+      });
+    } else if (success) { // Payment might be successful but coinsPurchased not passed if error during Firestore update
+        toast({
+            title: 'Payment Processed',
+            description: 'Your payment was processed. Your balance will update shortly. If it doesn\'t, please contact support.',
+            variant: 'default',
+            duration: 7000
+        });
+    }
+    // No toast for !success as PaystackButton handles its own close/cancel toasts
   };
 
   return (
@@ -168,16 +178,17 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
             {action.dialogKey === 'topup' && user && (
               <DialogContent
                 className="sm:max-w-2xl p-0 bg-background border-border shadow-xl data-[state=open]:animate-none data-[state=closed]:animate-none max-h-[90vh] flex flex-col"
+                onOpenAutoFocus={(e) => e.preventDefault()} // Prevent default focus behavior
               >
                 <VisuallyHidden><DialogTitle>Purchase Sondar Coins</DialogTitle></VisuallyHidden>
                 <Pay 
                   userId={user.uid} 
                   userEmail={user.email} 
-                  onPaymentCompleted={handleTopUpCompleted} 
+                  onPaymentFlowComplete={handleTopUpCompleted} // Ensure this prop name matches Pay.tsx
                   onCloseDialog={handleCloseDialog}
                 />
                 <DialogClose 
-                    className="absolute right-4 top-4 rounded-full p-1 flex items-center justify-center text-muted-foreground hover:text-foreground bg-background/50 hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background"
+                    className="absolute right-4 top-4 rounded-full p-1 flex items-center justify-center text-muted-foreground hover:text-foreground bg-background/50 hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background z-[51]"
                     aria-label="Close top-up dialog"
                     onClick={handleCloseDialog}
                 >
