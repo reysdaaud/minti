@@ -3,7 +3,7 @@ import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, type Auth, type User as FirebaseUser } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { initializeUserInFirestore, trackArticleAccessInFirestore } from './userManagement'; // Correct import
+import { initializeUserInFirestore } from './userManagement'; // Corrected import name to match userManagement.js
 
 
 // Firebase configuration
@@ -55,7 +55,7 @@ export const signInWithGoogle = async (): Promise<FirebaseUser | null> => {
     const provider = new GoogleAuthProvider();
     const result = await signInWithPopup(authInstance, provider);
     const user = result.user;
-    await initializeUserInFirestore(user, dbInstance); 
+    // initializeUserInFirestore is now called within onAuthStateChanged in AuthProvider
     return user;
   } catch (error) {
     console.error("Error signing in with Google:", error);
@@ -80,9 +80,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     const unsubscribe = authInstance.onAuthStateChanged(
-      (currentUser) => {
-        setUser(currentUser);
-        setLoading(false); 
+      async (currentUser) => {
+        try {
+          if (currentUser) {
+            // Pass dbInstance to initializeUserInFirestore if it requires it
+            await initializeUserInFirestore(currentUser); 
+          }
+          setUser(currentUser);
+        } catch (e) {
+          console.error("Error during onAuthStateChanged user processing:", e);
+          // Handle error appropriately, e.g., set an error state or sign out
+          setUser(null); 
+          setError(e as Error);
+        } finally {
+          setLoading(false); 
+        }
       },
       (err) => { 
         setError(err);

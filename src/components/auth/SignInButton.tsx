@@ -3,12 +3,12 @@
 import { Button } from '@/components/ui/button';
 import { auth, GoogleAuthProvider } from '@/lib/firebase';
 import { signInWithPopup, type AuthError } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+// import { useRouter } from 'next/navigation'; // No longer needed here
 import { useToast } from '@/hooks/use-toast';
 import { LogIn } from 'lucide-react';
 
 const SignInButton: React.FC = () => {
-  const router = useRouter();
+  // const router = useRouter(); // No longer needed here
   const { toast } = useToast();
 
   const handleSignIn = async () => {
@@ -19,7 +19,7 @@ const SignInButton: React.FC = () => {
         title: 'Signed In',
         description: 'Successfully signed in with Google.',
       });
-      router.push('/'); // Ensure redirection to dashboard after successful sign-in
+      // router.push('/'); // Removed: SignInPage will handle redirection
     } catch (error) {
       const authError = error as AuthError;
       // Don't show error toast if user closed the popup

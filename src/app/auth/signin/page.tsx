@@ -12,16 +12,33 @@ export default function SignInPage() {
   const router = useRouter();
 
   useEffect(() => {
+    // If auth state is determined (not loading) and user exists, redirect to home
     if (!loading && user) {
       router.push('/');
     }
   }, [user, loading, router]);
 
-    if(loading || user){
-      return null
+  // If auth state is still loading, show a loader
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
   }
 
+  // If auth state is determined (not loading) and user exists,
+  // useEffect will handle redirection. Show a loader/blank screen in the meantime
+  // to prevent the sign-in form from flashing briefly for an already logged-in user.
+  if (user) { // No need to check !loading here, it's covered by the previous `if (loading)` block
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
   
+  // If not loading and no user, show the sign-in form
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm shadow-2xl">
