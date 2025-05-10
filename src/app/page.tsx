@@ -32,7 +32,7 @@ export default function CryptoExchangePage() {
   useEffect(() => {
     if (!authLoading && !user) {
       // Auth state determined, no user, redirect to sign-in
-      nextRouter.push('/auth/signin');
+      nextRouter.replace('/auth/signin'); // Use replace to prevent back button to dashboard
     } else if (!authLoading && user) {
       // User is authenticated, proceed to fetch user-specific data
       setUserDocLoading(true); // Start loading user doc data
@@ -65,15 +65,28 @@ export default function CryptoExchangePage() {
     setIsVerifyingPayment(true);
     console.log('Attempting to verify payment reference client-side:', paymentReference);
 
-    // WARNING: Using SECRET KEY on the client side for verification. This is a SEVERE SECURITY RISK.
-    // This should be replaced with a backend call in production.
-    const paystackSecretKey = process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE;
+    const envSecretKey = process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE;
+    // THIS IS THE HARDCODED SECRET KEY FOR TESTING AS PER USER REQUESTS
+    const hardcodedSecretKey = "sk_live_7148c4754ef026a94b9015605a4707dc3c3cf8c3"; 
+
+    let paystackSecretKey = envSecretKey;
 
     if (!paystackSecretKey) {
-      console.error("Paystack secret key for verification is not defined. Set NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE in .env.local");
+      console.warn(
+        "[VERIFICATION - CRITICAL SECURITY WARNING] Paystack secret key for verification from NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE is not defined. " +
+        "Falling back to a HARDCODED LIVE SECRET KEY for testing purposes. " +
+        "This is EXTREMELY INSECURE and MUST BE REMOVED before production. " +
+        "Ensure the environment variable is correctly set."
+      );
+      paystackSecretKey = hardcodedSecretKey;
+    }
+    
+
+    if (!paystackSecretKey) {
+      console.error("Paystack secret key for verification is not defined even after fallback. Set NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE or check hardcoded key in page.tsx.");
       toast({
         title: 'Verification Error',
-        description: 'Payment gateway configuration error for verification. Contact support. [PSKNCV]',
+        description: 'Payment gateway configuration error for verification. Contact support. [PSKNCV_FINAL]',
         variant: 'destructive',
       });
       setIsVerifyingPayment(false);
@@ -272,7 +285,7 @@ export default function CryptoExchangePage() {
               </CardContent>
             </Card>
             <CardBalance />
-            <UserActions setCoinBalance={setCoinBalance} />
+            <UserActions setCoinBalance={setCoinBalance} /> {/* UserActions component now expects setCoinBalance */}
             <MarketSection />
           </>
         );
@@ -299,3 +312,4 @@ export default function CryptoExchangePage() {
     </div>
   );
 }
+
