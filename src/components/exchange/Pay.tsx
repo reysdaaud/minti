@@ -29,17 +29,17 @@ try {
 
 interface CoinPackage {
   id: string;
-  amount: number; // Amount in KES (major unit, e.g., 10 for KES 10)
+  amount: number; // Amount in KES (major unit, e.g., 1 for KES 1)
   coins: number;
   description: string;
   bonusText?: string;
 }
 
-// Adjusted COIN_PACKAGES to match user's new structure: KES 1000, KES 2000, KES 5000
-// The 'amount' is the actual KES value. PaystackButton will multiply by 100.
+// Updated COIN_PACKAGES:
+// KES 1 for Basic Pack, KES 2 for Popular Pack, KES 50 for Premium Pack
 const COIN_PACKAGES: CoinPackage[] = [
-  { id: 'pack1', amount: 10, coins: 100, description: "Basic Pack (KES 10)" },
-  { id: 'pack2', amount: 20, coins: 220, description: "Popular Pack (KES 20)", bonusText: "Includes 10% bonus coins" },
+  { id: 'pack1', amount: 1, coins: 100, description: "Basic Pack (KES 1)" },
+  { id: 'pack2', amount: 2, coins: 220, description: "Popular Pack (KES 2)", bonusText: "Includes 10% bonus coins" },
   { id: 'pack3', amount: 50, coins: 600, description: "Premium Pack (KES 50)", bonusText: "Includes 20% bonus coins" },
 ];
 
@@ -103,14 +103,9 @@ export default function Pay({ userId, userEmail, onCloseDialog }: PayProps) {
   const handlePaymentFlowComplete = (success: boolean) => {
     if (success) {
       // Balance should update via Firestore listener on the main page
-      // Or PaystackButton's onSuccess can update a shared state if direct update needed here
-      fetchUserBalance(); // Re-fetch balance to update UI immediately if no listener
-      toast({
-        title: "Purchase Complete",
-        description: "Your transaction is being processed and your balance will update shortly.",
-        duration: 7000,
-      });
-      // Navigation to dashboard is an option here, or let user stay
+      // or via the payment verification logic in page.tsx.
+      // Re-fetching balance here might show outdated data if verification is not instant.
+      // The toast for successful purchase is now handled in page.tsx after verification.
       // router.push('/'); // Example: navigate to home/dashboard
     }
     onCloseDialog(); // Close the "Buy Coins" dialog in all cases
@@ -227,3 +222,4 @@ export default function Pay({ userId, userEmail, onCloseDialog }: PayProps) {
     </Card>
   );
 }
+
