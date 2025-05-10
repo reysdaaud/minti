@@ -97,14 +97,8 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
   };
 
   const handleTopUpCompleted = (success: boolean) => {
-    // The success parameter indicates if the PaystackButton's internal logic
-    // (like updating Firestore) completed, not necessarily if Paystack payment itself was successful.
-    // The PaystackButton handles its own success/failure toasts related to Paystack API.
-    // This callback is mainly for closing the dialog.
     handleCloseDialog(); 
     if (success) {
-      // The page's useEffect listening to Firestore will update the balance display.
-      // A general success message can be shown here if desired, but PaystackButton likely already did.
        toast({
         title: 'Action Complete',
         description: 'Your top-up process has finished. Your balance will update if the payment was successful.',
@@ -112,8 +106,6 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
         duration: 5000,
       });
     }
-    // No specific toast for !success from here, as PaystackButton or Pay component would handle
-    // payment cancellation or Paystack-specific errors.
   };
 
 
@@ -176,7 +168,10 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
             {action.dialogKey === 'topup' && user && (
               <DialogContent
                 className="sm:max-w-2xl p-0 bg-background border-border shadow-xl data-[state=open]:animate-none data-[state=closed]:animate-none max-h-[90vh] flex flex-col"
-                style={{ zIndex: 51 }} // Ensure dialog content is above overlay (z-50) but allows Paystack modal (typically very high z-index)
+                style={{ zIndex: 51 }} // Ensure dialog content is above overlay (z-50) but allows Paystack modal
+                onOpenAutoFocus={(e) => e.preventDefault()} // Prevent Radix Dialog from stealing focus
+                onCloseAutoFocus={(e) => e.preventDefault()} // Prevent Radix Dialog from stealing focus on close
+                // onInteractOutside={(e) => e.preventDefault()} // This might be too aggressive if Paystack modal doesn't cover.
               >
                 <VisuallyHidden><DialogTitle>Purchase Sondar Coins</DialogTitle></VisuallyHidden>
                 <Pay 
@@ -185,12 +180,11 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
                   onPaymentFlowComplete={handleTopUpCompleted} 
                   onCloseDialog={handleCloseDialog}
                 />
-                <DialogClose 
-                    className="absolute right-4 top-4 rounded-full p-1 flex items-center justify-center text-muted-foreground hover:text-foreground bg-background/50 hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background z-[52]" // Close button z-index slightly higher than content
-                    aria-label="Close top-up dialog"
-                    onClick={handleCloseDialog}
-                >
-                    <X className="h-5 w-5" />
+                <DialogClose asChild>
+                   <Button variant="ghost" size="icon" className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground z-[52]">
+                        <X className="h-4 w-4" />
+                        <span className="sr-only">Close</span>
+                    </Button>
                 </DialogClose>
               </DialogContent>
             )}
