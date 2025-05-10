@@ -13,7 +13,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, updateDoc, arrayUnion, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 
@@ -54,34 +54,126 @@ export default function CryptoExchangePage() {
     } else {
       // authLoading is true, or some other initial state.
       // Reset user-specific states if auth is not ready or user is null
-      setUserDocLoading(false); 
+      setUserDocLoading(true); // Set to true while auth is loading
       setCoinBalance(0);
     }
   }, [user, authLoading, nextRouter, toast]);
 
 
-  // Handle Paystack callback verification
   const handleVerifyPayment = useCallback(async (paymentReference: string) => {
     if (isVerifyingPayment) return;
     setIsVerifyingPayment(true);
-    console.log('Detected payment reference for verification:', paymentReference);
+    console.log('Attempting to verify payment reference client-side:', paymentReference);
 
-    const backendVerifyUrl = `${process.env.NEXT_PUBLIC_PAYMENT_BACKEND_URL || 'http://localhost:5000'}/paystack/verify/${paymentReference}`;
+    // WARNING: Using SECRET KEY on the client side for verification. This is a SEVERE SECURITY RISK.
+    // This should be replaced with a backend call in production.
+    const paystackSecretKey = process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE;
+
+    if (!paystackSecretKey) {
+      console.error("Paystack secret key for verification is not defined. Set NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE in .env.local");
+      toast({
+        title: 'Verification Error',
+        description: 'Payment gateway configuration error for verification. Contact support. [PSKNCV]',
+        variant: 'destructive',
+      });
+      setIsVerifyingPayment(false);
+      // Clean URL params even on config error
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('trxref');
+      newUrl.searchParams.delete('reference');
+      nextRouter.replace(newUrl.pathname + newUrl.search, { scroll: false });
+      return;
+    }
 
     try {
-      const response = await fetch(backendVerifyUrl, {
+      const verifyUrl = `https://api.paystack.co/transaction/verify/${paymentReference}`;
+      const response = await fetch(verifyUrl, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${paystackSecretKey}`,
+          'Content-Type': 'application/json',
+        },
       });
+
       const data = await response.json();
+
       if (response.ok && data.status && data.data && data.data.status === 'success') {
+        console.log('Paystack verification successful:', data.data);
+
+        const transactionData = data.data;
+        const amountPaid = transactionData.amount / 100; // Amount is in kobo/cents
+        
+        const paymentMetadata = transactionData.metadata;
+        const userId = paymentMetadata?.userId; // From top-level metadata during init
+        const coinsToAddStr = paymentMetadata?.coins; // From top-level metadata during init
+        const packageName = paymentMetadata?.packageName; // From top-level metadata during init
+
+        if (!userId || typeof coinsToAddStr === 'undefined') {
+            console.error('Invalid metadata from Paystack verification (userId or coins missing):', paymentMetadata);
+            throw new Error('Crucial payment metadata (userId, coins) missing from verification.');
+        }
+        
+        const coinsToAdd = parseInt(coinsToAddStr, 10);
+        if (isNaN(coinsToAdd) || coinsToAdd <= 0) {
+            console.error('Invalid metadata: coinsToAdd is not a positive number', coinsToAddStr);
+            throw new Error('Crucial payment metadata (coins) invalid from verification.');
+        }
+
+
+        const userRef = doc(db, 'users', userId);
+        const userDocSnap = await getDoc(userRef);
+
+        const newPaymentRecord = {
+          amount: amountPaid,
+          coins: coinsToAdd,
+          timestamp: serverTimestamp(),
+          reference: paymentReference,
+          status: 'success',
+          packageName: packageName || 'N/A',
+          gatewayResponseSummary: { // Store a summary, not the whole object to avoid large docs
+            ip_address: transactionData.ip_address,
+            currency: transactionData.currency,
+            channel: transactionData.channel,
+            card_type: transactionData.authorization?.card_type,
+            bank: transactionData.authorization?.bank,
+            country_code: transactionData.authorization?.country_code,
+          }
+        };
+
+        if (!userDocSnap.exists()) {
+          await setDoc(userRef, {
+            email: transactionData.customer.email, 
+            name: user?.displayName || 'New User', // From auth if available
+            photoURL: user?.photoURL || null,
+            coins: coinsToAdd,
+            paymentHistory: arrayUnion(newPaymentRecord),
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            lastLogin: serverTimestamp(),
+            subscription: false, // Default value
+          });
+          console.log('New user document created with payment history for UID:', userId);
+        } else {
+          const currentCoins = userDocSnap.data()?.coins || 0;
+          const newBalance = currentCoins + coinsToAdd;
+          await updateDoc(userRef, {
+            coins: newBalance,
+            paymentHistory: arrayUnion(newPaymentRecord),
+            updatedAt: serverTimestamp(),
+            lastLogin: serverTimestamp(), // Update last login on successful activity
+          });
+          console.log('User balance updated for UID:', userId, '. New balance:', newBalance);
+        }
+
         toast({
           title: 'Payment Successful!',
-          description: `Your purchase was successful. Your balance will update shortly.`,
+          description: `${coinsToAdd.toLocaleString()} coins added to your account.`,
           variant: 'default',
           duration: 7000,
         });
+
       } else {
+        console.error('Paystack verification failed:', data);
         toast({
           title: 'Payment Verification Failed',
           description: data.message || 'There was an issue verifying your payment. Please contact support if debited.',
@@ -90,10 +182,10 @@ export default function CryptoExchangePage() {
         });
       }
     } catch (error: any) {
-      console.error('Error verifying payment:', error);
+      console.error('Error verifying payment client-side:', error);
       toast({
         title: 'Payment Verification Error',
-        description: error.message || 'An unexpected error occurred while verifying your payment. Ensure the backend server is running.',
+        description: error.message || 'An unexpected error occurred while verifying your payment.',
         variant: 'destructive',
       });
     } finally {
@@ -104,16 +196,21 @@ export default function CryptoExchangePage() {
       nextRouter.replace(newUrl.pathname + newUrl.search, { scroll: false });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toast, nextRouter]); 
+  }, [isVerifyingPayment, toast, nextRouter]); // Removed user from deps as it's obtained from metadata.
+
 
   useEffect(() => {
     const paymentReference = searchParams.get('trxref') || searchParams.get('reference');
+    // User check is important: only verify if a user session is active.
+    // AuthLoading check ensures we don't try to verify before auth state is known.
     if (paymentReference && user && !authLoading && !isVerifyingPayment) {
       const verificationKey = `verified_${paymentReference}`;
+      // Check sessionStorage to prevent re-verification on page refresh if already handled
       if (sessionStorage.getItem(verificationKey) !== 'true') {
-        sessionStorage.setItem(verificationKey, 'true');
+        sessionStorage.setItem(verificationKey, 'true'); // Mark as handled for this session
         handleVerifyPayment(paymentReference);
       } else {
+        // If already verified in this session, just clean the URL
         const newUrl = new URL(window.location.href);
         if (newUrl.searchParams.get('trxref') || newUrl.searchParams.get('reference')) {
             newUrl.searchParams.delete('trxref');
@@ -126,7 +223,6 @@ export default function CryptoExchangePage() {
 
 
   if (authLoading) {
-    // Primary auth check still in progress
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -135,10 +231,9 @@ export default function CryptoExchangePage() {
     );
   }
 
-  // At this point, authLoading is false.
-  // If !user, the useEffect for redirection should have initiated a redirect.
-  // Show a loader while that redirect is in progress or if user is null.
   if (!user) {
+    // This state should be brief as the redirection useEffect (or SignInPage's logic) handles it.
+    // Showing a loader here avoids flashing the main page content if redirection is in progress.
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
