@@ -61,24 +61,24 @@ export default function CryptoExchangePage() {
 
 
   const handleVerifyPayment = useCallback(async (paymentReference: string) => {
-    if (isVerifyingPayment) return;
+    if (isVerifyingPayment) return; // Prevent multiple simultaneous verifications
     setIsVerifyingPayment(true);
     console.log('Attempting to verify payment reference client-side:', paymentReference);
 
     const envSecretKey = process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE;
-    // THIS IS THE HARDCODED SECRET KEY FOR TESTING AS PER USER REQUESTS
     const hardcodedSecretKey = "sk_live_7148c4754ef026a94b9015605a4707dc3c3cf8c3"; 
 
-    let paystackSecretKey = envSecretKey;
+    let paystackSecretKey = envSecretKey || hardcodedSecretKey;
 
-    if (!paystackSecretKey) {
-      console.warn(
-        "[VERIFICATION - CRITICAL SECURITY WARNING] Paystack secret key for verification from NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE is not defined. " +
-        "Falling back to a HARDCODED LIVE SECRET KEY for testing purposes. " +
-        "This is EXTREMELY INSECURE and MUST BE REMOVED before production. " +
-        "Ensure the environment variable is correctly set."
-      );
-      paystackSecretKey = hardcodedSecretKey;
+    if (paystackSecretKey === hardcodedSecretKey && envSecretKey) {
+         console.warn("[VERIFICATION - INFO] Using Paystack secret key from NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE.");
+    } else if (paystackSecretKey === hardcodedSecretKey) {
+        console.warn(
+          "[VERIFICATION - CRITICAL SECURITY WARNING] Paystack secret key for verification from NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE is not defined. " +
+          "Falling back to a HARDCODED LIVE SECRET KEY for testing purposes. " +
+          "This is EXTREMELY INSECURE and MUST BE REMOVED before production. " +
+          "Ensure the environment variable is correctly set."
+        );
     }
     
 
@@ -90,7 +90,6 @@ export default function CryptoExchangePage() {
         variant: 'destructive',
       });
       setIsVerifyingPayment(false);
-      // Clean URL params even on config error
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete('trxref');
       newUrl.searchParams.delete('reference');
@@ -114,12 +113,12 @@ export default function CryptoExchangePage() {
         console.log('Paystack verification successful:', data.data);
 
         const transactionData = data.data;
-        const amountPaid = transactionData.amount / 100; // Amount is in kobo/cents
+        const amountPaid = transactionData.amount / 100; 
         
         const paymentMetadata = transactionData.metadata;
-        const userId = paymentMetadata?.userId; // From top-level metadata during init
-        const coinsToAddStr = paymentMetadata?.coins; // From top-level metadata during init
-        const packageName = paymentMetadata?.packageName; // From top-level metadata during init
+        const userId = paymentMetadata?.userId; 
+        const coinsToAddStr = paymentMetadata?.coins; 
+        const packageName = paymentMetadata?.packageName; 
 
         if (!userId || typeof coinsToAddStr === 'undefined') {
             console.error('Invalid metadata from Paystack verification (userId or coins missing):', paymentMetadata);
@@ -143,7 +142,7 @@ export default function CryptoExchangePage() {
           reference: paymentReference,
           status: 'success',
           packageName: packageName || 'N/A',
-          gatewayResponseSummary: { // Store a summary, not the whole object to avoid large docs
+          gatewayResponseSummary: { 
             ip_address: transactionData.ip_address,
             currency: transactionData.currency,
             channel: transactionData.channel,
@@ -156,14 +155,14 @@ export default function CryptoExchangePage() {
         if (!userDocSnap.exists()) {
           await setDoc(userRef, {
             email: transactionData.customer.email, 
-            name: user?.displayName || 'New User', // From auth if available
+            name: user?.displayName || 'New User', 
             photoURL: user?.photoURL || null,
             coins: coinsToAdd,
             paymentHistory: arrayUnion(newPaymentRecord),
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             lastLogin: serverTimestamp(),
-            subscription: false, // Default value
+            subscription: false, 
           });
           console.log('New user document created with payment history for UID:', userId);
         } else {
@@ -173,7 +172,7 @@ export default function CryptoExchangePage() {
             coins: newBalance,
             paymentHistory: arrayUnion(newPaymentRecord),
             updatedAt: serverTimestamp(),
-            lastLogin: serverTimestamp(), // Update last login on successful activity
+            lastLogin: serverTimestamp(), 
           });
           console.log('User balance updated for UID:', userId, '. New balance:', newBalance);
         }
@@ -208,22 +207,17 @@ export default function CryptoExchangePage() {
       newUrl.searchParams.delete('reference');
       nextRouter.replace(newUrl.pathname + newUrl.search, { scroll: false });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isVerifyingPayment, toast, nextRouter]); // Removed user from deps as it's obtained from metadata.
+  }, [toast, nextRouter, user]);
 
 
   useEffect(() => {
     const paymentReference = searchParams.get('trxref') || searchParams.get('reference');
-    // User check is important: only verify if a user session is active.
-    // AuthLoading check ensures we don't try to verify before auth state is known.
     if (paymentReference && user && !authLoading && !isVerifyingPayment) {
       const verificationKey = `verified_${paymentReference}`;
-      // Check sessionStorage to prevent re-verification on page refresh if already handled
       if (sessionStorage.getItem(verificationKey) !== 'true') {
-        sessionStorage.setItem(verificationKey, 'true'); // Mark as handled for this session
+        sessionStorage.setItem(verificationKey, 'true'); 
         handleVerifyPayment(paymentReference);
       } else {
-        // If already verified in this session, just clean the URL
         const newUrl = new URL(window.location.href);
         if (newUrl.searchParams.get('trxref') || newUrl.searchParams.get('reference')) {
             newUrl.searchParams.delete('trxref');
@@ -245,8 +239,6 @@ export default function CryptoExchangePage() {
   }
 
   if (!user) {
-    // This state should be brief as the redirection useEffect (or SignInPage's logic) handles it.
-    // Showing a loader here avoids flashing the main page content if redirection is in progress.
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -255,7 +247,6 @@ export default function CryptoExchangePage() {
     );
   }
 
-  // User is authenticated (user is not null). Now check if user-specific document data is loading.
   if (userDocLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -265,17 +256,16 @@ export default function CryptoExchangePage() {
     );
   }
 
-  // All checks passed, user authenticated and their specific data (like balance) is loaded or attempted.
   const renderContent = () => {
     switch (activeTab) {
       case 'Home':
         return (
           <>
             <Card className="mb-4 bg-card border-border shadow-lg">
-              <CardHeader>
+              <CardHeader className="px-4 py-3">
                 <CardTitle className="text-lg text-primary">Your Sondar Wallet</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-4 py-2">
                 <p className="text-2xl font-semibold text-foreground">
                   Coin Balance: {coinBalance.toLocaleString()} Coins
                 </p>
@@ -285,7 +275,7 @@ export default function CryptoExchangePage() {
               </CardContent>
             </Card>
             <CardBalance />
-            <UserActions setCoinBalance={setCoinBalance} /> {/* UserActions component now expects setCoinBalance */}
+            <UserActions setCoinBalance={setCoinBalance} />
             <MarketSection />
           </>
         );
@@ -312,4 +302,3 @@ export default function CryptoExchangePage() {
     </div>
   );
 }
-
