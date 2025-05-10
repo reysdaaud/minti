@@ -97,14 +97,18 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
   };
 
   const handleTopUpCompleted = (success: boolean) => {
+    // The Pay.tsx component's PaystackButton onSuccess/onClose now handles toasts.
+    // This callback primarily ensures the dialog closes.
     handleCloseDialog(); 
     if (success) {
-       toast({
+       // Optionally, you can still add a generic "process finished" toast here if needed,
+       // but specific success/failure/cancellation toasts are better handled closer to the Paystack interaction.
+      /* toast({
         title: 'Action Complete',
         description: 'Your top-up process has finished. Your balance will update if the payment was successful.',
         variant: 'default', 
         duration: 5000,
-      });
+      }); */
     }
   };
 
@@ -168,20 +172,47 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
             {action.dialogKey === 'topup' && user && (
               <DialogContent
                 className="sm:max-w-2xl p-0 bg-background border-border shadow-xl data-[state=open]:animate-none data-[state=closed]:animate-none max-h-[90vh] flex flex-col"
-                style={{ zIndex: 51 }} // Ensure dialog content is above overlay (z-50) but allows Paystack modal
-                onOpenAutoFocus={(e) => e.preventDefault()} // Prevent Radix Dialog from stealing focus
-                onCloseAutoFocus={(e) => e.preventDefault()} // Prevent Radix Dialog from stealing focus on close
-                // onInteractOutside={(e) => e.preventDefault()} // This might be too aggressive if Paystack modal doesn't cover.
+                style={{ zIndex: 51 }} 
+                onOpenAutoFocus={(e) => e.preventDefault()} 
+                onCloseAutoFocus={(e) => e.preventDefault()}
+                onInteractOutside={(e) => {
+                  // Check if the event target is inside the Paystack iframe or its known containers
+                  let currentTarget = e.target as HTMLElement | null;
+                  let isPaystackInteraction = false;
+                  while (currentTarget) {
+                    if (
+                      currentTarget.id === 'paystack-checkout-iframe' || // Standard ID for Paystack iframe
+                      currentTarget.classList?.contains('paystack-dialog') || // Common class for Paystack modal container
+                      currentTarget.closest('iframe[src*="paystack.com"]') // General check for an iframe hosted by Paystack
+                    ) {
+                      isPaystackInteraction = true;
+                      break;
+                    }
+                    // Check if clicking on scrollbars of the page, not the dialog
+                    if (currentTarget === document.documentElement || currentTarget === document.body) {
+                        const isScrollbarClick = e.clientX >= document.documentElement.clientWidth || e.clientY >= document.documentElement.clientHeight;
+                        if (isScrollbarClick) {
+                            isPaystackInteraction = true; // Treat scrollbar clicks as external to prevent dialog close
+                            break;
+                        }
+                    }
+                    currentTarget = currentTarget.parentElement;
+                  }
+
+                  if (isPaystackInteraction) {
+                    e.preventDefault(); // Prevent Radix Dialog from closing due to interaction with Paystack modal
+                  }
+                }}
               >
                 <VisuallyHidden><DialogTitle>Purchase Sondar Coins</DialogTitle></VisuallyHidden>
                 <Pay 
                   userId={user.uid} 
                   userEmail={user.email} 
                   onPaymentFlowComplete={handleTopUpCompleted} 
-                  onCloseDialog={handleCloseDialog}
+                  onCloseDialog={handleCloseDialog} // Pass the close handler
                 />
-                <DialogClose asChild>
-                   <Button variant="ghost" size="icon" className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground z-[52]">
+                 <DialogClose asChild>
+                    <Button variant="ghost" size="icon" className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground z-[52]">
                         <X className="h-4 w-4" />
                         <span className="sr-only">Close</span>
                     </Button>
@@ -194,6 +225,12 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
                  <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle>{action.label}</DialogTitle>
+                         <DialogClose asChild>
+                            <Button variant="ghost" size="icon" className="absolute right-2 top-2 text-muted-foreground hover:text-foreground">
+                                <X className="h-5 w-5" />
+                                <span className="sr-only">Close</span>
+                            </Button>
+                        </DialogClose>
                     </DialogHeader>
                     <div className="py-4">
                         <p className="text-muted-foreground">This feature ({action.label}) is coming soon!</p>
