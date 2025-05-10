@@ -3,45 +3,41 @@
 
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '@/lib/firebase'; 
-import { doc, getDoc, updateDoc, setDoc, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface PaystackButtonProps {
-  amount: number; // Amount in major unit (e.g., KES)
+  amount: number; 
   email: string;
   userId: string;
   metadata: {
     coins: number;
     packageName: string;
   };
-  onPaymentFlowComplete: (success: boolean) => void; 
 }
 
-const PaystackButton = ({ amount, email, userId, metadata, onPaymentFlowComplete }: PaystackButtonProps) => {
+const PaystackButton = ({ amount, email, userId, metadata }: PaystackButtonProps) => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const user = auth.currentUser; 
 
-  // WARNING: Using SECRET KEY on the client side. This is a SEVERE SECURITY RISK.
-  // This should be replaced with a backend call in production.
   const envSecretKey = process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE;
-  // User's live secret key (e.g., sk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx)
   const hardcodedSecretKey = "sk_live_7148c4754ef026a94b9015605a4707dc3c3cf8c3"; 
 
-  let paystackSecretKey = envSecretKey;
+  let paystackSecretKey = envSecretKey || hardcodedSecretKey;
 
-  if (!paystackSecretKey) {
-    console.warn(
-      "[CRITICAL SECURITY WARNING] Paystack secret key from NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE is not defined. " +
-      "Falling back to a HARDCODED LIVE SECRET KEY for testing purposes. " +
-      "This is EXTREMELY INSECURE and MUST BE REMOVED before production. " +
-      "Ensure the environment variable is correctly set or implement a backend proxy."
-    );
-    paystackSecretKey = hardcodedSecretKey;
-  }
+   if (paystackSecretKey === hardcodedSecretKey && envSecretKey) {
+         console.warn("[Paystack Setup - INFO] Using Paystack secret key from NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE.");
+    } else if (paystackSecretKey === hardcodedSecretKey) {
+        console.warn(
+          "[Paystack Setup - CRITICAL SECURITY WARNING] Paystack secret key for verification from NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE is not defined. " +
+          "Falling back to a HARDCODED LIVE SECRET KEY for testing purposes. " +
+          "This is EXTREMELY INSECURE and MUST BE REMOVED before production. " +
+          "Ensure the environment variable is correctly set."
+        );
+    }
 
 
   const handlePayment = async () => {
@@ -52,27 +48,23 @@ const PaystackButton = ({ amount, email, userId, metadata, onPaymentFlowComplete
       setError('Please ensure your email is verified before making a purchase.');
       toast({ title: "Email Required", description: "Please ensure your email is verified.", variant: "destructive" });
       setIsLoading(false);
-      onPaymentFlowComplete(false);
       return;
     }
     if (!email) {
       setError('A valid email address is required for payment.');
       toast({ title: "Email Required", description: "A valid email address is required.", variant: "destructive" });
       setIsLoading(false);
-      onPaymentFlowComplete(false);
       return;
     }
     if (!paystackSecretKey) {
-      // This condition should ideally not be met if the fallback logic above works.
-      console.error("Paystack secret key is not defined even after fallback. This should not happen. Set NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE or check hardcoded key.");
-      setError('Payment gateway is not configured correctly. Please contact support.');
-      toast({ title: "Configuration Error", description: "Payment gateway critical error. Contact support. [PSKNC_FINAL]", variant: "destructive" });
+      console.error("Paystack secret key is not defined. Set NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE or check hardcoded key.");
+      setError('Payment gateway is not configured correctly. Please contact support. [PSKNC]');
+      toast({ title: "Configuration Error", description: "Payment gateway critical error. Contact support. [PSKNC]", variant: "destructive" });
       setIsLoading(false);
-      onPaymentFlowComplete(false);
       return;
     }
     
-    const callbackUrl = `${window.location.origin}${window.location.pathname}`;
+    const callbackUrl = `${window.location.origin}${window.location.pathname}`; // Or your specific dashboard/confirmation page
 
     const payload = {
       email: email,
@@ -92,7 +84,6 @@ const PaystackButton = ({ amount, email, userId, metadata, onPaymentFlowComplete
     };
 
     try {
-      // The direct client-side call to Paystack API using secret key (INSECURE FOR PRODUCTION)
       const response = await fetch('https://api.paystack.co/transaction/initialize', {
         method: 'POST',
         headers: {
@@ -111,12 +102,14 @@ const PaystackButton = ({ amount, email, userId, metadata, onPaymentFlowComplete
 
       const authorizationUrl = responseData.data.authorization_url;
       if (authorizationUrl) {
+        // Open Paystack checkout in a new tab
         window.open(authorizationUrl, '_blank');
         toast({
           title: 'Redirecting to Paystack',
           description: 'Please complete your payment in the new tab.',
         });
-        onPaymentFlowComplete(true); 
+        // Note: onSuccess/onClose from usePaystackPayment are not used here.
+        // Payment verification will happen when the user returns to the app (e.g., via URL params).
       } else {
         throw new Error('Authorization URL not found in Paystack response.');
       }
@@ -129,7 +122,6 @@ const PaystackButton = ({ amount, email, userId, metadata, onPaymentFlowComplete
         description: err.message || 'Could not initiate payment.',
         variant: 'destructive',
       });
-      onPaymentFlowComplete(false); 
     } finally {
       setIsLoading(false);
     }
@@ -145,16 +137,16 @@ const PaystackButton = ({ amount, email, userId, metadata, onPaymentFlowComplete
       <Button
         onClick={handlePayment}
         disabled={isLoading || !user?.email || !paystackSecretKey}
-        className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg text-lg font-semibold shadow-md hover:shadow-lg transition-shadow w-full disabled:opacity-50 disabled:cursor-not-allowed"
+        className="send-money-button w-full text-sm py-2.5" // Apply send-money-button style
       >
-        {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
+        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} 
         {isLoading ? 'Initiating...' : `Pay KES ${amount.toLocaleString()}`}
       </Button>
       {!user?.email && (
         <p className="text-xs text-destructive mt-2">Please ensure your email is verified to make a purchase.</p>
       )}
-      {!paystackSecretKey && ( // This should not display if fallback logic is active
-        <p className="text-xs text-destructive mt-2">Payment system is currently unavailable. [PSK NC_FALLBACK_FAILED]</p>
+      {!paystackSecretKey && ( 
+        <p className="text-xs text-destructive mt-2">Payment system is currently unavailable. [PSKNC_BTN]</p>
       )}
       <p className="text-xs text-muted-foreground mt-3">
         You will be redirected to Paystack in a new tab to complete your payment securely.
@@ -164,4 +156,3 @@ const PaystackButton = ({ amount, email, userId, metadata, onPaymentFlowComplete
 };
 
 export default PaystackButton;
-

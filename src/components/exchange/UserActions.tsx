@@ -96,23 +96,6 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
     handleCloseDialog();
   };
 
-  const handleTopUpCompleted = (success: boolean) => {
-    // The Pay.tsx component's PaystackButton onSuccess/onClose now handles toasts.
-    // This callback primarily ensures the dialog closes.
-    handleCloseDialog(); 
-    if (success) {
-       // Optionally, you can still add a generic "process finished" toast here if needed,
-       // but specific success/failure/cancellation toasts are better handled closer to the Paystack interaction.
-      /* toast({
-        title: 'Action Complete',
-        description: 'Your top-up process has finished. Your balance will update if the payment was successful.',
-        variant: 'default', 
-        duration: 5000,
-      }); */
-    }
-  };
-
-
   return (
     <section className="py-6">
       <div className="flex flex-row justify-around items-center space-x-2 sm:space-x-3 p-3 bg-card border border-border rounded-lg shadow-md">
@@ -140,7 +123,7 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
             {action.dialogKey === 'transfer' && (
               <DialogContent className="w-full max-w-xs p-0 rounded-[20px] send-money-dialog-content overflow-hidden">
                  <DialogHeader className="p-6 pb-4 flex flex-row justify-between items-center">
-                    <DialogTitle className="text-2xl font-bold text-center text-white flex-grow">Send Money</DialogTitle>
+                    <DialogTitle className="text-xl font-bold text-center text-white flex-grow">Send Money</DialogTitle>
                     <DialogClose asChild>
                         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white/80">
                             <X className="h-5 w-5" />
@@ -152,7 +135,7 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
                   <form className="flex flex-col gap-4">
                     <div className="flex flex-col gap-1.5">
                       <Label htmlFor="recipient" className="text-sm text-white">Recipient</Label>
-                      <Input id="recipient" name="recipient" value={formData.recipient} onChange={handleInputChange} type="text" placeholder="Enter recipient name or email" className="glass-input" />
+                      <Input id="recipient" name="recipient" value={formData.recipient} onChange={handleInputChange} type="text" placeholder="Enter recipient or email" className="glass-input" />
                     </div>
                     <div className="flex flex-col gap-1.5">
                       <Label htmlFor="amount" className="text-sm text-white">Amount</Label>
@@ -162,7 +145,7 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
                       <Label htmlFor="note" className="text-sm text-white">Note</Label>
                       <Textarea id="note" name="note" value={formData.note ?? ''} onChange={handleInputChange} placeholder="Add a note (optional)" className="glass-input" />
                     </div>
-                    <Button type="button" onClick={handleSendMoney} className="send-money-button mt-2">Send</Button>
+                    <Button type="button" onClick={handleSendMoney} className="send-money-button mt-2 text-sm py-2.5">Send</Button>
                   </form>
                 </div>
               </DialogContent>
@@ -171,28 +154,26 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
             
             {action.dialogKey === 'topup' && user && (
               <DialogContent
-                className="sm:max-w-2xl p-0 bg-background border-border shadow-xl data-[state=open]:animate-none data-[state=closed]:animate-none max-h-[90vh] flex flex-col"
+                className="w-full max-w-sm p-0 rounded-[20px] send-money-dialog-content overflow-hidden flex flex-col"
                 style={{ zIndex: 51 }} 
                 onOpenAutoFocus={(e) => e.preventDefault()} 
                 onCloseAutoFocus={(e) => e.preventDefault()}
                 onInteractOutside={(e) => {
-                  // Check if the event target is inside the Paystack iframe or its known containers
                   let currentTarget = e.target as HTMLElement | null;
                   let isPaystackInteraction = false;
                   while (currentTarget) {
                     if (
-                      currentTarget.id === 'paystack-checkout-iframe' || // Standard ID for Paystack iframe
-                      currentTarget.classList?.contains('paystack-dialog') || // Common class for Paystack modal container
-                      currentTarget.closest('iframe[src*="paystack.com"]') // General check for an iframe hosted by Paystack
+                      currentTarget.id === 'paystack-checkout-iframe' || 
+                      currentTarget.classList?.contains('paystack-dialog') ||
+                      currentTarget.closest('iframe[src*="paystack.com"]') 
                     ) {
                       isPaystackInteraction = true;
                       break;
                     }
-                    // Check if clicking on scrollbars of the page, not the dialog
                     if (currentTarget === document.documentElement || currentTarget === document.body) {
                         const isScrollbarClick = e.clientX >= document.documentElement.clientWidth || e.clientY >= document.documentElement.clientHeight;
                         if (isScrollbarClick) {
-                            isPaystackInteraction = true; // Treat scrollbar clicks as external to prevent dialog close
+                            isPaystackInteraction = true; 
                             break;
                         }
                     }
@@ -200,23 +181,26 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
                   }
 
                   if (isPaystackInteraction) {
-                    e.preventDefault(); // Prevent Radix Dialog from closing due to interaction with Paystack modal
+                    e.preventDefault(); 
                   }
                 }}
               >
-                <VisuallyHidden><DialogTitle>Purchase Sondar Coins</DialogTitle></VisuallyHidden>
-                <Pay 
-                  userId={user.uid} 
-                  userEmail={user.email} 
-                  onPaymentFlowComplete={handleTopUpCompleted} 
-                  onCloseDialog={handleCloseDialog} // Pass the close handler
-                />
-                 <DialogClose asChild>
-                    <Button variant="ghost" size="icon" className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground z-[52]">
-                        <X className="h-4 w-4" />
-                        <span className="sr-only">Close</span>
-                    </Button>
-                </DialogClose>
+                <DialogHeader className="p-6 pb-4 flex flex-row justify-between items-center">
+                    <DialogTitle className="text-xl font-bold text-white flex-grow text-center">Buy Sondar Coins</DialogTitle>
+                    <DialogClose asChild>
+                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white/80">
+                            <X className="h-5 w-5" />
+                            <span className="sr-only">Close</span>
+                        </Button>
+                    </DialogClose>
+                </DialogHeader>
+                <div className="p-6 pt-0 overflow-y-auto max-h-[calc(80vh-100px)]"> {/* Adjusted max-height and padding */}
+                  <Pay 
+                    userId={user.uid} 
+                    userEmail={user.email} 
+                    onCloseDialog={handleCloseDialog}
+                  />
+                </div>
               </DialogContent>
             )}
             
@@ -245,3 +229,4 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
 };
 
 export default UserActions;
+
