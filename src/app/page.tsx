@@ -76,7 +76,7 @@ export default function CryptoExchangePage() {
         toast({
           title: 'Payment Successful!',
           description: `Your purchase was successful. Your balance will update shortly.`,
-          variant: 'default', // Changed from 'success' to 'default' if 'success' variant doesn't exist
+          variant: 'default', 
           duration: 7000,
         });
         // Balance updates via Firestore listener, no need to setCoinBalance here directly
@@ -131,6 +131,15 @@ export default function CryptoExchangePage() {
     }
   }, [searchParams, user, authLoading, isVerifyingPayment, handleVerifyPayment, nextRouter]);
 
+  // Redirect to sign-in if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      if (typeof window !== "undefined") { // Ensure this runs only on client
+        nextRouter.push('/auth/signin');
+      }
+    }
+  }, [user, authLoading, nextRouter]);
+
 
   if (authLoading || userDocLoading) { 
     return (
@@ -140,11 +149,14 @@ export default function CryptoExchangePage() {
     );
   }
   
+  // If user is null and auth is not loading, useEffect above will handle redirection.
+  // Return null or a loader here to prevent rendering the page content before redirection.
   if (!user && !authLoading) { 
-     if (typeof window !== "undefined") {
-      nextRouter.push('/auth/signin');
-     }
-     return null; 
+     return (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      );
   }
 
 
