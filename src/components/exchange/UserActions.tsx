@@ -178,13 +178,12 @@ const UserActions: FC<UserActionsProps> = ({ setCoinBalance }) => {
             {action.dialogKey === 'topup' && user && (
               <DialogContent
                 className="sm:max-w-2xl p-0 bg-background border-border shadow-xl data-[state=open]:animate-none data-[state=closed]:animate-none max-h-[90vh] flex flex-col"
-                onOpenAutoFocus={(e) => e.preventDefault()} // Prevent default focus behavior
               >
                 <VisuallyHidden><DialogTitle>Purchase Sondar Coins</DialogTitle></VisuallyHidden>
                 <Pay 
                   userId={user.uid} 
                   userEmail={user.email} 
-                  onPaymentFlowComplete={handleTopUpCompleted} // Ensure this prop name matches Pay.tsx
+                  onPaymentFlowComplete={handleTopUpCompleted} 
                   onCloseDialog={handleCloseDialog}
                 />
                 <DialogClose 
