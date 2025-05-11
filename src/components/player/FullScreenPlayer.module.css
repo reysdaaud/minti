@@ -48,7 +48,7 @@
   position: absolute;
   /* 'left' is set dynamically by style prop in component, adjust to center thumb */
   top: 50%;
-  transform: translateY(-50%); /* Corrected from translate(-50%, -50%) if only Y needed */
+  transform: translateY(-50%); 
   box-shadow: 0 0 3px rgba(0,0,0,0.5);
   z-index: 10;
 }
@@ -105,6 +105,33 @@
   background-color: #f0f0f0; /* Slightly off-white on hover */
 }
 
+/* New style for SkipBack and SkipForward buttons */
+.controlButtonSkipStyled {
+  background-color: #ffffff; /* White background */
+  color: #000000;           /* Black icon color */
+  width: 40px;              /* Smaller than play/pause */
+  height: 40px;
+  border-radius: 50%;
+  font-size: 1.2em;         /* Icon size relative to this font-size */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2); /* Optional: consistent shadow */
+}
+
+.controlButtonSkipStyled svg {
+  width: 1em; /* SVG size relative to button's font-size (1.2em) */
+  height: 1em;
+  fill: #000000; /* Ensure icon is black */
+}
+
+.controlButtonSkipStyled:hover {
+  background-color: #f0f0f0; /* Slightly off-white on hover */
+}
+
+
 .controlButtonActive,
 .controlButtonRepeatActive {
   color: #1DB954; /* Spotify green for active state */
@@ -129,9 +156,6 @@
 
 .controlButtonShuffle {
   font-size: 1.1em; /* Slightly smaller shuffle icon */
-}
-.controlButtonSkip {
-  font-size: 1.2em; /* Icon size for skip buttons */
 }
 .controlButtonRepeat {
   font-size: 1.1em; /* Slightly smaller repeat icon */
