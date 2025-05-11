@@ -156,39 +156,39 @@ const FullScreenPlayer: FC = () => {
       {/* Player Controls */}
       <div className="flex items-center justify-around my-4 px-2 flex-shrink-0">
         <Button variant="ghost" size="icon" className="text-white hover:text-neutral-300">
-          <Shuffle className="w-6 h-6" />
+          <Shuffle className="w-6 h-6 md:w-7 md:h-7" />
         </Button>
         <Button variant="ghost" size="icon" className="text-white hover:text-neutral-300">
-          <SkipBack className="w-8 h-8 fill-white" />
+          <SkipBack className="w-8 h-8 md:w-10 md:h-10 fill-white" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
           onClick={togglePlayPause}
-          className="bg-white text-black rounded-full w-16 h-16 hover:bg-neutral-200 transform hover:scale-105 flex items-center justify-center"
+          className="bg-white text-black rounded-full w-20 h-20 md:w-24 md:h-24 hover:bg-neutral-200 transform hover:scale-105 flex items-center justify-center"
           aria-label={isPlaying ? 'Pause' : 'Play'}
         >
-          {isPlaying ? <Pause className="w-8 h-8 fill-black" /> : <Play className="w-8 h-8 fill-black ml-1" />}
+          {isPlaying ? <Pause className="w-10 h-10 md:w-12 md:h-12 fill-black" /> : <Play className="w-10 h-10 md:w-12 md:h-12 fill-black ml-1" />}
         </Button>
         <Button variant="ghost" size="icon" className="text-white hover:text-neutral-300">
-          <SkipForward className="w-8 h-8 fill-white" />
+          <SkipForward className="w-8 h-8 md:w-10 md:h-10 fill-white" />
         </Button>
         <Button variant="ghost" size="icon" className="text-white hover:text-neutral-300">
-          <Repeat className="w-6 h-6" />
+          <Repeat className="w-6 h-6 md:w-7 md:h-7" />
         </Button>
       </div>
 
       {/* Bottom Controls */}
       <div className="flex items-center justify-between text-neutral-300 px-4 mt-auto mb-2 flex-shrink-0">
         <Button variant="ghost" size="icon" className="hover:text-white">
-          <LaptopMinimal className="w-5 h-5" />
+          <LaptopMinimal className="w-5 h-5 md:w-6 md:h-6" />
         </Button>
         <div className="flex items-center space-x-6">
           <Button variant="ghost" size="icon" className="hover:text-white">
-            <Share2 className="w-5 h-5" />
+            <Share2 className="w-5 h-5 md:w-6 md:h-6" />
           </Button>
           <Button variant="ghost" size="icon" className="hover:text-white">
-            <ListMusic className="w-5 h-5" />
+            <ListMusic className="w-5 h-5 md:w-6 md:h-6" />
           </Button>
         </div>
       </div>
