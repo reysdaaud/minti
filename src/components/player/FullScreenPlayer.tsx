@@ -2,7 +2,7 @@
 'use client';
 
 import type { FC } from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import {
   ChevronDown,
@@ -19,15 +19,21 @@ import {
   Share2,
   ListMusic,
 } from 'lucide-react';
-import { Slider } from '@/components/ui/slider';
+// Removed Slider import as we are using custom progress bar
 import { Button } from '@/components/ui/button';
 import { usePlayer } from '@/contexts/PlayerContext';
+import styles from './FullScreenPlayer.module.css'; // Import the CSS module
 
 const FullScreenPlayer: FC = () => {
   const { currentTrack, isPlaying, togglePlayPause, setIsPlayerOpen, audioElementRef } = usePlayer();
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [isLiked, setIsLiked] = useState(false); // Mock state for like button
+  const [isLiked, setIsLiked] = useState(false);
+  const [isShuffleActive, setIsShuffleActive] = useState(false);
+  const [repeatMode, setRepeatMode] = useState<'off' | 'one' | 'all'>('off'); // 'off', 'one', 'all'
+  
+  const progressBarContainerRef = useRef<HTMLDivElement>(null);
+
 
   useEffect(() => {
     const audio = audioElementRef.current;
@@ -44,15 +50,12 @@ const FullScreenPlayer: FC = () => {
       audio.addEventListener('timeupdate', updateTimes);
       audio.addEventListener('loadedmetadata', handleLoadedMetadata);
       
-      // Initial update if metadata is already loaded
       if (audio.readyState >= audio.HAVE_METADATA) {
         handleLoadedMetadata();
       }
-       // Initial update for current time if data is available
       if (audio.readyState >= audio.HAVE_CURRENT_DATA) {
         updateTimes();
       }
-
 
       return () => {
         audio.removeEventListener('timeupdate', updateTimes);
@@ -75,20 +78,29 @@ const FullScreenPlayer: FC = () => {
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
   };
 
-  const handleProgressChange = (value: number[]) => {
-    if (audioElementRef.current && duration > 0) {
-      const newTime = value[0];
+  const handleProgressChange = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (audioElementRef.current && progressBarContainerRef.current && duration > 0) {
+      const progressBar = progressBarContainerRef.current;
+      const clickPositionInPixels = event.clientX - progressBar.getBoundingClientRect().left;
+      const clickPositionInPercentage = clickPositionInPixels / progressBar.offsetWidth;
+      const newTime = duration * clickPositionInPercentage;
       audioElementRef.current.currentTime = newTime;
       setCurrentTime(newTime);
     }
   };
-
-  const handleLike = () => {
-    setIsLiked(!isLiked);
-    // In a real app, you'd also update this in your backend/state management
-    // For example, add/remove from a user's liked songs list in Firestore
+  
+  const handleLike = () => setIsLiked(!isLiked);
+  const handleShuffle = () => setIsShuffleActive(!isShuffleActive);
+  const handleRepeat = () => {
+    setRepeatMode(prev => {
+      if (prev === 'off') return 'all';
+      if (prev === 'all') return 'one';
+      return 'off';
+    });
   };
 
+  // Calculate progress for custom bar
+  const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <div className="fixed inset-0 bg-gradient-to-b from-neutral-700 via-neutral-800 to-neutral-900 text-white flex flex-col z-[100] p-4 pt-8 md:p-6 md:pt-10 overflow-hidden">
@@ -99,7 +111,7 @@ const FullScreenPlayer: FC = () => {
         </Button>
         <div className="text-center">
           <p className="text-xs uppercase text-neutral-400">Playing from Playlist</p>
-          <p className="text-sm font-semibold">{currentTrack.artist || 'Library'}</p> {/* Placeholder for playlist name */}
+          <p className="text-sm font-semibold">{currentTrack.artist || 'Library'}</p>
         </div>
         <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
           <MoreVertical className="w-6 h-6" />
@@ -136,47 +148,76 @@ const FullScreenPlayer: FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Player Controls Container (applying new CSS) */}
+      <div className={`${styles.audioPlayerContainer} my-4 px-2 flex-shrink-0`}>
+        <div className={styles.progressSection}>
+          <span className={styles.timeStamp}>{formatTime(currentTime)}</span>
+          <div 
+            className={styles.progressBarContainer}
+            ref={progressBarContainerRef}
+            onClick={handleProgressChange}
+            role="slider"
+            aria-valuenow={currentTime}
+            aria-valuemin={0}
+            aria-valuemax={duration}
+            aria-label="Seek"
+            tabIndex={0}
+            onKeyDown={(e) => {
+                 if (e.key === 'ArrowLeft' && audioElementRef.current) {
+                    audioElementRef.current.currentTime = Math.max(0, audioElementRef.current.currentTime - 5);
+                 } else if (e.key === 'ArrowRight' && audioElementRef.current) {
+                    audioElementRef.current.currentTime = Math.min(duration, audioElementRef.current.currentTime + 5);
+                 }
+            }}
+          >
+            <div className={styles.progressBar} style={{ width: `${progressPercentage}%` }}>
+              <div className={styles.progressBarThumb} style={{ left: `${progressPercentage}%`, transform: 'translate(-50%, -50%)' }} />
+            </div>
+          </div>
+          <span className={styles.timeStamp}>{formatTime(duration)}</span>
+        </div>
 
-      {/* Progress Bar */}
-      <div className="my-4 px-2 flex-shrink-0">
-        <Slider
-          value={[currentTime]}
-          max={duration > 0 ? duration : 100}
-          step={0.1}
-          onValueChange={handleProgressChange}
-          className="w-full [&>span:first-child>span]:bg-white [&>span:last-child]:bg-white [&>span:last-child]:h-3 [&>span:last-child]:w-3 [&>span:first-child]:h-1"
-          disabled={duration === 0}
-        />
-        <div className="flex justify-between text-xs text-neutral-400 mt-1.5">
-          <span>{formatTime(currentTime)}</span>
-          <span>{formatTime(duration)}</span>
+        <div className={styles.controlsSection}>
+          <button 
+            className={`${styles.controlButton} ${styles.controlButtonShuffle} ${isShuffleActive ? styles.controlButtonActive : ''}`} 
+            aria-label="Shuffle"
+            onClick={handleShuffle}
+          >
+            <Shuffle />
+          </button>
+          <button 
+            className={`${styles.controlButton} ${styles.controlButtonSkip}`} 
+            aria-label="Previous"
+            onClick={() => audioElementRef.current && (audioElementRef.current.currentTime = Math.max(0, audioElementRef.current.currentTime - 10))}
+          >
+            <SkipBack />
+          </button>
+          <button 
+            className={`${styles.controlButton} ${styles.controlButtonPlayPause}`} 
+            aria-label={isPlaying ? "Pause" : "Play"}
+            onClick={togglePlayPause}
+          >
+            {isPlaying ? <Pause /> : <Play />}
+          </button>
+          <button 
+            className={`${styles.controlButton} ${styles.controlButtonSkip}`} 
+            aria-label="Next"
+            onClick={() => audioElementRef.current && (audioElementRef.current.currentTime = Math.min(duration, audioElementRef.current.currentTime + 10))}
+          >
+            <SkipForward />
+          </button>
+          <button 
+            className={`${styles.controlButton} ${styles.controlButtonRepeat} ${repeatMode !== 'off' ? styles.controlButtonRepeatActive : ''}`} 
+            aria-label="Repeat"
+            onClick={handleRepeat}
+          >
+            <Repeat />
+            {repeatMode !== 'off' && <span className={styles.repeatDot} />}
+          </button>
         </div>
       </div>
 
-      {/* Player Controls */}
-      <div className="flex items-center justify-around my-4 px-2 flex-shrink-0">
-        <Button variant="ghost" size="icon" className="text-white hover:text-neutral-300">
-          <Shuffle className="w-6 h-6 md:w-7 md:h-7" />
-        </Button>
-        <Button variant="ghost" size="icon" className="text-white hover:text-neutral-300">
-          <SkipBack className="w-8 h-8 md:w-10 md:h-10 fill-white" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={togglePlayPause}
-          className="bg-white text-black rounded-full w-20 h-20 md:w-24 md:h-24 hover:bg-neutral-200 transform hover:scale-105 flex items-center justify-center"
-          aria-label={isPlaying ? 'Pause' : 'Play'}
-        >
-          {isPlaying ? <Pause className="w-10 h-10 md:w-12 md:h-12 fill-black" /> : <Play className="w-10 h-10 md:w-12 md:h-12 fill-black ml-1" />}
-        </Button>
-        <Button variant="ghost" size="icon" className="text-white hover:text-neutral-300">
-          <SkipForward className="w-8 h-8 md:w-10 md:h-10 fill-white" />
-        </Button>
-        <Button variant="ghost" size="icon" className="text-white hover:text-neutral-300">
-          <Repeat className="w-6 h-6 md:w-7 md:h-7" />
-        </Button>
-      </div>
 
       {/* Bottom Controls */}
       <div className="flex items-center justify-between text-neutral-300 px-4 mt-auto mb-2 flex-shrink-0">
