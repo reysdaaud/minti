@@ -1,10 +1,11 @@
+
 .audioPlayerContainer {
   background-color: #282828; /* Player background color */
-  padding: 20px 25px;
+  padding: 20px 0px; /* Adjusted padding to remove horizontal for full width */
   border-radius: 8px;
-  width: 100%; /* Adjusted for component context */
-  max-width: 420px; /* Max width to match visual */
-  margin: auto; /* Center it if it's a standalone block */
+  width: 100%; /* Full width */
+  max-width: 100%; /* Ensure it can go full width */
+  margin: auto; 
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
@@ -13,6 +14,7 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 15px;
+  padding: 0 25px; /* Add padding back here if needed for inner content */
 }
 
 .timeStamp {
@@ -57,6 +59,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between; /* Distributes space between items */
+  padding: 0 25px; /* Add padding back here if needed for inner content */
 }
 
 .controlButton {
@@ -83,52 +86,52 @@
 }
 
 .controlButtonPlayPause {
-  background-color: #ffffff; /* White background */
-  color: #000000;           /* Black icon for text color context, SVG might need explicit fill */
+  background-color: #ffffff; 
+  color: #000000;          
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  font-size: 1.5em; /* ~24px for the play icon itself */
-  margin: 0 15px; /* Horizontal margin around play/pause */
+  font-size: 1.5em; 
+  margin: 0 15px; 
   box-shadow: 0 2px 4px rgba(0,0,0,0.3);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .controlButtonPlayPause svg {
-  width: 1em; /* Icon size relative to button's font-size */
+  width: 1em; 
   height: 1em;
-  fill: #000000; /* Explicitly set SVG fill to black */
+  fill: #000000; 
 }
 
 .controlButtonPlayPause:hover {
-  background-color: #f0f0f0; /* Slightly off-white on hover */
+  background-color: #f0f0f0; 
 }
 
-/* New style for SkipBack and SkipForward buttons */
+
 .controlButtonSkipStyled {
-  background-color: #ffffff; /* White background */
-  color: #000000;           /* Black icon color */
-  width: 40px;              /* Smaller than play/pause */
-  height: 40px;
+  background-color: #ffffff; 
+  color: #000000;           
+  width: 36px;              /* Reduced from 40px */
+  height: 36px;             /* Reduced from 40px */
   border-radius: 50%;
-  font-size: 1.2em;         /* Icon size relative to this font-size */
+  font-size: 1.1em;         /* Reduced from 1.2em, makes internal SVG 1.1em */
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: background-color 0.2s ease-in-out;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2); /* Optional: consistent shadow */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2); 
 }
 
 .controlButtonSkipStyled svg {
-  width: 1em; /* SVG size relative to button's font-size (1.2em) */
+  width: 1em; /* SVG size relative to button's font-size (1.1em) */
   height: 1em;
   fill: #000000; /* Ensure icon is black */
 }
 
 .controlButtonSkipStyled:hover {
-  background-color: #f0f0f0; /* Slightly off-white on hover */
+  background-color: #f0f0f0; 
 }
 
 
