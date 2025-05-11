@@ -31,7 +31,7 @@ const TopListItemCard: FC<TopListItemCardProps> = ({ id, title, imageUrl, audioS
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && handlePlay()}
     >
-      <div className="relative w-14 h-14 md:w-16 md:h-16 flex-shrink-0 rounded-l-md overflow-hidden">
+      <div className="relative w-16 h-16 md:w-20 md:h-20 flex-shrink-0 rounded-l-md overflow-hidden">
         <Image
           src={imageUrl}
           alt={title}

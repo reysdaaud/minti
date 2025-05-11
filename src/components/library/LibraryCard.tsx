@@ -23,7 +23,7 @@ const LibraryCard: FC<LibraryCardProps> = ({ id, title, subtitle, imageUrl, audi
 
   return (
     <div 
-      className="min-w-[140px] md:min-w-[160px] w-[140px] md:w-[160px] flex-shrink-0 snap-start group cursor-pointer"
+      className="min-w-[160px] md:min-w-[180px] w-[160px] md:w-[180px] flex-shrink-0 snap-start group cursor-pointer"
       onClick={handlePlay}
       role="button"
       tabIndex={0}
