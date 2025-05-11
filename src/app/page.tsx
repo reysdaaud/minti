@@ -7,7 +7,7 @@ import UserActions from '@/components/exchange/UserActions';
 import MarketSection from '@/components/exchange/MarketSection';
 import BottomNavBar from '@/components/exchange/BottomNavBar';
 import CardBalance from '@/components/exchange/CardBalance';
-import SoundsPlayer from '@/components/sounds/SoundsPlayer';
+// import SoundsPlayer from '@/components/sounds/SoundsPlayer'; // Removed for backup
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearchParams, useRouter as useNextRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
@@ -62,7 +62,7 @@ export default function CryptoExchangePage() {
 
 
   const handleVerifyPayment = useCallback(async (paymentReference: string) => {
-    if (isVerifyingPayment) return; // Prevent multiple simultaneous verifications
+    if (isVerifyingPayment) return; 
     setIsVerifyingPayment(true);
     console.log('Attempting to verify payment reference client-side:', paymentReference);
     
@@ -139,7 +139,7 @@ export default function CryptoExchangePage() {
         const newPaymentRecord = {
           amount: amountPaid,
           coins: coinsToAdd,
-          timestamp: new Date(), // Use client-side Date object for arrayUnion compatibility
+          timestamp: new Date(), 
           reference: paymentReference,
           status: 'success',
           packageName: packageName || 'N/A',
@@ -240,6 +240,7 @@ export default function CryptoExchangePage() {
   }
 
   if (!user) {
+    // This check should be enough, SignInPage will handle its own loading/redirect logic
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -247,6 +248,7 @@ export default function CryptoExchangePage() {
       </div>
     );
   }
+  
 
   if (userDocLoading) {
     return (
@@ -258,11 +260,6 @@ export default function CryptoExchangePage() {
   }
 
   const renderContent = () => {
-    // The targetTab from BottomNavBar now dictates content
-    // Home -> Home content
-    // Markets -> MarketSection (was Search in Spotify nav)
-    // Sounds -> SoundsPlayer (was Library in Spotify nav)
-    // Assets -> placeholder or CardBalance/UserActions (was Premium in Spotify nav)
     switch (activeTab) {
       case 'Home':
         return (
@@ -285,11 +282,15 @@ export default function CryptoExchangePage() {
             <MarketSection /> 
           </>
         );
-      case 'Sounds': // Corresponds to "Library" in new nav
-        return <SoundsPlayer />;
-      case 'Markets': // Corresponds to "Search" in new nav
+      case 'Sounds': 
+        return (
+            <div className="text-center py-10">
+                <p className="text-muted-foreground">Sounds Player is currently under maintenance. Check back soon!</p>
+            </div>
+        );
+      case 'Markets': 
         return <MarketSection /> 
-      case 'Assets': // Corresponds to "Premium" in new nav
+      case 'Assets': 
         return (
             <div className="text-center py-10">
                 <CardBalance />
@@ -297,7 +298,7 @@ export default function CryptoExchangePage() {
                 <p className="text-muted-foreground mt-4">Premium features coming soon.</p>
             </div>
         );
-      case 'Trade': // This tab is no longer in the nav bar items
+      case 'Trade': 
         return (
              <div className="text-center py-10">
                 <p className="text-muted-foreground">Trade section is currently not directly accessible via main navigation.</p>

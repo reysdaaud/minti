@@ -43,14 +43,7 @@ const Forward10sIcon: FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-const GoLiveIcon: FC<{ className?: string }> = ({ className }) => (
- <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    {/* Reusing StartOverIcon's arrow part for the >> effect */}
-    <path d="M29.999 7.5V13.5H24"  transform="translate(-10 0)" /> 
-    <path d="M29.999 7.5V13.5H24"  transform="translate(-5 0)" />
-    <circle cx="20" cy="20" r="3" fill="currentColor" />
-  </svg>
-);
+
 
 
 const SoundsPlayer: FC = () => {
@@ -108,10 +101,7 @@ const SoundsPlayer: FC = () => {
         <button className={styles.controlButton} onClick={() => handleControlClick('Forward 10s')} aria-label="Forward 10 seconds">
           <Forward10sIcon className={styles.controlIcon} />
         </button>
-        <button className={styles.controlButton} onClick={() => handleControlClick('Go Live')} aria-label="Go Live">
-          <GoLiveIcon className={styles.controlIcon} />
-          <span className={styles.controlLabelSmall}>LIVE</span>
-        </button>
+        {/* Removed GoLiveIcon and its label */}
       </div>
 
       <div className={styles.scheduleInfo}>
