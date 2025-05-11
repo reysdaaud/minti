@@ -156,10 +156,10 @@ const FullScreenPlayer: FC = () => {
       {/* Player Controls */}
       <div className="flex items-center justify-around my-4 px-2 flex-shrink-0">
         <Button variant="ghost" size="icon" className="text-white hover:text-neutral-300">
-          <Shuffle className="w-5 h-5" />
+          <Shuffle className="w-6 h-6" />
         </Button>
         <Button variant="ghost" size="icon" className="text-white hover:text-neutral-300">
-          <SkipBack className="w-7 h-7 fill-white" />
+          <SkipBack className="w-8 h-8 fill-white" />
         </Button>
         <Button
           variant="ghost"
@@ -171,10 +171,10 @@ const FullScreenPlayer: FC = () => {
           {isPlaying ? <Pause className="w-8 h-8 fill-black" /> : <Play className="w-8 h-8 fill-black ml-1" />}
         </Button>
         <Button variant="ghost" size="icon" className="text-white hover:text-neutral-300">
-          <SkipForward className="w-7 h-7 fill-white" />
+          <SkipForward className="w-8 h-8 fill-white" />
         </Button>
         <Button variant="ghost" size="icon" className="text-white hover:text-neutral-300">
-          <Repeat className="w-5 h-5" />
+          <Repeat className="w-6 h-6" />
         </Button>
       </div>
 
