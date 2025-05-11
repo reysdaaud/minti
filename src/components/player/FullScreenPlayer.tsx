@@ -19,7 +19,6 @@ import {
   Share2,
   ListMusic,
 } from 'lucide-react';
-// Removed Slider import as we are using custom progress bar
 import { Button } from '@/components/ui/button';
 import { usePlayer } from '@/contexts/PlayerContext';
 import styles from './FullScreenPlayer.module.css'; // Import the CSS module
@@ -99,7 +98,6 @@ const FullScreenPlayer: FC = () => {
     });
   };
 
-  // Calculate progress for custom bar
   const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
@@ -150,8 +148,8 @@ const FullScreenPlayer: FC = () => {
           </div>
         </div>
         
-        {/* Player Controls Container (applying new CSS) */}
-        <div className={`${styles.audioPlayerContainer} my-4 px-2 flex-shrink-0`}>
+        {/* Player Controls Container */}
+        <div className={`${styles.audioPlayerContainer} my-4 flex-shrink-0 -mx-4 md:-mx-6`}>
           <div className={styles.progressSection}>
             <span className={styles.timeStamp}>{formatTime(currentTime)}</span>
             <div 
@@ -188,7 +186,7 @@ const FullScreenPlayer: FC = () => {
               <Shuffle />
             </button>
             <button 
-              className={styles.controlButtonSkipStyled} 
+              className={`${styles.controlButton} ${styles.controlButtonSkipStyled}`}
               aria-label="Previous"
               onClick={() => audioElementRef.current && (audioElementRef.current.currentTime = Math.max(0, audioElementRef.current.currentTime - 10))}
             >
@@ -199,10 +197,10 @@ const FullScreenPlayer: FC = () => {
               aria-label={isPlaying ? "Pause" : "Play"}
               onClick={togglePlayPause}
             >
-              {isPlaying ? <Pause /> : <Play />}
+              {isPlaying ? <Pause className="fill-black" /> : <Play className="fill-black" />}
             </button>
             <button 
-              className={styles.controlButtonSkipStyled}
+              className={`${styles.controlButton} ${styles.controlButtonSkipStyled}`}
               aria-label="Next"
               onClick={() => audioElementRef.current && (audioElementRef.current.currentTime = Math.min(duration, audioElementRef.current.currentTime + 10))}
             >
