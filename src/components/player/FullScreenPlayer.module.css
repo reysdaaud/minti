@@ -47,25 +47,24 @@
   background-color: #ffffff;
   border-radius: 50%;
   position: absolute;
-  /* 'right' is set dynamically by style prop in component */
+  /* 'left' is set dynamically by style prop in component, adjust to center thumb */
   top: 50%;
-  transform: translateY(-50%);
+  transform: translateY(-50%); /* Corrected from translate(-50%, -50%) if only Y needed */
   box-shadow: 0 0 3px rgba(0,0,0,0.5);
-  /* Ensure thumb is clickable if it overlaps */
   z-index: 10; 
 }
 
 .controlsSection {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: space-between; /* Distributes space between items */
 }
 
 .controlButton {
   background: none;
   border: none;
   color: #b3b3b3;
-  font-size: 1.25em; /* 20px - base for icons */
+  font-size: 1.25em; /* Base size for icons, e.g., 20px */
   cursor: pointer;
   padding: 8px;
   display: flex;
@@ -74,9 +73,9 @@
   transition: color 0.2s ease-in-out;
 }
 
-.controlButton svg { /* Target Lucide icons */
-  width: 1em; /* Scale with font-size of button */
-  height: 1em; /* Scale with font-size of button */
+.controlButton svg { 
+  width: 1em; 
+  height: 1em; 
 }
 
 
@@ -85,22 +84,25 @@
 }
 
 .controlButtonPlayPause {
-  background-color: #ffffff;
-  color: #000000;
+  background-color: #000000; /* Changed: fill black dark */
+  color: #ffffff;           /* Changed: white icon for contrast */
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  font-size: 1.5em; /* 24px for the play icon */
-  margin: 0 15px;
+  font-size: 1.5em; /* ~24px for the play icon itself */
+  margin: 0 15px; /* Horizontal margin around play/pause */
   box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.controlButtonPlayPause svg { /* Target Lucide icons */
-  width: 1em; /* Scale with font-size of button */
-  height: 1em; /* Scale with font-size of button */
+.controlButtonPlayPause svg { 
+  width: 1em; /* Icon size relative to button's font-size */
+  height: 1em; 
 }
 
 .controlButtonPlayPause:hover {
-  background-color: #f0f0f0;
+  background-color: #1a1a1a; /* Changed: slightly lighter dark for hover */
 }
 
 .controlButtonActive,
@@ -126,12 +128,12 @@
 
 
 .controlButtonShuffle {
-  font-size: 1.1em; /* Slightly smaller shuffle */
+  font-size: 1.1em; /* Slightly smaller shuffle icon */
 }
 .controlButtonSkip {
-  font-size: 1.2em;
+  font-size: 1.2em; /* Icon size for skip buttons */
 }
 .controlButtonRepeat {
-  font-size: 1.1em; /* Slightly smaller repeat */
+  font-size: 1.1em; /* Slightly smaller repeat icon */
   position: relative; /* For positioning the dot */
 }
