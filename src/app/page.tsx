@@ -8,8 +8,9 @@ import BottomNavBar from '@/components/exchange/BottomNavBar';
 import CardBalance from '@/components/exchange/CardBalance';
 import LibraryContent from '@/components/library/LibraryContent';
 import PlayerBar from '@/components/library/PlayerBar';
+import FullScreenPlayer from '@/components/player/FullScreenPlayer';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePlayer } from '@/contexts/PlayerContext'; // Import usePlayer
+import { usePlayer } from '@/contexts/PlayerContext';
 import { useSearchParams, useRouter as useNextRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -21,7 +22,7 @@ import { db } from '@/lib/firebase';
 
 export default function CryptoExchangePage() {
   const { user, loading: authLoading } = useAuth();
-  const { currentTrack } = usePlayer(); // Get currentTrack from PlayerContext
+  const { currentTrack, isPlayerOpen } = usePlayer();
   const nextRouter = useNextRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -241,6 +242,8 @@ export default function CryptoExchangePage() {
   }
 
   const renderContent = () => {
+    if (isPlayerOpen) return null; // Don't render main content if full screen player is open
+
     switch (activeTab) {
       case 'Home':
         return (
@@ -291,21 +294,23 @@ export default function CryptoExchangePage() {
     }
   };
   
-  // Calculate paddingBottom for main content based on PlayerBar visibility
   let mainPaddingBottom = 'pb-16'; // Default for BottomNavBar
-  if (currentTrack) { // If PlayerBar is visible
-    mainPaddingBottom = 'pb-28'; // PlayerBar (~56px) + BottomNavBar (60px) + spacing
+  if (currentTrack && !isPlayerOpen) { 
+    mainPaddingBottom = 'pb-28'; 
+  } else if (isPlayerOpen) {
+    mainPaddingBottom = 'pb-0'; // No padding if full screen player is open
   }
 
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <TopHeader />
+      {!isPlayerOpen && <TopHeader />}
       <main className={`flex-grow overflow-y-auto ${mainPaddingBottom} md:pb-0 px-0 pt-3`}>
         {renderContent()}
       </main>
-      {currentTrack && <PlayerBar />} {/* Conditionally render PlayerBar based on currentTrack */}
-      <BottomNavBar activeTab={activeTab} onTabChange={setActiveTab} />
+      {currentTrack && !isPlayerOpen && <PlayerBar />}
+      {isPlayerOpen && <FullScreenPlayer />}
+      {!isPlayerOpen && <BottomNavBar activeTab={activeTab} onTabChange={setActiveTab} />}
     </div>
   );
 }

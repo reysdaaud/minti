@@ -18,8 +18,7 @@ const PlayerBar: FC = () => {
     if ((e.target as HTMLElement).closest('button')) {
       return;
     }
-    // setIsPlayerOpen(true); // This will be for Phase 2
-    console.log("PlayerBar clicked, will open full player in Phase 2");
+    setIsPlayerOpen(true);
   };
 
   return (
