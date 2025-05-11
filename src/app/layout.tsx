@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/contexts/AuthContext';
+import { PlayerProvider } from '@/contexts/PlayerContext'; // Import PlayerProvider
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -15,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'NeoWallet', // Updated to NeoWallet as per project name
-  description: 'Your modern digital banking solution.', // Updated description
+  title: 'KeyFind', 
+  description: 'Extract secrets, passwords and api keys from pasted text.', 
 };
 
 export default function RootLayout({
@@ -28,8 +29,10 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         <AuthProvider>
-          {children}
-          <Toaster />
+          <PlayerProvider> {/* Wrap with PlayerProvider */}
+            {children}
+            <Toaster />
+          </PlayerProvider>
         </AuthProvider>
       </body>
     </html>

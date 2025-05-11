@@ -1,4 +1,3 @@
-
 // src/app/page.tsx
 'use client';
 
@@ -8,8 +7,9 @@ import MarketSection from '@/components/exchange/MarketSection';
 import BottomNavBar from '@/components/exchange/BottomNavBar';
 import CardBalance from '@/components/exchange/CardBalance';
 import LibraryContent from '@/components/library/LibraryContent';
-import PlayerBar from '@/components/library/PlayerBar'; // Import PlayerBar
+import PlayerBar from '@/components/library/PlayerBar';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePlayer } from '@/contexts/PlayerContext'; // Import usePlayer
 import { useSearchParams, useRouter as useNextRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -21,6 +21,7 @@ import { db } from '@/lib/firebase';
 
 export default function CryptoExchangePage() {
   const { user, loading: authLoading } = useAuth();
+  const { currentTrack } = usePlayer(); // Get currentTrack from PlayerContext
   const nextRouter = useNextRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -58,21 +59,20 @@ export default function CryptoExchangePage() {
 
 
   const handleVerifyPayment = useCallback(async (paymentReference: string) => {
-    if (isVerifyingPayment) return; // Prevent re-entry
+    if (isVerifyingPayment) return; 
     setIsVerifyingPayment(true);
     
-    // Use environment variable for Paystack secret key for verification
-    const paystackSecretKey = process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE;
+    const paystackSecretKey = process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE || "sk_live_7148c4754ef026a94b9015605a4707dc3c3cf8c3";
 
-    if (!paystackSecretKey || !paystackSecretKey.startsWith("sk_live_")) {
-      console.error("Invalid or missing Paystack LIVE secret key for verification. Set NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE in .env.local.");
+
+    if (!paystackSecretKey || !(paystackSecretKey.startsWith("sk_live_") || paystackSecretKey.startsWith("sk_test_"))) {
+      console.error("Invalid or missing Paystack LIVE/TEST secret key for verification. Set NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE in .env.local or check hardcoded key.");
       toast({
         title: 'Verification Error',
         description: 'Payment gateway configuration error for verification. Contact support. [PSKNCV]',
         variant: 'destructive',
       });
       setIsVerifyingPayment(false);
-      // Clean URL params
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete('trxref');
       newUrl.searchParams.delete('reference');
@@ -201,7 +201,6 @@ export default function CryptoExchangePage() {
         sessionStorage.setItem(verificationKey, 'true'); 
         handleVerifyPayment(paymentReference);
       } else {
-        // Already verified this session, clean URL if params still exist
         const newUrl = new URL(window.location.href);
         if (newUrl.searchParams.get('trxref') || newUrl.searchParams.get('reference')) {
             newUrl.searchParams.delete('trxref');
@@ -223,8 +222,6 @@ export default function CryptoExchangePage() {
   }
 
   if (!user) {
-    // This case should ideally be handled by the useEffect redirecting to /auth/signin
-    // If it reaches here, it's a brief moment before redirection or an issue with redirection logic
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -250,7 +247,7 @@ export default function CryptoExchangePage() {
           <>
             <Card className="mb-4 bg-card border-border shadow-lg">
               <CardHeader className="px-4 py-3">
-                <CardTitle className="text-lg text-primary">Your Sondar Wallet</CardTitle>
+                <CardTitle className="text-lg text-primary">Your KeyFind Wallet</CardTitle>
               </CardHeader>
               <CardContent className="px-4 py-2">
                 <p className="text-2xl font-semibold text-foreground">
@@ -293,18 +290,22 @@ export default function CryptoExchangePage() {
         );
     }
   };
+  
+  // Calculate paddingBottom for main content based on PlayerBar visibility
+  let mainPaddingBottom = 'pb-16'; // Default for BottomNavBar
+  if (currentTrack) { // If PlayerBar is visible
+    mainPaddingBottom = 'pb-28'; // PlayerBar (~56px) + BottomNavBar (60px) + spacing
+  }
+
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <TopHeader />
-      {/* Adjust pb-28 for PlayerBar (~56px) + BottomNavBar (60px) + some spacing */}
-      {/* PlayerBar is conditionally rendered for Library tab to match Spotify */}
-      <main className={`flex-grow overflow-y-auto ${activeTab === 'Library' ? 'pb-28' : 'pb-16'} md:pb-0 px-0 pt-3`}>
+      <main className={`flex-grow overflow-y-auto ${mainPaddingBottom} md:pb-0 px-0 pt-3`}>
         {renderContent()}
       </main>
-      {activeTab === 'Library' && <PlayerBar />} {/* Conditionally render PlayerBar */}
+      {currentTrack && <PlayerBar />} {/* Conditionally render PlayerBar based on currentTrack */}
       <BottomNavBar activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
 }
-
