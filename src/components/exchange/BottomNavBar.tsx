@@ -1,7 +1,6 @@
-
 'use client';
 import type { FC } from 'react';
-import { Home, Search, Library, Star } from 'lucide-react';
+import { Home, Search, LibraryIcon as LucideLibrary, Star } from 'lucide-react'; // Renamed Library to LibraryIcon to avoid conflict
 import { Button } from '@/components/ui/button';
 
 interface NavItem {
@@ -18,9 +17,9 @@ interface BottomNavBarProps {
 const BottomNavBar: FC<BottomNavBarProps> = ({ activeTab, onTabChange }) => {
   const navItems: NavItem[] = [
     { label: 'Home', icon: Home, targetTab: 'Home' },
-    { label: 'Search', icon: Search, targetTab: 'Markets' }, // Assuming 'Search' corresponds to 'Markets' or a new 'Search' tab
-    { label: 'Library', icon: Library, targetTab: 'Sounds' }, // Assuming 'Library' corresponds to 'Sounds' or a new 'Library' tab
-    { label: 'Premium', icon: Star, targetTab: 'Assets' }, // Assuming 'Premium' corresponds to 'Assets' or a new 'Premium' tab
+    { label: 'Search', icon: Search, targetTab: 'Markets' },
+    { label: 'Library', icon: LucideLibrary, targetTab: 'Library' }, // Changed targetTab from 'Sounds' to 'Library'
+    { label: 'Premium', icon: Star, targetTab: 'Assets' },
   ];
 
   return (

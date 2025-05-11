@@ -7,7 +7,8 @@ import UserActions from '@/components/exchange/UserActions';
 import MarketSection from '@/components/exchange/MarketSection';
 import BottomNavBar from '@/components/exchange/BottomNavBar';
 import CardBalance from '@/components/exchange/CardBalance';
-// import SoundsPlayer from '@/components/sounds/SoundsPlayer'; // Removed for backup
+// import SoundsPlayer from '@/components/sounds/SoundsPlayer'; // Backup
+import LibraryContent from '@/components/library/LibraryContent'; // Import new LibraryContent
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearchParams, useRouter as useNextRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
@@ -25,72 +26,65 @@ export default function CryptoExchangePage() {
   const { toast } = useToast();
 
   const [coinBalance, setCoinBalance] = useState(0);
-  const [activeTab, setActiveTab] = useState('Home'); // Default to Home
+  const [activeTab, setActiveTab] = useState('Home'); 
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
-  const [userDocLoading, setUserDocLoading] = useState(true); // For Firestore data
+  const [userDocLoading, setUserDocLoading] = useState(true); 
 
 
   useEffect(() => {
     if (!authLoading && !user) {
-      // Auth state determined, no user, redirect to sign-in
-      nextRouter.replace('/auth/signin'); // Use replace to prevent back button to dashboard
+      nextRouter.replace('/auth/signin'); 
     } else if (!authLoading && user) {
-      // User is authenticated, proceed to fetch user-specific data
-      setUserDocLoading(true); // Start loading user doc data
+      setUserDocLoading(true); 
       const userRef = doc(db, 'users', user.uid);
       const unsubscribe = onSnapshot(userRef, (docSnap) => {
         if (docSnap.exists()) {
           setCoinBalance(docSnap.data().coins || 0);
         } else {
           setCoinBalance(0);
-          console.warn("User document not found for balance updates. This might be okay if user is new and backend will create it upon payment verification or AuthProvider initializes it.");
+          // User doc might be created by AuthProvider or upon first payment verification
         }
-        setUserDocLoading(false); // Finished loading user doc data
+        setUserDocLoading(false); 
       }, (error) => {
         console.error("Error listening to user balance:", error);
         toast({ title: "Error", description: "Could not load your coin balance.", variant: "destructive" });
-        setUserDocLoading(false); // Finished loading user doc data (with error)
+        setUserDocLoading(false); 
       });
       return () => unsubscribe();
     } else {
-      // authLoading is true, or some other initial state.
-      // Reset user-specific states if auth is not ready or user is null
-      setUserDocLoading(true); // Set to true while auth is loading
+      setUserDocLoading(true); 
       setCoinBalance(0);
     }
   }, [user, authLoading, nextRouter, toast]);
 
 
   const handleVerifyPayment = useCallback(async (paymentReference: string) => {
-    if (isVerifyingPayment) return; 
+    if (isVerifyingPayment) return;
     setIsVerifyingPayment(true);
-    console.log('Attempting to verify payment reference client-side:', paymentReference);
     
-    const envSecretKey = process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE;
-    const hardcodedSecretKey = "sk_live_7148c4754ef026a94b9015605a4707dc3c3cf8c3"; 
+    const paystackSecretKey = process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE || "sk_live_YOUR_FALLBACK_SECRET_KEY";
 
-    let paystackSecretKey = envSecretKey || hardcodedSecretKey;
-
-    if (paystackSecretKey === hardcodedSecretKey && envSecretKey) {
-         console.warn("[VERIFICATION - INFO] Using Paystack secret key from NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE.");
-    } else if (paystackSecretKey === hardcodedSecretKey) {
+    if (paystackSecretKey === "sk_live_YOUR_FALLBACK_SECRET_KEY" && process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE) {
+         console.warn("[VERIFICATION - INFO] Using Paystack secret key from NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE.");
+    } else if (paystackSecretKey === "sk_live_YOUR_FALLBACK_SECRET_KEY") {
         console.warn(
-          "[VERIFICATION - CRITICAL SECURITY WARNING] Paystack secret key for verification from NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE is not defined. " +
-          "Falling back to a HARDCODED LIVE SECRET KEY for testing purposes. " +
+          "[VERIFICATION - CRITICAL SECURITY WARNING] Paystack secret key for verification from NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE is not defined. " +
+          "Falling back to a HARDCODED LIVE SECRET KEY. " +
           "This is EXTREMELY INSECURE and MUST BE REMOVED before production. " +
           "Ensure the environment variable is correctly set."
         );
     }
     
 
-    if (!paystackSecretKey) {
-      console.error("Paystack secret key for verification is not defined even after fallback. Set NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE or check hardcoded key in page.tsx.");
+    if (!paystackSecretKey.startsWith("sk_live_")) {
+      console.error("Invalid or missing Paystack LIVE secret key for verification. Set NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE in .env.local.");
       toast({
         title: 'Verification Error',
-        description: 'Payment gateway configuration error for verification. Contact support. [PSKNCV_FINAL]',
+        description: 'Payment gateway configuration error. Contact support. [PSKNCV_FINAL]',
         variant: 'destructive',
       });
       setIsVerifyingPayment(false);
+      // Clean URL params
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete('trxref');
       newUrl.searchParams.delete('reference');
@@ -111,8 +105,6 @@ export default function CryptoExchangePage() {
       const data = await response.json();
 
       if (response.ok && data.status && data.data && data.data.status === 'success') {
-        console.log('Paystack verification successful:', data.data);
-
         const transactionData = data.data;
         const amountPaid = transactionData.amount / 100; 
         
@@ -122,16 +114,15 @@ export default function CryptoExchangePage() {
         const packageName = paymentMetadata?.packageName; 
 
         if (!userId || typeof coinsToAddStr === 'undefined') {
-            console.error('Invalid metadata from Paystack verification (userId or coins missing):', paymentMetadata);
-            throw new Error('Crucial payment metadata (userId, coins) missing from verification.');
+            console.error('Invalid metadata from Paystack (userId or coins missing):', paymentMetadata);
+            throw new Error('Crucial payment metadata missing.');
         }
         
         const coinsToAdd = parseInt(coinsToAddStr, 10);
         if (isNaN(coinsToAdd) || coinsToAdd <= 0) {
             console.error('Invalid metadata: coinsToAdd is not a positive number', coinsToAddStr);
-            throw new Error('Crucial payment metadata (coins) invalid from verification.');
+            throw new Error('Crucial payment metadata (coins) invalid.');
         }
-
 
         const userRef = doc(db, 'users', userId);
         const userDocSnap = await getDoc(userRef);
@@ -165,7 +156,6 @@ export default function CryptoExchangePage() {
             lastLogin: serverTimestamp(),
             subscription: false, 
           });
-          console.log('New user document created with payment history for UID:', userId);
         } else {
           const currentCoins = userDocSnap.data()?.coins || 0;
           const newBalance = currentCoins + coinsToAdd;
@@ -175,12 +165,11 @@ export default function CryptoExchangePage() {
             updatedAt: serverTimestamp(),
             lastLogin: serverTimestamp(), 
           });
-          console.log('User balance updated for UID:', userId, '. New balance:', newBalance);
         }
 
         toast({
           title: 'Payment Successful!',
-          description: `${coinsToAdd.toLocaleString()} coins added to your account.`,
+          description: `${coinsToAdd.toLocaleString()} coins added.`,
           variant: 'default',
           duration: 7000,
         });
@@ -189,7 +178,7 @@ export default function CryptoExchangePage() {
         console.error('Paystack verification failed:', data);
         toast({
           title: 'Payment Verification Failed',
-          description: data.message || 'There was an issue verifying your payment. Please contact support if debited.',
+          description: data.message || 'Issue verifying payment. Contact support if debited.',
           variant: 'destructive',
           duration: 7000,
         });
@@ -198,7 +187,7 @@ export default function CryptoExchangePage() {
       console.error('Error verifying payment client-side:', error);
       toast({
         title: 'Payment Verification Error',
-        description: error.message || 'An unexpected error occurred while verifying your payment.',
+        description: error.message || 'Unexpected error during verification.',
         variant: 'destructive',
       });
     } finally {
@@ -208,12 +197,12 @@ export default function CryptoExchangePage() {
       newUrl.searchParams.delete('reference');
       nextRouter.replace(newUrl.pathname + newUrl.search, { scroll: false });
     }
-  }, [toast, nextRouter, user, isVerifyingPayment]);
+  }, [toast, nextRouter, user, isVerifyingPayment]); // Added isVerifyingPayment dependency
 
 
   useEffect(() => {
     const paymentReference = searchParams.get('trxref') || searchParams.get('reference');
-    if (paymentReference && user && !authLoading && !isVerifyingPayment) {
+    if (paymentReference && user && !authLoading && !isVerifyingPayment) { // Check isVerifyingPayment
       const verificationKey = `verified_${paymentReference}`;
       if (sessionStorage.getItem(verificationKey) !== 'true') {
         sessionStorage.setItem(verificationKey, 'true'); 
@@ -240,7 +229,6 @@ export default function CryptoExchangePage() {
   }
 
   if (!user) {
-    // This check should be enough, SignInPage will handle its own loading/redirect logic
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -282,12 +270,8 @@ export default function CryptoExchangePage() {
             <MarketSection /> 
           </>
         );
-      case 'Sounds': 
-        return (
-            <div className="text-center py-10">
-                <p className="text-muted-foreground">Sounds Player is currently under maintenance. Check back soon!</p>
-            </div>
-        );
+      case 'Library': // Changed from 'Sounds' to 'Library'
+        return <LibraryContent />;
       case 'Markets': 
         return <MarketSection /> 
       case 'Assets': 
@@ -317,11 +301,10 @@ export default function CryptoExchangePage() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <TopHeader />
-      <main className="flex-grow overflow-y-auto pb-16 md:pb-0 px-4 pt-3">
+      <main className="flex-grow overflow-y-auto pb-16 md:pb-0 px-0 md:px-4 pt-3"> {/* Adjusted padding for Library */}
         {renderContent()}
       </main>
       <BottomNavBar activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
 }
-
