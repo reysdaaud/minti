@@ -7,8 +7,8 @@ import UserActions from '@/components/exchange/UserActions';
 import MarketSection from '@/components/exchange/MarketSection';
 import BottomNavBar from '@/components/exchange/BottomNavBar';
 import CardBalance from '@/components/exchange/CardBalance';
-// import SoundsPlayer from '@/components/sounds/SoundsPlayer'; // Backup
-import LibraryContent from '@/components/library/LibraryContent'; // Import new LibraryContent
+import LibraryContent from '@/components/library/LibraryContent';
+import PlayerBar from '@/components/library/PlayerBar'; // Import PlayerBar
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearchParams, useRouter as useNextRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
@@ -42,7 +42,6 @@ export default function CryptoExchangePage() {
           setCoinBalance(docSnap.data().coins || 0);
         } else {
           setCoinBalance(0);
-          // User doc might be created by AuthProvider or upon first payment verification
         }
         setUserDocLoading(false); 
       }, (error) => {
@@ -59,28 +58,17 @@ export default function CryptoExchangePage() {
 
 
   const handleVerifyPayment = useCallback(async (paymentReference: string) => {
-    if (isVerifyingPayment) return;
+    if (isVerifyingPayment) return; // Prevent re-entry
     setIsVerifyingPayment(true);
     
-    const paystackSecretKey = process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE || "sk_live_YOUR_FALLBACK_SECRET_KEY";
+    // Use environment variable for Paystack secret key for verification
+    const paystackSecretKey = process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE;
 
-    if (paystackSecretKey === "sk_live_YOUR_FALLBACK_SECRET_KEY" && process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE) {
-         console.warn("[VERIFICATION - INFO] Using Paystack secret key from NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE.");
-    } else if (paystackSecretKey === "sk_live_YOUR_FALLBACK_SECRET_KEY") {
-        console.warn(
-          "[VERIFICATION - CRITICAL SECURITY WARNING] Paystack secret key for verification from NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE is not defined. " +
-          "Falling back to a HARDCODED LIVE SECRET KEY. " +
-          "This is EXTREMELY INSECURE and MUST BE REMOVED before production. " +
-          "Ensure the environment variable is correctly set."
-        );
-    }
-    
-
-    if (!paystackSecretKey.startsWith("sk_live_")) {
+    if (!paystackSecretKey || !paystackSecretKey.startsWith("sk_live_")) {
       console.error("Invalid or missing Paystack LIVE secret key for verification. Set NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE in .env.local.");
       toast({
         title: 'Verification Error',
-        description: 'Payment gateway configuration error. Contact support. [PSKNCV_FINAL]',
+        description: 'Payment gateway configuration error for verification. Contact support. [PSKNCV]',
         variant: 'destructive',
       });
       setIsVerifyingPayment(false);
@@ -91,6 +79,7 @@ export default function CryptoExchangePage() {
       nextRouter.replace(newUrl.pathname + newUrl.search, { scroll: false });
       return;
     }
+    
 
     try {
       const verifyUrl = `https://api.paystack.co/transaction/verify/${paymentReference}`;
@@ -109,13 +98,17 @@ export default function CryptoExchangePage() {
         const amountPaid = transactionData.amount / 100; 
         
         const paymentMetadata = transactionData.metadata;
-        const userId = paymentMetadata?.userId; 
+        const userIdFromMeta = paymentMetadata?.userId; 
         const coinsToAddStr = paymentMetadata?.coins; 
         const packageName = paymentMetadata?.packageName; 
 
-        if (!userId || typeof coinsToAddStr === 'undefined') {
+        if (!userIdFromMeta || typeof coinsToAddStr === 'undefined') {
             console.error('Invalid metadata from Paystack (userId or coins missing):', paymentMetadata);
             throw new Error('Crucial payment metadata missing.');
+        }
+         if (userIdFromMeta !== user?.uid) {
+            console.error('User ID mismatch in payment verification:', userIdFromMeta, user?.uid);
+            throw new Error('Payment verification user mismatch.');
         }
         
         const coinsToAdd = parseInt(coinsToAddStr, 10);
@@ -124,7 +117,7 @@ export default function CryptoExchangePage() {
             throw new Error('Crucial payment metadata (coins) invalid.');
         }
 
-        const userRef = doc(db, 'users', userId);
+        const userRef = doc(db, 'users', userIdFromMeta);
         const userDocSnap = await getDoc(userRef);
 
         const newPaymentRecord = {
@@ -197,17 +190,18 @@ export default function CryptoExchangePage() {
       newUrl.searchParams.delete('reference');
       nextRouter.replace(newUrl.pathname + newUrl.search, { scroll: false });
     }
-  }, [toast, nextRouter, user, isVerifyingPayment]); // Added isVerifyingPayment dependency
+  }, [toast, nextRouter, user, isVerifyingPayment]); 
 
 
   useEffect(() => {
     const paymentReference = searchParams.get('trxref') || searchParams.get('reference');
-    if (paymentReference && user && !authLoading && !isVerifyingPayment) { // Check isVerifyingPayment
+    if (paymentReference && user && !authLoading && !isVerifyingPayment) { 
       const verificationKey = `verified_${paymentReference}`;
       if (sessionStorage.getItem(verificationKey) !== 'true') {
         sessionStorage.setItem(verificationKey, 'true'); 
         handleVerifyPayment(paymentReference);
       } else {
+        // Already verified this session, clean URL if params still exist
         const newUrl = new URL(window.location.href);
         if (newUrl.searchParams.get('trxref') || newUrl.searchParams.get('reference')) {
             newUrl.searchParams.delete('trxref');
@@ -229,6 +223,8 @@ export default function CryptoExchangePage() {
   }
 
   if (!user) {
+    // This case should ideally be handled by the useEffect redirecting to /auth/signin
+    // If it reaches here, it's a brief moment before redirection or an issue with redirection logic
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -270,13 +266,13 @@ export default function CryptoExchangePage() {
             <MarketSection /> 
           </>
         );
-      case 'Library': // Changed from 'Sounds' to 'Library'
+      case 'Library':
         return <LibraryContent />;
       case 'Markets': 
         return <MarketSection /> 
       case 'Assets': 
         return (
-            <div className="text-center py-10">
+            <div className="text-center py-10 px-4">
                 <CardBalance />
                 <UserActions setCoinBalance={setCoinBalance} />
                 <p className="text-muted-foreground mt-4">Premium features coming soon.</p>
@@ -284,14 +280,14 @@ export default function CryptoExchangePage() {
         );
       case 'Trade': 
         return (
-             <div className="text-center py-10">
+             <div className="text-center py-10 px-4">
                 <p className="text-muted-foreground">Trade section is currently not directly accessible via main navigation.</p>
                 <MarketSection />
             </div>
         );
       default:
         return (
-          <div className="text-center py-10">
+          <div className="text-center py-10 px-4">
             <p className="text-muted-foreground">Content for {activeTab} tab.</p>
           </div>
         );
@@ -301,10 +297,14 @@ export default function CryptoExchangePage() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <TopHeader />
-      <main className="flex-grow overflow-y-auto pb-16 md:pb-0 px-0 md:px-4 pt-3"> {/* Adjusted padding for Library */}
+      {/* Adjust pb-28 for PlayerBar (~56px) + BottomNavBar (60px) + some spacing */}
+      {/* PlayerBar is conditionally rendered for Library tab to match Spotify */}
+      <main className={`flex-grow overflow-y-auto ${activeTab === 'Library' ? 'pb-28' : 'pb-16'} md:pb-0 px-0 pt-3`}>
         {renderContent()}
       </main>
+      {activeTab === 'Library' && <PlayerBar />} {/* Conditionally render PlayerBar */}
       <BottomNavBar activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
 }
+
