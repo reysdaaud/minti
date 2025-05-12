@@ -2,51 +2,57 @@
 'use client';
 
 import type { FC } from 'react';
+import { useEffect, useState } from 'react';
+import { collection, getDocs, query, where, type QueryConstraint } from 'firebase/firestore';
+import { db } from '@/lib/firebase'; 
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
 import LibraryCard from './LibraryCard';
-import TopListItemCard from './TopListItemCard';
+import { Loader2, AlertTriangle } from 'lucide-react';
 
-// Placeholder audio source. Replace with actual audio URLs.
-const SAMPLE_AUDIO_SRC_1 = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
-const SAMPLE_AUDIO_SRC_2 = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3";
-const SAMPLE_AUDIO_SRC_3 = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3";
-
-
-interface CardItem {
+// Define the structure of a content item from Firestore
+export interface ContentItem {
   id: string;
   title: string;
-  subtitle?: string;
+  subtitle?: string; // Or artist
   imageUrl: string;
   audioSrc: string;
   dataAiHint: string;
+  category?: 'Music' | 'Podcast' | string; // For filtering
+  // Add any other fields that might come from Firestore
 }
 
-interface TopListItemData {
-  id: string;
+// Interface for the LibrarySection component props
+interface LibrarySectionProps {
   title: string;
-  artist?: string;
-  imageUrl: string;
-  audioSrc: string;
-  dataAiHint: string;
-  hasMoreOptions?: boolean;
+  items: ContentItem[];
 }
 
-interface SectionProps {
-  title: string;
-  items: CardItem[];
-  itemType: 'default'; 
-}
+const LibrarySection: FC<LibrarySectionProps> = ({ title, items }) => {
+  if (items.length === 0) {
+    return (
+      <section className="py-4 px-4 md:px-0">
+        <h2 className="text-2xl font-bold text-foreground mb-3">{title}</h2>
+        <p className="text-muted-foreground">No items found in this section.</p>
+      </section>
+    );
+  }
 
-const LibrarySection: FC<SectionProps> = ({ title, items }) => {
   return (
     <section className="py-4">
       <h2 className="text-2xl font-bold text-foreground mb-3 px-4 md:px-0">{title}</h2>
       <ScrollArea className="w-full whitespace-nowrap">
         <div className="flex space-x-4 pb-4 px-4 md:px-0">
           {items.map((item) => (
-            <LibraryCard key={item.id} {...item} />
+            <LibraryCard
+              key={item.id}
+              id={item.id}
+              title={item.title}
+              subtitle={item.subtitle}
+              imageUrl={item.imageUrl}
+              audioSrc={item.audioSrc}
+              dataAiHint={item.dataAiHint}
+            />
           ))}
         </div>
         <ScrollBar orientation="horizontal" />
@@ -57,49 +63,57 @@ const LibrarySection: FC<SectionProps> = ({ title, items }) => {
 
 
 const LibraryContent: FC = () => {
-  const [activeFilter, setActiveFilter] = useState('All');
-  const filters = ['All', 'Music', 'Podcasts'];
+  const [activeFilter, setActiveFilter] = useState<'All' | 'Music' | 'Podcasts'>('All');
+  const filters: Array<'All' | 'Music' | 'Podcasts'> = ['All', 'Music', 'Podcasts'];
 
-  const topListItems: TopListItemData[] = [
-    { id: 'top1', title: 'POWER Tv Series', artist: 'Soundtrack', imageUrl: 'https://picsum.photos/seed/power/100/100', audioSrc: SAMPLE_AUDIO_SRC_1, dataAiHint: 'drama series', hasMoreOptions: true },
-    { id: 'top2', title: 'Blinding Lights', artist: 'The Weeknd', imageUrl: 'https://picsum.photos/seed/theweeknd/100/100', audioSrc: SAMPLE_AUDIO_SRC_2, dataAiHint: 'pop artist' },
-    { id: 'top3', title: 'On The Low', artist: 'Burna Boy', imageUrl: 'https://picsum.photos/seed/burnaboy/100/100', audioSrc: SAMPLE_AUDIO_SRC_3, dataAiHint: 'afrobeats mix' },
-    { id: 'top4', title: 'Ocean Drive', artist: 'Duke Dumont', imageUrl: 'https://picsum.photos/seed/bridgetblue/100/100', audioSrc: SAMPLE_AUDIO_SRC_1, dataAiHint: 'electronic music' },
-    { id: 'top5', title: 'Starboy', artist: 'The Weeknd ft. Daft Punk', imageUrl: 'https://picsum.photos/seed/starboyalbum/100/100', audioSrc: SAMPLE_AUDIO_SRC_2, dataAiHint: 'rnb album' },
-    { id: 'top6', title: 'Daily Mix 1', artist: 'Various Artists', imageUrl: 'https://picsum.photos/seed/dailymix1/100/100', audioSrc: SAMPLE_AUDIO_SRC_3, dataAiHint: 'playlist mix' },
-  ];
+  const [libraryItems, setLibraryItems] = useState<ContentItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const artistsYouLike: CardItem[] = [
-    { id: 'artist1', title: 'Number One', subtitle: 'Diamond Platnumz', imageUrl: 'https://picsum.photos/seed/diamondplatnumz/300/300', audioSrc: SAMPLE_AUDIO_SRC_1, dataAiHint: 'african artist' },
-    { id: 'artist2', title: 'Shake It Off', subtitle: 'Taylor Swift', imageUrl: 'https://picsum.photos/seed/taylorswift/300/300', audioSrc: SAMPLE_AUDIO_SRC_2, dataAiHint: 'pop singer' },
-    { id: 'artist3', title: 'Hotline Bling', subtitle: 'Drake', imageUrl: 'https://picsum.photos/seed/drakeradio/300/300', audioSrc: SAMPLE_AUDIO_SRC_3, dataAiHint: 'rap hiphop' },
-    { id: 'artist4', title: 'Sura Yako', subtitle: 'Sauti Sol', imageUrl: 'https://picsum.photos/seed/sautisol/300/300', audioSrc: SAMPLE_AUDIO_SRC_1, dataAiHint: 'kenyan music' },
-  ];
+  useEffect(() => {
+    const fetchLibraryContent = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const contentCollectionRef = collection(db, 'content');
+        let contentQuery: QueryConstraint | any = contentCollectionRef; // Type any for simplicity here, or use specific query type
 
-  const madeForYou: CardItem[] = [
-    { id: 'made1', title: 'Discover Weekly', subtitle: 'Your weekly mixtape.', imageUrl: 'https://picsum.photos/seed/discoverweekly/300/300', audioSrc: SAMPLE_AUDIO_SRC_2, dataAiHint: 'playlist discover' },
-    { id: 'made2', title: 'Release Radar', subtitle: 'New music from artists you follow.', imageUrl: 'https://picsum.photos/seed/releaseradar/300/300', audioSrc: SAMPLE_AUDIO_SRC_3, dataAiHint: 'new releases' },
-    { id: 'made3', title: 'Chill Vibes', subtitle: 'Relax and unwind.', imageUrl: 'https://picsum.photos/seed/chillvibes/300/300', audioSrc: SAMPLE_AUDIO_SRC_1, dataAiHint: 'lofi chill' },
-    { id: 'made4', title: 'Workout Beats', subtitle: 'Energy for your workout.', imageUrl: 'https://picsum.photos/seed/workoutbeats/300/300', audioSrc: SAMPLE_AUDIO_SRC_2, dataAiHint: 'gym fitness' },
-  ];
-  
-  let displayedTopList = topListItems;
-  let displayedArtists = artistsYouLike;
-  let displayedMadeForYou = madeForYou;
+        if (activeFilter !== 'All') {
+          // Assuming items in Firestore have a 'category' field matching 'Music' or 'Podcast'
+          contentQuery = query(contentCollectionRef, where('category', '==', activeFilter));
+        }
+        
+        const querySnapshot = await getDocs(contentQuery);
+        const items = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          // Basic validation: Ensure essential fields are present
+          if (!data.title || !data.imageUrl || !data.audioSrc || !data.dataAiHint) {
+            console.warn(`Item with ID ${doc.id} is missing essential fields and will be filtered out.`);
+            return null; 
+          }
+          return {
+            id: doc.id,
+            title: data.title,
+            subtitle: data.subtitle,
+            imageUrl: data.imageUrl,
+            audioSrc: data.audioSrc,
+            dataAiHint: data.dataAiHint,
+            category: data.category,
+          } as ContentItem;
+        }).filter(item => item !== null) as ContentItem[]; // Filter out null items and cast
+        
+        setLibraryItems(items);
 
-  // Basic filtering example (can be expanded)
-  if (activeFilter === 'Music') {
-    // Assume all current items are music for now
-  } else if (activeFilter === 'Podcasts') {
-    // Placeholder: clear music items if "Podcasts" selected, replace with actual podcast data if available
-    displayedArtists = []; 
-    displayedMadeForYou = madeForYou.filter(item => item.dataAiHint.includes("podcast")); // Example
-    displayedTopList = topListItems.filter(item => item.dataAiHint.includes("podcast")); // Example
-     if (displayedTopList.length === 0 && displayedMadeForYou.length === 0 && displayedArtists.length === 0) {
-        // If no podcast content, show a message or default content
-     }
-  }
+      } catch (err) {
+        console.error("Error fetching library content:", err);
+        setError("Failed to load library content. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    fetchLibraryContent();
+  }, [activeFilter]); // Refetch when filter changes
 
   return (
     <div className="text-foreground pb-12">
@@ -126,29 +140,30 @@ const LibraryContent: FC = () => {
         </ScrollArea>
       </div>
       
-      {(activeFilter === 'All' || activeFilter === 'Music' || (activeFilter === 'Podcasts' && displayedTopList.length > 0)) && (
-        <section className="pt-4 px-4 md:px-0">
-          <h2 className="text-xl font-bold text-foreground mb-3">Good afternoon</h2>
-          <div className="grid grid-cols-2 gap-2 md:gap-3">
-            {displayedTopList.map((item) => (
-              <TopListItemCard key={item.id} {...item} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {(activeFilter === 'All' || activeFilter === 'Music' || (activeFilter === 'Podcasts' && displayedArtists.length > 0)) && (
-        <LibrarySection title="Artists you like" items={displayedArtists} itemType="default" />
-      )}
-      {(activeFilter === 'All' || activeFilter === 'Music' || (activeFilter === 'Podcasts' && displayedMadeForYou.length > 0)) && (
-        <LibrarySection title="Made For You" items={displayedMadeForYou} itemType="default" />
-      )}
-
-       {activeFilter === 'Podcasts' && displayedTopList.length === 0 && displayedArtists.length === 0 && displayedMadeForYou.length === 0 && (
-        <div className="text-center py-10 px-4">
-          <p className="text-muted-foreground text-lg">No podcasts to show for now.</p>
-          <p className="text-muted-foreground">Check back later or explore other categories!</p>
+      {loading && (
+        <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+          <p>Loading library...</p>
         </div>
+      )}
+
+      {error && !loading && (
+        <div className="flex flex-col items-center justify-center py-10 text-destructive px-4 text-center">
+          <AlertTriangle className="h-8 w-8 mb-2" />
+          <p className="font-semibold">Error</p>
+          <p>{error}</p>
+        </div>
+      )}
+
+      {!loading && !error && libraryItems.length === 0 && (
+        <div className="text-center py-10 px-4">
+          <p className="text-muted-foreground text-lg">Your library is currently empty for "{activeFilter}".</p>
+          <p className="text-muted-foreground">Explore and add some content!</p>
+        </div>
+      )}
+
+      {!loading && !error && libraryItems.length > 0 && (
+         <LibrarySection title={activeFilter === 'All' ? "Your Library" : `${activeFilter}`} items={libraryItems} />
       )}
     </div>
   );
