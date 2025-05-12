@@ -1,6 +1,7 @@
+// src/components/exchange/TopHeader.tsx
 'use client';
 import type { FC } from 'react';
-import { Headphones, LogIn, UserCircle, ChevronDown } from 'lucide-react';
+import { Headphones, LogIn, UserCircle, ChevronDown, ShieldCheck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -52,6 +53,13 @@ const TopHeader: FC = () => {
                 </p>
               </div>
             </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/admin" className="flex items-center w-full">
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                Admin Panel
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <SignOutButton />
