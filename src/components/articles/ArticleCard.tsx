@@ -1,3 +1,4 @@
+
 // src/components/articles/ArticleCard.tsx
 'use client';
 
@@ -15,8 +16,9 @@ interface ArticleCardProps {
 
 const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
   // An item is considered an article if it has an excerpt or fullBodyContent.
-  if (!article.excerpt && !article.fullBodyContent) {
-    console.warn(`ArticleCard received an item (ID: ${article.id}) that does not have excerpt or full body content.`);
+  // Prioritize fullBodyContent for this check.
+  if (!article.fullBodyContent && !article.excerpt) {
+    console.warn(`ArticleCard received an item (ID: ${article.id}) that does not have fullBodyContent or excerpt.`);
     return null; 
   }
 
@@ -50,13 +52,15 @@ const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
             {article.excerpt}
           </p>
         )}
-        {/* If no excerpt but fullBodyContent exists, could show a snippet of fullBodyContent, or nothing.
-            For now, prioritizes excerpt.
+        {/* If no excerpt but fullBodyContent exists, this card will still render
+            but might show less text in the preview. Consider showing a snippet of fullBodyContent
+            if excerpt is empty but fullBodyContent is not.
         */}
       </CardContent>
       <CardFooter className="p-4 border-t border-border/50">
+        {/* Link should ideally go to a dynamic page like /article/${article.id} */}
+        {/* For now, a placeholder link is used. A proper routing setup is needed. */}
         <Button asChild variant="ghost" className="w-full text-primary hover:text-primary/90">
-          {/* Link would ideally go to a dynamic page like /content/${article.id} or /article/${article.id} */}
           <Link href={`#`}> 
             Read More <ArrowRight className="ml-2 h-4 w-4" />
           </Link>

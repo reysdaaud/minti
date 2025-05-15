@@ -1,9 +1,10 @@
+
 // src/components/articles/ArticleContent.tsx
 'use client';
 
 import type { FC } from 'react';
 import { useEffect, useState } from 'react';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, QueryConstraint } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ContentItem } from '@/services/contentService';
 import { Loader2, AlertTriangle, FileText } from 'lucide-react';
@@ -21,13 +22,14 @@ const ArticleContent: FC = () => {
       try {
         const contentCollectionRef = collection(db, 'content');
         // Fetch items that have fullBodyContent (indicating they are articles)
-        // And ensure audioSrc is not present, or handle cases where content might be both.
-        // For simplicity, we'll fetch if fullBodyContent exists.
-        const articlesQuery = query(
-          contentCollectionRef, 
-          where('fullBodyContent', '!=', null), // Check if fullBodyContent is not null or empty
+        // and ensure it's not an empty string.
+        const queryConstraints: QueryConstraint[] = [
+          where('fullBodyContent', '!=', null), // Ensure field exists
+          // where('fullBodyContent', '>', ''), // Firestore way to check for non-empty string if indexed
           orderBy('createdAt', 'desc')
-        );
+        ];
+        
+        const articlesQuery = query(contentCollectionRef, ...queryConstraints);
         
         const querySnapshot = await getDocs(articlesQuery);
         const fetchedArticles = querySnapshot.docs.map(doc => {
@@ -35,11 +37,11 @@ const ArticleContent: FC = () => {
           // Validate essential article fields
           if (!data.title || typeof data.title !== 'string' || 
               !data.imageUrl || typeof data.imageUrl !== 'string' ||
-              !data.excerpt || typeof data.excerpt !== 'string' || // Excerpt is key for ArticleCard
-              !data.fullBodyContent || typeof data.fullBodyContent !== 'string' ||
+              // Excerpt is optional, but fullBodyContent must exist and not be empty for an "article"
+              !data.fullBodyContent || typeof data.fullBodyContent !== 'string' || data.fullBodyContent.trim() === '' ||
               !data.dataAiHint || typeof data.dataAiHint !== 'string'
               ) {
-            console.warn(`Article with ID ${doc.id} is missing essential fields or has incorrect types and will be filtered out.`);
+            console.warn(`Content item ID ${doc.id} is missing essential article fields or has empty fullBodyContent and will be filtered out.`);
             return null; 
           }
           return {
@@ -49,12 +51,11 @@ const ArticleContent: FC = () => {
             imageUrl: data.imageUrl,
             dataAiHint: data.dataAiHint,
             category: typeof data.category === 'string' ? data.category : undefined,
-            excerpt: data.excerpt, // Make sure this is mapped
-            fullBodyContent: data.fullBodyContent, // Make sure this is mapped
+            excerpt: data.excerpt || undefined, // Ensure excerpt is string or undefined
+            fullBodyContent: data.fullBodyContent,
             audioSrc: data.audioSrc || undefined, // Include if it exists, though ArticleCard might not use it
-            // contentType is no longer a primary field from Firestore in this simplified model
           } as ContentItem;
-        }).filter(item => item !== null && (item.fullBodyContent && item.fullBodyContent.trim() !== '')) as ContentItem[];
+        }).filter(item => item !== null) as ContentItem[]; // Filter out nulls from validation
         
         setArticles(fetchedArticles);
 
@@ -103,7 +104,6 @@ const ArticleContent: FC = () => {
       <h1 className="text-3xl font-bold text-foreground mb-6">Articles</h1>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {articles.map((article) => (
-          // Pass the entire item, ArticleCard will determine how to display it
           <ArticleCard key={article.id} article={article} />
         ))}
       </div>

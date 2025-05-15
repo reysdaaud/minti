@@ -1,15 +1,16 @@
+
 // src/components/library/LibraryContent.tsx
 'use client';
 
 import type { FC } from 'react';
 import { useEffect, useState } from 'react';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore'; // Added orderBy
+import { collection, getDocs, query, where, orderBy, QueryConstraint } from 'firebase/firestore';
 import { db } from '@/lib/firebase'; 
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import LibraryCard from './LibraryCard';
-import { Loader2, AlertTriangle, Music, Podcast } from 'lucide-react'; // Added icons
-import type { ContentItem } from '@/services/contentService'; // Using ContentItem from contentService
+import { Loader2, AlertTriangle, Music, Podcast } from 'lucide-react';
+import type { ContentItem } from '@/services/contentService';
 
 interface LibrarySectionProps {
   title: string;
@@ -17,11 +18,13 @@ interface LibrarySectionProps {
 }
 
 const LibrarySection: FC<LibrarySectionProps> = ({ title, items }) => {
-  if (items.length === 0) {
+  const audioItems = items.filter(item => item.audioSrc && item.audioSrc.trim() !== '');
+
+  if (audioItems.length === 0) {
     return (
       <section className="py-4 px-4 md:px-0">
         <h2 className="text-2xl font-bold text-foreground mb-3">{title}</h2>
-        <p className="text-muted-foreground">No items found in this section.</p>
+        <p className="text-muted-foreground">No audio items found in this section.</p>
       </section>
     );
   }
@@ -31,18 +34,16 @@ const LibrarySection: FC<LibrarySectionProps> = ({ title, items }) => {
       <h2 className="text-2xl font-bold text-foreground mb-3 px-4 md:px-0">{title}</h2>
       <ScrollArea className="w-full whitespace-nowrap">
         <div className="flex space-x-4 pb-4 px-4 md:px-0">
-          {items.map((item) => (
-            item.audioSrc && ( // Only render if audioSrc is present
-              <LibraryCard
-                key={item.id}
-                id={item.id}
-                title={item.title}
-                subtitle={item.subtitle}
-                imageUrl={item.imageUrl}
-                audioSrc={item.audioSrc} 
-                dataAiHint={item.dataAiHint}
-              />
-            )
+          {audioItems.map((item) => (
+            <LibraryCard
+              key={item.id}
+              id={item.id}
+              title={item.title}
+              subtitle={item.subtitle}
+              imageUrl={item.imageUrl}
+              audioSrc={item.audioSrc!} // Known to be present and valid due to filter
+              dataAiHint={item.dataAiHint}
+            />
           ))}
         </div>
         <ScrollBar orientation="horizontal" />
@@ -66,10 +67,16 @@ const LibraryContent: FC = () => {
       setError(null);
       try {
         const contentCollectionRef = collection(db, 'content');
-        const queryConstraints = [
-            where('audioSrc', '!=', null), // Ensure only items with an audioSrc are fetched
-            orderBy('createdAt', 'desc') // Optional: order by creation date
+        const queryConstraints: QueryConstraint[] = [
+            where('audioSrc', '!=', null), // Ensure audioSrc field exists
+            orderBy('createdAt', 'desc') 
         ];
+        
+        // Firestore does not allow '!=' for empty string, so we filter client-side or use '>'
+        // For simplicity and to ensure `audioSrc` isn't just an empty string:
+        // We could use `where('audioSrc', '>', '')` if audioSrc is always indexed and a string.
+        // If audioSrc can be null or non-existent, the `!= null` is okay.
+        // We will add client-side filtering for empty string as well for robustness.
 
         if (activeFilter !== 'All') {
           queryConstraints.push(where('category', '==', activeFilter));
@@ -80,8 +87,9 @@ const LibraryContent: FC = () => {
         const querySnapshot = await getDocs(contentQuery);
         const items = querySnapshot.docs.map(doc => {
           const data = doc.data();
-          if (!data.title || !data.imageUrl || !data.audioSrc || !data.dataAiHint) {
-            console.warn(`Audio item with ID ${doc.id} is missing essential fields and will be filtered out.`);
+          // Basic validation for essential fields for audio items
+          if (!data.title || !data.imageUrl || !data.audioSrc || typeof data.audioSrc !== 'string' || data.audioSrc.trim() === '' || !data.dataAiHint) {
+            console.warn(`Audio item with ID ${doc.id} is missing essential fields, has invalid audioSrc, or empty audioSrc, and will be filtered out.`);
             return null; 
           }
           return {
@@ -92,7 +100,7 @@ const LibraryContent: FC = () => {
             audioSrc: data.audioSrc,
             dataAiHint: data.dataAiHint,
             category: data.category,
-            // Ensure other fields from ContentItem are mapped if needed for LibraryCard
+            // Map other fields if LibraryCard or sections need them
           } as ContentItem;
         }).filter(item => item !== null) as ContentItem[]; 
         
@@ -113,7 +121,7 @@ const LibraryContent: FC = () => {
     switch(activeFilter) {
       case 'Music': return <Music className="mx-auto h-12 w-12 text-muted-foreground mb-3" />;
       case 'Podcasts': return <Podcast className="mx-auto h-12 w-12 text-muted-foreground mb-3" />;
-      default: return <Music className="mx-auto h-12 w-12 text-muted-foreground mb-3" />; // Default or 'All'
+      default: return <Music className="mx-auto h-12 w-12 text-muted-foreground mb-3" />;
     }
   }
 
@@ -166,7 +174,7 @@ const LibraryContent: FC = () => {
       )}
 
       {!loading && !error && libraryItems.length > 0 && (
-         <LibrarySection title={activeFilter === 'All' ? "Your Library" : `${activeFilter}`} items={libraryItems} />
+         <LibrarySection title={activeFilter === 'All' ? "Your Audio Library" : `${activeFilter}`} items={libraryItems} />
       )}
     </div>
   );

@@ -1,3 +1,4 @@
+
 // src/components/admin/ContentForm.tsx
 'use client';
 
@@ -35,22 +36,24 @@ import type { ContentItem, ContentItemData } from '@/services/contentService';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+// Unified schema: all type-specific fields are optional
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   subtitle: z.string().optional(),
-  imageUrl: z.string().url({ message: "Image URL must be a valid URL (e.g., http://example.com/image.png)"}).min(1, 'Image URL is required'),
+  imageUrl: z.string().url({ message: "Image URL must be a valid URL (e.g., https://example.com/image.png)"}).min(1, 'Image URL is required'),
   dataAiHint: z.string().min(1, 'AI Hint is required').max(50, 'AI Hint too long (max 50 chars)'),
-  category: z.string().optional().default('Music'),
-  audioSrc: z.string().url({ message: "Audio URL must be a valid URL (e.g., http://example.com/audio.mp3)" }).optional().or(z.literal('')),
+  category: z.string().optional(), // General category
+  audioSrc: z.string().url({ message: "Audio URL must be a valid URL (e.g., https://example.com/audio.mp3)" }).optional().or(z.literal('')),
   excerpt: z.string().optional(),
   fullBodyContent: z.string().optional(),
 });
+// We can add a superRefine if we want to ensure at least one "content" part is filled
 // .superRefine((data, ctx) => {
-//   if (!data.audioSrc && (!data.excerpt || !data.fullBodyContent)) {
+//   if (!data.audioSrc && !data.excerpt && !data.fullBodyContent) {
 //     ctx.addIssue({
 //       code: z.ZodIssueCode.custom,
-//       message: 'Either an Audio URL or both Excerpt and Full Body Content must be provided.',
-//       path: ['audioSrc'], // Or a more general path
+//       message: 'Content is empty. Please provide an Audio URL, or an Excerpt, or Full Body Content.',
+//       path: ['audioSrc'], // Or a more general path like 'title'
 //     });
 //   }
 // });
@@ -77,17 +80,17 @@ const ContentForm: FC<ContentFormProps> = ({ isOpen, onClose, onSubmit, initialD
           imageUrl: initialData.imageUrl,
           audioSrc: initialData.audioSrc || '',
           dataAiHint: initialData.dataAiHint,
-          category: initialData.category || 'Music',
+          category: initialData.category || 'Music', // Default if category was not set
           excerpt: initialData.excerpt || '',
           fullBodyContent: initialData.fullBodyContent || '',
         }
-      : {
+      : { // Default for new item
           title: '',
           subtitle: '',
           imageUrl: '',
           audioSrc: '',
           dataAiHint: '',
-          category: 'Music',
+          category: 'Music', // Default category for new items
           excerpt: '',
           fullBodyContent: '',
         },
@@ -98,9 +101,11 @@ const ContentForm: FC<ContentFormProps> = ({ isOpen, onClose, onSubmit, initialD
     try {
       const parsedData = formSchema.parse(data);
       console.log("Zod parsed data successfully:", parsedData);
-      // Ensure optional empty strings are treated as undefined if necessary by backend or schema
+      
       const submissionData: ContentItemData = {
         ...parsedData,
+        // Ensure empty strings for optional URL/text fields become undefined if that's preferred
+        // by backend or for cleaner data. Otherwise, Firestore stores empty strings.
         audioSrc: parsedData.audioSrc || undefined,
         excerpt: parsedData.excerpt || undefined,
         fullBodyContent: parsedData.fullBodyContent || undefined,
@@ -116,6 +121,7 @@ const ContentForm: FC<ContentFormProps> = ({ isOpen, onClose, onSubmit, initialD
         });
       } else {
         console.error("Error submitting form:", error);
+        toast({title: "Submission Error", description: "An unexpected error occurred.", variant: "destructive"});
       }
     }
   };
@@ -125,11 +131,12 @@ const ContentForm: FC<ContentFormProps> = ({ isOpen, onClose, onSubmit, initialD
     console.error("Current form values:", form.getValues());
     console.error("form.formState.errors from RHF state:", form.formState.errors);
     console.error("form.formState.errors from RHF state (JSON):", JSON.stringify(form.formState.errors, null, 2));
-    
-    let errorSummary = "Please check the form fields for errors: ";
-    const fieldErrors = Object.keys(form.formState.errors);
-    if (fieldErrors.length > 0) {
-      errorSummary += fieldErrors.join(', ') + ".";
+    console.log("form.formState.isValid from RHF state:", form.formState.isValid);
+
+    let errorSummary = "Please check the form fields for errors. ";
+    const fieldErrorKeys = Object.keys(form.formState.errors) as Array<keyof ContentFormValues>;
+    if (fieldErrorKeys.length > 0) {
+      errorSummary += fieldErrorKeys.map(key => `${key}: ${form.formState.errors[key]?.message}`).join(', ') + ".";
     } else {
       errorSummary = "An unknown validation error occurred. Please check console.";
     }
@@ -153,6 +160,7 @@ const ContentForm: FC<ContentFormProps> = ({ isOpen, onClose, onSubmit, initialD
             onSubmit={form.handleSubmit(handleFormSubmitInternal, onFormValidationError)} 
             className="space-y-4 py-4"
           >
+            {/* Common Fields */}
             <FormField
               control={form.control}
               name="title"
@@ -171,7 +179,7 @@ const ContentForm: FC<ContentFormProps> = ({ isOpen, onClose, onSubmit, initialD
               name="subtitle"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Subtitle / Artist</FormLabel>
+                  <FormLabel>Subtitle / Artist (Optional)</FormLabel>
                   <FormControl>
                     <Input placeholder="Enter subtitle or artist name" {...field} className="bg-input text-foreground border-border" />
                   </FormControl>
@@ -192,48 +200,6 @@ const ContentForm: FC<ContentFormProps> = ({ isOpen, onClose, onSubmit, initialD
                 </FormItem>
               )}
             />
-            
-            <FormField
-              control={form.control}
-              name="audioSrc"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Audio URL (Optional)</FormLabel>
-                  <FormControl>
-                    <Input type="url" placeholder="https://example.com/audio.mp3 (leave blank if not audio)" {...field} className="bg-input text-foreground border-border" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="excerpt"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Excerpt (Optional for Articles)</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Short summary of the article... (leave blank if not an article)" {...field} className="bg-input text-foreground border-border min-h-[100px]" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="fullBodyContent"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Body Content (Optional for Articles)</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Write the full article content here... (leave blank if not an article)" {...field} className="bg-input text-foreground border-border min-h-[200px]" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <FormField
               control={form.control}
               name="dataAiHint"
@@ -252,8 +218,8 @@ const ContentForm: FC<ContentFormProps> = ({ isOpen, onClose, onSubmit, initialD
               name="category"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Category</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormLabel>Category (Optional)</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value || 'Music'}>
                     <FormControl>
                       <SelectTrigger className="bg-input text-foreground border-border">
                         <SelectValue placeholder="Select a category" />
@@ -265,6 +231,7 @@ const ContentForm: FC<ContentFormProps> = ({ isOpen, onClose, onSubmit, initialD
                       <SelectItem value="News">News</SelectItem>
                       <SelectItem value="Tech">Tech</SelectItem>
                       <SelectItem value="Lifestyle">Lifestyle</SelectItem>
+                      <SelectItem value="Education">Education</SelectItem>
                       <SelectItem value="Other">Other</SelectItem>
                     </SelectContent>
                   </Select>
@@ -272,6 +239,50 @@ const ContentForm: FC<ContentFormProps> = ({ isOpen, onClose, onSubmit, initialD
                 </FormItem>
               )}
             />
+
+            {/* Audio Specific Field (Optional) */}
+            <FormField
+              control={form.control}
+              name="audioSrc"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Audio URL (Optional - for audio content)</FormLabel>
+                  <FormControl>
+                    <Input type="url" placeholder="https://example.com/audio.mp3" {...field} className="bg-input text-foreground border-border" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            {/* Article Specific Fields (Optional) */}
+            <FormField
+              control={form.control}
+              name="excerpt"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Excerpt (Optional - for articles)</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Short summary of the article..." {...field} className="bg-input text-foreground border-border min-h-[100px]" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="fullBodyContent"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Full Body Content (Optional - for articles)</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Write the full article content here..." {...field} className="bg-input text-foreground border-border min-h-[200px]" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
             <DialogFooter className="sticky bottom-0 bg-card py-4 mt-auto">
               <DialogClose asChild>
                 <Button type="button" variant="outline">

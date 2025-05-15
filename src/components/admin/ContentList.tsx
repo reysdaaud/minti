@@ -1,3 +1,4 @@
+
 // src/components/admin/ContentList.tsx
 'use client';
 
@@ -48,7 +49,7 @@ const ContentTypeDisplay: FC<{ item: ContentItem }> = ({ item }) => {
   return (
     <div className="flex items-center space-x-1 text-muted-foreground">
       <List className="h-4 w-4" />
-      <span>Content</span>
+      <span>Content</span> {/* Or 'General', 'Other' etc. */}
       {item.category && <span className="text-muted-foreground text-xs">&bull; {item.category}</span>}
     </div>
   );
