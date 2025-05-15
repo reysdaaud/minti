@@ -40,6 +40,12 @@ const nextConfig: NextConfig = {
         hostname: 'ichef.bbci.co.uk', // Added for BBC images
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.newtimes.co.rw', // Added for New Times images
+        port: '',
+        pathname: '/**',
       }
     ],
   },
