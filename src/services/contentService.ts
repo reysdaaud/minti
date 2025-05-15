@@ -22,6 +22,7 @@ export interface ContentItem {
   imageUrl: string;
   dataAiHint: string;
   category?: string;
+  contentType: 'audio' | 'article'; // Added content type
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 
@@ -42,7 +43,13 @@ const prepareDataForFirestore = <T extends Record<string, any>>(data: T): Partia
   const firestoreData: Partial<T> = {};
   for (const key in data) {
     if (Object.prototype.hasOwnProperty.call(data, key) && data[key] !== undefined) {
-      // Retain empty strings as they are valid, only omit undefined
+      // Retain empty strings as they are valid, only omit undefined for non-string fields if desired
+      // For this use case, empty strings for optional text fields are fine.
+      if (data[key] === '' && (key === 'audioSrc' || key === 'excerpt' || key === 'fullBodyContent' || key === 'subtitle' || key === 'category')) {
+        // Do not save empty strings for these specific optional fields, treat as not provided
+        // This helps in querying for existence (e.g., field > '')
+        continue;
+      }
       firestoreData[key as keyof T] = data[key];
     }
   }
@@ -97,7 +104,6 @@ export const updateContentItem = async (itemId: string, itemData: Partial<Conten
       updatedAt: Timestamp.now(),
     };
     
-    // Ensure createdAt is not part of update data
     if ('createdAt' in dataToUpdate) {
         delete dataToUpdate.createdAt;
     }

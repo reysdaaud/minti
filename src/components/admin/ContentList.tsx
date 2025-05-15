@@ -6,7 +6,7 @@ import type { FC } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Edit, Trash2, Music, FileText, List } from 'lucide-react';
+import { Edit, Trash2, Music, FileText, AlertCircle } from 'lucide-react';
 import type { ContentItem } from '@/services/contentService';
 import {
   AlertDialog,
@@ -28,28 +28,22 @@ interface ContentListProps {
 }
 
 const ContentTypeDisplay: FC<{ item: ContentItem }> = ({ item }) => {
-  if (item.audioSrc) {
-    return (
-      <div className="flex items-center space-x-1 text-primary">
-        <Music className="h-4 w-4" />
-        <span>Audio</span>
-        {item.category && <span className="text-muted-foreground text-xs">&bull; {item.category}</span>}
-      </div>
-    );
+  let icon = <AlertCircle className="h-4 w-4 text-yellow-500" />;
+  let typeText = item.contentType === 'audio' ? 'Audio' : item.contentType === 'article' ? 'Article' : 'Unknown';
+  let iconColorClass = 'text-muted-foreground';
+
+  if (item.contentType === 'audio') {
+    icon = <Music className="h-4 w-4" />;
+    iconColorClass = 'text-primary';
+  } else if (item.contentType === 'article') {
+    icon = <FileText className="h-4 w-4" />;
+    iconColorClass = 'text-blue-500';
   }
-  if (item.fullBodyContent || item.excerpt) {
-    return (
-      <div className="flex items-center space-x-1 text-blue-500">
-        <FileText className="h-4 w-4" />
-        <span>Article</span>
-         {item.category && <span className="text-muted-foreground text-xs">&bull; {item.category}</span>}
-      </div>
-    );
-  }
+
   return (
-    <div className="flex items-center space-x-1 text-muted-foreground">
-      <List className="h-4 w-4" />
-      <span>Content</span> {/* Or 'General', 'Other' etc. */}
+    <div className={`flex items-center space-x-1 ${iconColorClass}`}>
+      {icon}
+      <span>{typeText}</span>
       {item.category && <span className="text-muted-foreground text-xs">&bull; {item.category}</span>}
     </div>
   );
@@ -77,7 +71,7 @@ const ContentList: FC<ContentListProps> = ({ items, onEdit, onDelete, isLoadingD
             </div>
             <CardTitle className="text-lg truncate">{item.title}</CardTitle>
             {item.subtitle && <CardDescription className="truncate">{item.subtitle}</CardDescription>}
-             {item.excerpt && (
+             {item.excerpt && item.contentType === 'article' && (
               <CardDescription className="text-sm text-muted-foreground mt-1 line-clamp-2">{item.excerpt}</CardDescription>
             )}
           </CardHeader>
@@ -88,7 +82,7 @@ const ContentList: FC<ContentListProps> = ({ items, onEdit, onDelete, isLoadingD
             <p className="text-xs text-muted-foreground">
               ID: {item.id}
             </p>
-            {item.audioSrc && (
+            {item.audioSrc && item.contentType === 'audio' && (
               <p className="text-xs text-muted-foreground mt-1">
                 Audio: <a href={item.audioSrc} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate block max-w-full">{item.audioSrc}</a>
               </p>

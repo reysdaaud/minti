@@ -3,7 +3,7 @@
 'use client';
 
 import type { FC } from 'react';
-import React from 'react'; // Import React for Fragment
+import React from 'react'; 
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,14 +14,12 @@ import { format, isValid } from 'date-fns';
 interface ArticleCardProps {
   article: ContentItem;
   isCurrentlyExpanded: boolean;
-  onToggleExpand: (articleId: string) => void;
+  onToggleExpand: () => void; // Simplified: just toggles the state managed by parent
 }
 
 const ArticleCard: FC<ArticleCardProps> = ({ article, isCurrentlyExpanded, onToggleExpand }) => {
-  // console.log(`ArticleCard ${article.id}: Rendering. isCurrentlyExpanded = ${isCurrentlyExpanded}, Has fullBodyContent: ${!!article.fullBodyContent}, Has excerpt: ${!!article.excerpt}`);
 
   if (!article.fullBodyContent && !article.excerpt) {
-    // console.warn(`ArticleCard received an item (ID: ${article.id}) that does not have fullBodyContent or excerpt.`);
     return null;
   }
 
@@ -52,10 +50,10 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, isCurrentlyExpanded, onTog
         <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">{metaInfo}</p>
         <CardTitle
             className="text-xl lg:text-2xl font-bold text-foreground mb-2 leading-tight hover:text-primary transition-colors cursor-pointer"
-            onClick={() => onToggleExpand(article.id)}
+            onClick={onToggleExpand}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onToggleExpand(article.id)}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onToggleExpand()}
         >
           {article.title}
         </CardTitle>
@@ -67,8 +65,8 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, isCurrentlyExpanded, onTog
         )}
 
         {isCurrentlyExpanded && article.fullBodyContent && (
-          <div className="prose dark:prose-invert sm:prose-lg lg:prose-xl mt-4 text-foreground/90">
-            {article.fullBodyContent.split(/\n\s*\n/).map((paragraphBlock, pIndex) => ( // Split by one or more newlines (effectively \n\n or \n \n etc.)
+           <div className="prose dark:prose-invert sm:prose-lg lg:prose-xl mt-4 text-foreground/90">
+            {article.fullBodyContent.split(/\n\s*\n|\n{2,}/).map((paragraphBlock, pIndex) => (
               <p key={pIndex}>
                 {paragraphBlock.split('\n').map((line, lIndex, linesArray) => (
                   <React.Fragment key={lIndex}>
@@ -84,7 +82,7 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, isCurrentlyExpanded, onTog
             <Button
             variant="outline"
             className="p-2 text-foreground/90 hover:text-primary transition-colors mt-3 text-sm flex items-center border-primary/50 hover:border-primary h-auto" 
-            onClick={() => onToggleExpand(article.id)}
+            onClick={onToggleExpand}
             aria-expanded={isCurrentlyExpanded}
             >
             {isCurrentlyExpanded ? 'Read Less' : 'Read More'}

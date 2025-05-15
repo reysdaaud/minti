@@ -36,16 +36,44 @@ import type { ContentItem, ContentItemData } from '@/services/contentService';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-// Unified schema: all type-specific fields are optional
-const formSchema = z.object({
+const baseSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   subtitle: z.string().optional(),
   imageUrl: z.string().url({ message: "Image URL must be a valid URL (e.g., https://example.com/image.png)"}).min(1, 'Image URL is required'),
   dataAiHint: z.string().min(1, 'AI Hint is required').max(50, 'AI Hint too long (max 50 chars)'),
-  category: z.string().optional(), // General category
+  category: z.string().optional(),
+  contentType: z.enum(['audio', 'article'], { required_error: "Content type is required." }),
   audioSrc: z.string().url({ message: "Audio URL must be a valid URL (e.g., https://example.com/audio.mp3)" }).optional().or(z.literal('')),
   excerpt: z.string().optional(),
   fullBodyContent: z.string().optional(),
+});
+
+// Use superRefine for conditional validation
+const formSchema = baseSchema.superRefine((data, ctx) => {
+  if (data.contentType === 'audio') {
+    if (!data.audioSrc || data.audioSrc.trim() === '') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Audio URL is required for audio content.",
+        path: ["audioSrc"],
+      });
+    }
+  } else if (data.contentType === 'article') {
+    if (!data.excerpt || data.excerpt.trim() === '') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Excerpt is required for article content.",
+        path: ["excerpt"],
+      });
+    }
+    if (!data.fullBodyContent || data.fullBodyContent.trim() === '') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Full body content is required for article content.",
+        path: ["fullBodyContent"],
+      });
+    }
+  }
 });
 
 
@@ -65,40 +93,41 @@ const ContentForm: FC<ContentFormProps> = ({ isOpen, onClose, onSubmit, initialD
     resolver: zodResolver(formSchema),
     defaultValues: initialData
       ? {
-          title: initialData.title,
+          ...initialData,
           subtitle: initialData.subtitle || '',
-          imageUrl: initialData.imageUrl,
           audioSrc: initialData.audioSrc || '',
-          dataAiHint: initialData.dataAiHint,
-          category: initialData.category || 'Music', // Default if category was not set
+          category: initialData.category || 'Music',
           excerpt: initialData.excerpt || '',
           fullBodyContent: initialData.fullBodyContent || '',
+          contentType: initialData.contentType || 'audio', // Default to audio if not set
         }
-      : { // Default for new item
+      : { 
           title: '',
           subtitle: '',
           imageUrl: '',
           audioSrc: '',
           dataAiHint: '',
-          category: 'Music', // Default category for new items
+          category: 'Music',
+          contentType: 'audio', // Default to 'audio' for new items
           excerpt: '',
           fullBodyContent: '',
         },
   });
 
+  const watchedContentType = form.watch('contentType');
+
   const handleFormSubmitInternal: SubmitHandler<ContentFormValues> = async (data) => {
     console.log("Attempting form submission with data (raw from RHF):", data);
     try {
-      const parsedData = formSchema.parse(data);
-      console.log("Zod parsed data successfully:", parsedData);
+      // Zod parsing is handled by resolver, but can double check here if needed.
+      // const parsedData = formSchema.parse(data); 
+      // console.log("Zod parsed data successfully:", parsedData);
       
       const submissionData: ContentItemData = {
-        ...parsedData,
-        audioSrc: parsedData.audioSrc || undefined, // Ensure empty string becomes undefined
-        excerpt: parsedData.excerpt || undefined,
-        fullBodyContent: parsedData.fullBodyContent || undefined,
-        subtitle: parsedData.subtitle || undefined,
-        category: parsedData.category || undefined,
+        ...data, // data is already of type ContentFormValues
+        audioSrc: data.contentType === 'audio' ? data.audioSrc : undefined,
+        excerpt: data.contentType === 'article' ? data.excerpt : undefined,
+        fullBodyContent: data.contentType === 'article' ? data.fullBodyContent : undefined,
       };
       await onSubmit(submissionData);
     } catch (error) {
@@ -148,7 +177,28 @@ const ContentForm: FC<ContentFormProps> = ({ isOpen, onClose, onSubmit, initialD
             onSubmit={form.handleSubmit(handleFormSubmitInternal, onFormValidationError)} 
             className="space-y-4 py-4"
           >
-            {/* Common Fields */}
+            <FormField
+              control={form.control}
+              name="contentType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Content Type</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="bg-input text-foreground border-border">
+                        <SelectValue placeholder="Select content type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="bg-popover text-popover-foreground">
+                      <SelectItem value="audio">Audio</SelectItem>
+                      <SelectItem value="article">Article</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="title"
@@ -169,7 +219,7 @@ const ContentForm: FC<ContentFormProps> = ({ isOpen, onClose, onSubmit, initialD
                 <FormItem>
                   <FormLabel>Subtitle / Artist (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter subtitle or artist name" {...field} className="bg-input text-foreground border-border" />
+                    <Input placeholder="Enter subtitle or artist name" {...field} value={field.value ?? ''} className="bg-input text-foreground border-border" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -228,48 +278,52 @@ const ContentForm: FC<ContentFormProps> = ({ isOpen, onClose, onSubmit, initialD
               )}
             />
 
-            {/* Audio Specific Field (Optional) */}
-            <FormField
-              control={form.control}
-              name="audioSrc"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Audio URL (Optional)</FormLabel>
-                  <FormControl>
-                    <Input type="url" placeholder="https://example.com/audio.mp3" {...field} className="bg-input text-foreground border-border" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {watchedContentType === 'audio' && (
+              <FormField
+                control={form.control}
+                name="audioSrc"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Audio URL</FormLabel>
+                    <FormControl>
+                      <Input type="url" placeholder="https://example.com/audio.mp3" {...field} value={field.value ?? ''} className="bg-input text-foreground border-border" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             
-            {/* Article Specific Fields (Optional) */}
-            <FormField
-              control={form.control}
-              name="excerpt"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Excerpt (Optional)</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Short summary of the article..." {...field} className="bg-input text-foreground border-border min-h-[100px]" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="fullBodyContent"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Body Content (Optional)</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Write the full article content here..." {...field} className="bg-input text-foreground border-border min-h-[200px]" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {watchedContentType === 'article' && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="excerpt"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Excerpt</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Short summary of the article..." {...field} value={field.value ?? ''} className="bg-input text-foreground border-border min-h-[100px]" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="fullBodyContent"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full Body Content</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Write the full article content here..." {...field} value={field.value ?? ''} className="bg-input text-foreground border-border min-h-[200px]" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
             
             <DialogFooter className="sticky bottom-0 bg-card py-4 mt-auto">
               <DialogClose asChild>
@@ -290,4 +344,3 @@ const ContentForm: FC<ContentFormProps> = ({ isOpen, onClose, onSubmit, initialD
 };
 
 export default ContentForm;
-

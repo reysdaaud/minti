@@ -1,8 +1,9 @@
+
 // src/components/library/LibraryContent.tsx
 'use client';
 
 import type { FC } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { collection, getDocs, query, where, orderBy, QueryConstraint, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -34,7 +35,7 @@ const CardSection: FC<CardSectionProps> = ({ title, items }) => {
               title={item.title}
               subtitle={item.subtitle}
               imageUrl={item.imageUrl}
-              audioSrc={item.audioSrc!} // Asserting audioSrc is present due to filtering
+              audioSrc={item.audioSrc!} 
               dataAiHint={item.dataAiHint}
             />
           ))}
@@ -56,56 +57,55 @@ const LibraryContent: FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchLibraryContent = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const contentCollectionRef = collection(db, 'content');
+  const fetchLibraryContent = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const contentCollectionRef = collection(db, 'content');
 
-        const audioQueryConstraints: QueryConstraint[] = [
-            where('audioSrc', '!=', null), // Firestore check for existence
-            orderBy('createdAt', 'desc')
-        ];
+      const audioQueryConstraints: QueryConstraint[] = [
+          where('contentType', '==', 'audio'),
+          orderBy('createdAt', 'desc')
+      ];
 
-        const contentQuery = query(contentCollectionRef, ...audioQueryConstraints);
-        const querySnapshot = await getDocs(contentQuery);
+      const contentQuery = query(contentCollectionRef, ...audioQueryConstraints);
+      const querySnapshot = await getDocs(contentQuery);
 
-        const fetchedAudioItems = querySnapshot.docs.map(doc => {
-          const data = doc.data();
-          // Client-side validation for truly valid audio items
-          if (!data.title || typeof data.title !== 'string' ||
-              !data.imageUrl || typeof data.imageUrl !== 'string' ||
-              typeof data.audioSrc !== 'string' || data.audioSrc.trim() === '' || // Ensure audioSrc is non-empty string
-              !data.dataAiHint || typeof data.dataAiHint !== 'string') {
-            console.warn(`Client-side filter: Content item ID ${doc.id} missing essential fields or has empty audioSrc. Filtering out from library display.`);
-            return null;
-          }
-          return {
-            id: doc.id,
-            ...data,
-            // Ensure createdAt is handled if it's a Firestore Timestamp
-            createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt)
-          } as ContentItem;
-        }).filter(item => item !== null) as ContentItem[];
-
-        setAllAudioContent(fetchedAudioItems);
-        setTopListItems(fetchedAudioItems.slice(0, 6));
-
-      } catch (err: any) {
-        console.error("Error fetching library content:", err);
-        if (err.code === 'failed-precondition') {
-             setError(`Firestore query requires an index. Please create it using the link in the console error message, then refresh. Error: ${err.message}`);
-        } else {
-            setError("Failed to load your library. Please try again later.");
+      const fetchedAudioItems = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        if (!data.title || typeof data.title !== 'string' ||
+            !data.imageUrl || typeof data.imageUrl !== 'string' ||
+            typeof data.audioSrc !== 'string' || data.audioSrc.trim() === '' ||
+            !data.dataAiHint || typeof data.dataAiHint !== 'string' ||
+            data.contentType !== 'audio') {
+          return null;
         }
-      } finally {
-        setLoading(false);
-      }
-    };
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt)
+        } as ContentItem;
+      }).filter(item => item !== null) as ContentItem[];
 
-    fetchLibraryContent();
+      setAllAudioContent(fetchedAudioItems);
+      setTopListItems(fetchedAudioItems.slice(0, 6));
+
+    } catch (err: any) {
+      console.error("Error fetching library content:", err);
+      if (err.code === 'failed-precondition') {
+           setError(`Firestore query for audio content requires an index. Please create it (likely on 'contentType' Ascending and 'createdAt' Descending) using the link in the Firebase console error message, then refresh. Error: ${err.message}`);
+      } else {
+          setError("Failed to load your library. Please try again later.");
+      }
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchLibraryContent();
+  }, [fetchLibraryContent]);
+
 
   const getFilteredItems = (filter: 'All' | 'Music' | 'Podcasts'): ContentItem[] => {
     if (filter === 'All') return allAudioContent;
@@ -139,6 +139,9 @@ const LibraryContent: FC = () => {
         <AlertTriangle className="h-10 w-10 mb-3" />
         <p className="text-xl font-semibold">Error Loading Library</p>
         <p className="text-sm">{error}</p>
+        <Button onClick={fetchLibraryContent} variant="outline" className="mt-4">
+          Retry
+        </Button>
       </div>
     );
   }
