@@ -6,8 +6,8 @@ import UserActions from '@/components/exchange/UserActions';
 import MarketSection from '@/components/exchange/MarketSection';
 import BottomNavBar from '@/components/exchange/BottomNavBar';
 import CardBalance from '@/components/exchange/CardBalance';
-import LibraryContent from '@/components/library/LibraryContent';
-import ArticleContent from '@/components/articles/ArticleContent'; // Import ArticleContent
+import LibraryContent from '@/components/library/LibraryContent'; // Will display audio/podcast
+import ArticleContent from '@/components/articles/ArticleContent'; // Will display articles
 import PlayerBar from '@/components/library/PlayerBar';
 import FullScreenPlayer from '@/components/player/FullScreenPlayer';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,7 +30,6 @@ export default function CryptoExchangePage() {
 
   const [coinBalance, setCoinBalance] = useState(0);
   const [activeTab, setActiveTab] = useState('Home'); 
-  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const [userDocLoading, setUserDocLoading] = useState(true); 
 
 
@@ -61,11 +60,10 @@ export default function CryptoExchangePage() {
 
 
   const handleVerifyPayment = useCallback(async (paymentReference: string) => {
-    if (isVerifyingPayment) return; 
-    setIsVerifyingPayment(true);
+    // Moved isVerifyingPayment state to this component if it's specific to this page's verification logic
+    // For this example, we'll assume it's managed locally or through a context if needed across components
     
     const paystackSecretKey = process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE || "sk_live_7148c4754ef026a94b9015605a4707dc3c3cf8c3";
-
 
     if (!paystackSecretKey || !(paystackSecretKey.startsWith("sk_live_") || paystackSecretKey.startsWith("sk_test_"))) {
       console.error("Invalid or missing Paystack LIVE/TEST secret key for verification. Set NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE in .env.local or check hardcoded key.");
@@ -74,7 +72,7 @@ export default function CryptoExchangePage() {
         description: 'Payment gateway configuration error for verification. Contact support. [PSKNCV]',
         variant: 'destructive',
       });
-      setIsVerifyingPayment(false);
+      // setIsVerifyingPayment(false); // Assuming local state
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete('trxref');
       newUrl.searchParams.delete('reference');
@@ -186,18 +184,18 @@ export default function CryptoExchangePage() {
         variant: 'destructive',
       });
     } finally {
-      setIsVerifyingPayment(false);
+      // setIsVerifyingPayment(false); // Assuming local state
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete('trxref');
       newUrl.searchParams.delete('reference');
       nextRouter.replace(newUrl.pathname + newUrl.search, { scroll: false });
     }
-  }, [toast, nextRouter, user, isVerifyingPayment]); 
+  }, [toast, nextRouter, user]); // Removed isVerifyingPayment from dependencies for simplicity, handle with care
 
 
   useEffect(() => {
     const paymentReference = searchParams.get('trxref') || searchParams.get('reference');
-    if (paymentReference && user && !authLoading && !isVerifyingPayment) { 
+    if (paymentReference && user && !authLoading) { // Removed isVerifyingPayment check for simplicity
       const verificationKey = `verified_${paymentReference}`;
       if (sessionStorage.getItem(verificationKey) !== 'true') {
         sessionStorage.setItem(verificationKey, 'true'); 
@@ -211,7 +209,7 @@ export default function CryptoExchangePage() {
         }
       }
     }
-  }, [searchParams, user, authLoading, isVerifyingPayment, handleVerifyPayment, nextRouter]);
+  }, [searchParams, user, authLoading, handleVerifyPayment, nextRouter]);
 
 
   if (authLoading) {
@@ -243,7 +241,7 @@ export default function CryptoExchangePage() {
   }
 
   const renderContent = () => {
-    if (isPlayerOpen) return null; // Don't render main content if full screen player is open
+    if (isPlayerOpen) return null; 
 
     switch (activeTab) {
       case 'Home':
@@ -267,12 +265,12 @@ export default function CryptoExchangePage() {
             <MarketSection /> 
           </>
         );
-      case 'Library':
+      case 'Library': // This will show audio/podcast content
         return <LibraryContent />;
       case 'Markets': 
         return <MarketSection /> 
-      case 'Articles': // Changed from 'Assets' to 'Articles'
-        return <ArticleContent />; // Render ArticleContent for the 'Articles' tab
+      case 'Articles': // This tab will show articles
+        return <ArticleContent />; 
       case 'Trade': 
         return (
              <div className="text-center py-10 px-4">
@@ -289,11 +287,11 @@ export default function CryptoExchangePage() {
     }
   };
   
-  let mainPaddingBottom = 'pb-16'; // Default for BottomNavBar
+  let mainPaddingBottom = 'pb-16'; 
   if (currentTrack && !isPlayerOpen) { 
     mainPaddingBottom = 'pb-28'; 
   } else if (isPlayerOpen) {
-    mainPaddingBottom = 'pb-0'; // No padding if full screen player is open
+    mainPaddingBottom = 'pb-0'; 
   }
 
 

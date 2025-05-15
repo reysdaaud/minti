@@ -18,8 +18,8 @@ const BottomNavBar: FC<BottomNavBarProps> = ({ activeTab, onTabChange }) => {
   const navItems: NavItem[] = [
     { label: 'Home', icon: Home, targetTab: 'Home' },
     { label: 'Search', icon: Search, targetTab: 'Markets' },
-    { label: 'Library', icon: LucideLibrary, targetTab: 'Library' },
-    { label: 'Articles', icon: FileText, targetTab: 'Articles' }, // Changed label, icon, and targetTab
+    { label: 'Library', icon: LucideLibrary, targetTab: 'Library' }, // Reverted to Library
+    { label: 'Articles', icon: FileText, targetTab: 'Articles' }, // Changed label, icon, and targetTab from Premium/Assets
   ];
 
   return (
