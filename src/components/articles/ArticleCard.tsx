@@ -16,6 +16,7 @@ interface ArticleCardProps {
 }
 
 const ArticleCard: FC<ArticleCardProps> = ({ article, isCurrentlyExpanded, onToggleExpand }) => {
+  console.log(`ArticleCard ${article.id}: Rendering. isCurrentlyExpanded = ${isCurrentlyExpanded}, Has fullBodyContent: ${!!article.fullBodyContent}, Has excerpt: ${!!article.excerpt}`);
 
   if (!article.fullBodyContent && !article.excerpt) {
     console.warn(`ArticleCard received an item (ID: ${article.id}) that does not have fullBodyContent or excerpt.`);
@@ -70,16 +71,18 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, isCurrentlyExpanded, onTog
             ))}
           </div>
         )}
-
-        <Button
-          variant="link"
-          className="p-0 text-foreground/70 hover:text-primary transition-colors mt-3 text-sm flex items-center"
-          onClick={() => onToggleExpand(article.id)}
-          aria-expanded={isCurrentlyExpanded}
-        >
-          {isCurrentlyExpanded ? 'Read Less' : 'Read More'}
-          {isCurrentlyExpanded ? <ChevronUp className="ml-1 h-4 w-4" /> : <ArrowRight className="ml-1 h-4 w-4" />}
-        </Button>
+         {/* Always render the button, but change its text and icon */}
+        {(article.excerpt || article.fullBodyContent) && ( // Only show button if there's something to expand/collapse
+            <Button
+            variant="link"
+            className="p-0 text-foreground/70 hover:text-primary transition-colors mt-3 text-sm flex items-center"
+            onClick={() => onToggleExpand(article.id)}
+            aria-expanded={isCurrentlyExpanded}
+            >
+            {isCurrentlyExpanded ? 'Read Less' : 'Read More'}
+            {isCurrentlyExpanded ? <ChevronUp className="ml-1 h-4 w-4" /> : <ArrowRight className="ml-1 h-4 w-4" />}
+            </Button>
+        )}
       </CardContent>
     </Card>
   );

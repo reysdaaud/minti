@@ -8,7 +8,7 @@ import { db } from '@/lib/firebase';
 import type { ContentItem } from '@/services/contentService';
 import { Loader2, AlertTriangle, Newspaper, Search, Filter } from 'lucide-react';
 import ArticleCard from './ArticleCard';
-import { Button } from '@/components/ui/button'; // Added missing import
+import { Button } from '@/components/ui/button';
 
 const ArticleContent: FC = () => {
   const [articles, setArticles] = useState<ContentItem[]>([]);
@@ -25,7 +25,7 @@ const ArticleContent: FC = () => {
         
         const queryConstraints: QueryConstraint[] = [
           where('fullBodyContent', '>', ''), 
-          orderBy('fullBodyContent'), // This helps Firestore with the '>' filter
+          orderBy('fullBodyContent'), 
           orderBy('createdAt', 'desc')    
         ];
         
@@ -35,7 +35,6 @@ const ArticleContent: FC = () => {
         const fetchedItems = querySnapshot.docs.map(doc => {
           const data = doc.data();
           
-          // Basic validation for essential article fields
           if (!data.title || typeof data.title !== 'string' || 
               !data.imageUrl || typeof data.imageUrl !== 'string' ||
               !data.fullBodyContent || typeof data.fullBodyContent !== 'string' || data.fullBodyContent.trim() === '' ||
@@ -45,9 +44,8 @@ const ArticleContent: FC = () => {
             return null; 
           }
           
-          // Further client-side filter: ensure it's NOT an audio item
           if (data.audioSrc && typeof data.audioSrc === 'string' && data.audioSrc.trim() !== '') {
-            // console.log(`Content item ID ${doc.id} has audioSrc, filtering out from articles.`);
+            // This item has audio, so it's not purely an article for this view
             return null;
           }
 
@@ -60,7 +58,6 @@ const ArticleContent: FC = () => {
             category: typeof data.category === 'string' ? data.category : undefined,
             excerpt: typeof data.excerpt === 'string' ? data.excerpt : undefined, 
             fullBodyContent: data.fullBodyContent, 
-            // audioSrc should be undefined or empty for articles based on the logic above
             audioSrc: undefined, 
             createdAt: data.createdAt instanceof Timestamp ? data.createdAt : undefined, 
             updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt : undefined,
@@ -85,7 +82,12 @@ const ArticleContent: FC = () => {
   }, []);
 
   const handleToggleExpand = (articleId: string) => {
-    setExpandedArticleId(prevId => prevId === articleId ? null : articleId);
+    console.log(`ArticleContent: Toggling expand for article ID: ${articleId}`);
+    setExpandedArticleId(prevId => {
+      const newId = prevId === articleId ? null : articleId;
+      console.log(`ArticleContent: New expandedArticleId: ${newId}`);
+      return newId;
+    });
   };
 
   if (loading) {
@@ -111,7 +113,14 @@ const ArticleContent: FC = () => {
     ? articles.filter(article => article.id === expandedArticleId) 
     : articles;
 
-  if (articlesToDisplay.length === 0 && !expandedArticleId) {
+  if (articlesToDisplay.length === 0 && !expandedArticleId && articles.length > 0) {
+     // This case means filtering resulted in no articles to display, but there are articles
+     // This might happen if `expandedArticleId` points to an ID not in the current `articles` list
+     // Or if the filter `articles.filter(article => article.id === expandedArticleId)` returns empty
+     console.warn("ArticleContent: articlesToDisplay is empty after filtering, but articles list is not. expandedArticleId:", expandedArticleId);
+  }
+  
+  if (articles.length === 0) { // Check original articles list for empty state
     return (
       <div className="flex flex-col items-center justify-center py-10 text-center min-h-[calc(100vh-200px)] px-4">
         <Newspaper className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
@@ -122,6 +131,7 @@ const ArticleContent: FC = () => {
   }
   
   if (articlesToDisplay.length === 0 && expandedArticleId) {
+    // This means an article was supposed to be expanded, but it's not found in the display list
     return (
       <div className="flex flex-col items-center justify-center py-10 text-center min-h-[calc(100vh-200px)] px-4">
         <AlertTriangle className="mx-auto h-16 w-16 text-destructive mb-4" />
