@@ -2,34 +2,38 @@
 'use client';
 
 import type { FC } from 'react';
-import { useState } from 'react';
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { ContentItem } from '@/services/contentService';
 import { ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 
 interface ArticleCardProps {
   article: ContentItem;
+  isCurrentlyExpanded: boolean;
+  onToggleExpand: (articleId: string) => void;
 }
 
-const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+const ArticleCard: FC<ArticleCardProps> = ({ article, isCurrentlyExpanded, onToggleExpand }) => {
 
   if (!article.fullBodyContent && !article.excerpt) {
     console.warn(`ArticleCard received an item (ID: ${article.id}) that does not have fullBodyContent or excerpt.`);
     return null;
   }
 
-  const formattedDate = article.createdAt
-    ? format(new Date(article.createdAt.seconds * 1000 + (article.createdAt.nanoseconds || 0) / 1000000), 'MMMM dd, yyyy')
+  const dateToFormat = article.createdAt?.seconds 
+    ? new Date(article.createdAt.seconds * 1000 + (article.createdAt.nanoseconds || 0) / 1000000)
+    : null;
+
+  const formattedDate = dateToFormat && isValid(dateToFormat)
+    ? format(dateToFormat, 'MMMM dd, yyyy')
     : 'Date unavailable';
 
   const metaInfo = `${article.category || 'Article'} | ${formattedDate}`;
 
   return (
-    <Card className="w-full bg-transparent border-none shadow-none rounded-none mb-8">
+    <Card className="w-full bg-transparent border-none shadow-none rounded-none mb-8 break-inside-avoid-column">
       {article.imageUrl && (
         <div className="relative w-full aspect-[16/9] overflow-hidden mb-3 rounded-md">
           <Image
@@ -43,20 +47,26 @@ const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
       )}
       <CardContent className="p-0">
         <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">{metaInfo}</p>
-        <CardTitle className="text-xl lg:text-2xl font-bold text-foreground mb-2 leading-tight hover:text-primary transition-colors cursor-pointer"  onClick={() => setIsExpanded(!isExpanded)}>
+        <CardTitle 
+            className="text-xl lg:text-2xl font-bold text-foreground mb-2 leading-tight hover:text-primary transition-colors cursor-pointer"  
+            onClick={() => onToggleExpand(article.id)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onToggleExpand(article.id)}
+        >
           {article.title}
         </CardTitle>
 
-        {!isExpanded && article.excerpt && (
+        {!isCurrentlyExpanded && article.excerpt && (
           <p className="text-sm text-foreground/80 line-clamp-3 mt-2 mb-3">
             {article.excerpt}
           </p>
         )}
 
-        {isExpanded && article.fullBodyContent && (
+        {isCurrentlyExpanded && article.fullBodyContent && (
           <div className="prose dark:prose-invert sm:prose-lg lg:prose-xl mt-4 text-foreground/90 whitespace-pre-line">
             {article.fullBodyContent.split('\\n').map((paragraph, index) => (
-              <p key={index}>{paragraph}</p>
+              <p key={index}>{paragraph.trim()}</p>
             ))}
           </div>
         )}
@@ -64,11 +74,11 @@ const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
         <Button
           variant="link"
           className="p-0 text-foreground/70 hover:text-primary transition-colors mt-3 text-sm flex items-center"
-          onClick={() => setIsExpanded(!isExpanded)}
-          aria-expanded={isExpanded}
+          onClick={() => onToggleExpand(article.id)}
+          aria-expanded={isCurrentlyExpanded}
         >
-          {isExpanded ? 'Read Less' : 'Read More'}
-          {isExpanded ? <ChevronUp className="ml-1 h-4 w-4" /> : <ArrowRight className="ml-1 h-4 w-4" />}
+          {isCurrentlyExpanded ? 'Read Less' : 'Read More'}
+          {isCurrentlyExpanded ? <ChevronUp className="ml-1 h-4 w-4" /> : <ArrowRight className="ml-1 h-4 w-4" />}
         </Button>
       </CardContent>
     </Card>
