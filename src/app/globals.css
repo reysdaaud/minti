@@ -121,6 +121,64 @@ body {
     .send-money-button:hover {
       opacity: 0.85 !important;
     }
+
+    /* Basic prose styles for article content */
+    .prose {
+      color: hsl(var(--foreground));
+    }
+    .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+      color: hsl(var(--foreground));
+      font-weight: 600;
+    }
+    .prose p {
+      line-height: 1.7;
+      margin-bottom: 1.25em;
+    }
+    .prose a {
+      color: hsl(var(--primary));
+      text-decoration: underline;
+    }
+    .prose a:hover {
+      color: hsl(var(--primary) / 0.8);
+    }
+    .prose blockquote {
+      border-left-color: hsl(var(--primary));
+      color: hsl(var(--muted-foreground));
+    }
+    .prose code {
+      background-color: hsl(var(--card));
+      padding: 0.2em 0.4em;
+      border-radius: 0.25rem;
+      color: hsl(var(--card-foreground));
+    }
+    .prose pre {
+      background-color: hsl(var(--card));
+      color: hsl(var(--card-foreground));
+      border-radius: var(--radius);
+      padding: 1em;
+    }
+    .prose ul > li::before {
+      background-color: hsl(var(--primary));
+    }
+     .dark .prose-invert {
+      --tw-prose-body: hsl(var(--foreground));
+      --tw-prose-headings: hsl(var(--foreground));
+      --tw-prose-lead: hsl(var(--muted-foreground));
+      --tw-prose-links: hsl(var(--primary));
+      --tw-prose-bold: hsl(var(--foreground));
+      --tw-prose-counters: hsl(var(--muted-foreground));
+      --tw-prose-bullets: hsl(var(--border));
+      --tw-prose-hr: hsl(var(--border));
+      --tw-prose-quotes: hsl(var(--foreground));
+      --tw-prose-quote-borders: hsl(var(--primary));
+      --tw-prose-captions: hsl(var(--muted-foreground));
+      --tw-prose-code: hsl(var(--foreground));
+      --tw-prose-pre-code: hsl(var(--card-foreground));
+      --tw-prose-pre-bg: hsl(var(--card));
+      --tw-prose-th-borders: hsl(var(--border));
+      --tw-prose-td-borders: hsl(var(--border));
+    }
+
 }
 
 @layer base {

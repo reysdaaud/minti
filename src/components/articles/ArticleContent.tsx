@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { collection, getDocs, query, where, orderBy, QueryConstraint, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ContentItem } from '@/services/contentService';
-import { Loader2, AlertTriangle, Newspaper } from 'lucide-react';
+import { Loader2, AlertTriangle, Newspaper, Search, Filter } from 'lucide-react';
 import ArticleCard from './ArticleCard';
 
 const ArticleContent: FC = () => {
@@ -21,13 +21,10 @@ const ArticleContent: FC = () => {
       try {
         const contentCollectionRef = collection(db, 'content');
         
-        // Query for documents that have a non-empty fullBodyContent.
-        // Firestore query for "exists and is not empty string" can be `where(field, '>', '')`
-        // This requires an index on fullBodyContent (ascending) and createdAt (descending).
         const queryConstraints: QueryConstraint[] = [
-          where('fullBodyContent', '>', ''), // Ensures fullBodyContent exists and is not empty
-          orderBy('fullBodyContent'), // Firestore requires an orderBy on the field used in the inequality
-          orderBy('createdAt', 'desc')    // Then order by creation date
+          where('fullBodyContent', '>', ''), 
+          orderBy('fullBodyContent'), 
+          orderBy('createdAt', 'desc')    
         ];
         
         const articlesQuery = query(contentCollectionRef, ...queryConstraints);
@@ -36,7 +33,6 @@ const ArticleContent: FC = () => {
         const fetchedItems = querySnapshot.docs.map(doc => {
           const data = doc.data();
           
-          // Basic validation for core fields
           if (!data.title || typeof data.title !== 'string' || 
               !data.imageUrl || typeof data.imageUrl !== 'string' ||
               !data.fullBodyContent || typeof data.fullBodyContent !== 'string' || data.fullBodyContent.trim() === '' ||
@@ -56,11 +52,10 @@ const ArticleContent: FC = () => {
             excerpt: typeof data.excerpt === 'string' ? data.excerpt : undefined, 
             fullBodyContent: data.fullBodyContent, 
             audioSrc: typeof data.audioSrc === 'string' ? data.audioSrc : undefined,
-            createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
+            createdAt: data.createdAt, // Keep as Timestamp or convert if needed
           } as ContentItem;
         }).filter(item => item !== null);
 
-        // Client-side filter: exclude items that also have a non-empty audioSrc
         const purelyArticles = fetchedItems.filter(item => !item.audioSrc || item.audioSrc.trim() === '') as ContentItem[];
         
         setArticles(purelyArticles);
@@ -68,7 +63,7 @@ const ArticleContent: FC = () => {
       } catch (err: any) {
         console.error("Error fetching articles:", err);
          if (err.code === 'failed-precondition') {
-             setError(`Firestore query for articles requires an index. Please create it using the link likely provided in the browser console error message, then refresh. Error: ${err.message}`);
+             setError(`Firestore query for articles requires an index. Please create it. Error: ${err.message}`);
         } else {
             setError("Failed to load articles. Please try again later.");
         }
@@ -111,8 +106,16 @@ const ArticleContent: FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <h1 className="text-3xl font-bold text-foreground mb-8 text-center sm:text-left">Latest Articles</h1>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="flex items-center justify-between mb-6 px-0 sm:px-4">
+        <button className="flex items-center text-foreground/90 hover:text-primary transition-colors">
+          <Filter className="h-5 w-5 mr-2" />
+          Filter +
+        </button>
+        <button className="text-foreground/90 hover:text-primary transition-colors">
+          <Search className="h-6 w-6" />
+        </button>
+      </div>
+      <div className="space-y-8"> {/* Single column list with spacing */}
         {articles.map((article) => (
           <ArticleCard key={article.id} article={article} />
         ))}
