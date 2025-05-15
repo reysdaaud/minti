@@ -8,15 +8,9 @@ import { db } from '@/lib/firebase';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import LibraryCard from './LibraryCard';
-import TopListItemCard from './TopListItemCard'; // Keep for "Good afternoon" section
-import { Loader2, AlertTriangle, Music, Podcast as PodcastIcon } from 'lucide-react'; // Renamed Podcast to PodcastIcon
+import TopListItemCard from './TopListItemCard';
+import { Loader2, AlertTriangle, Music, Podcast as PodcastIcon } from 'lucide-react';
 import type { ContentItem } from '@/services/contentService';
-
-// Placeholder audio source. Replace with actual audio URLs.
-const SAMPLE_AUDIO_SRC_1 = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
-const SAMPLE_AUDIO_SRC_2 = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3";
-const SAMPLE_AUDIO_SRC_3 = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3";
-
 
 interface CardSectionProps {
   title: string;
@@ -24,10 +18,9 @@ interface CardSectionProps {
 }
 
 const CardSection: FC<CardSectionProps> = ({ title, items }) => {
-  const audioItems = items.filter(item => item.audioSrc && item.audioSrc.trim() !== '');
-
-  if (audioItems.length === 0) {
-    return null; // Don't render section if no audio items
+  // This section is for general LibraryCard display
+  if (items.length === 0) {
+    return null;
   }
 
   return (
@@ -35,14 +28,14 @@ const CardSection: FC<CardSectionProps> = ({ title, items }) => {
       <h2 className="text-2xl font-bold text-foreground mb-3 px-4 md:px-0">{title}</h2>
       <ScrollArea className="w-full whitespace-nowrap">
         <div className="flex space-x-4 pb-4 px-4 md:px-0">
-          {audioItems.map((item) => (
+          {items.map((item) => (
             <LibraryCard
               key={item.id}
               id={item.id}
               title={item.title}
-              subtitle={item.subtitle}
+              subtitle={item.subtitle} // Used as artist in LibraryCard
               imageUrl={item.imageUrl}
-              audioSrc={item.audioSrc!} 
+              audioSrc={item.audioSrc!} // Asserting audioSrc is present because we filter for it
               dataAiHint={item.dataAiHint}
             />
           ))}
@@ -58,9 +51,8 @@ const LibraryContent: FC = () => {
   const [activeFilter, setActiveFilter] = useState<'All' | 'Music' | 'Podcasts'>('All');
   const filters: Array<'All' | 'Music' | 'Podcasts'> = ['All', 'Music', 'Podcasts'];
 
-  const [topListItems, setTopListItems] = useState<ContentItem[]>([]);
-  const [musicItems, setMusicItems] = useState<ContentItem[]>([]);
-  const [podcastItems, setPodcastItems] = useState<ContentItem[]>([]);
+  const [allAudioContent, setAllAudioContent] = useState<ContentItem[]>([]);
+  const [topListItems, setTopListItems] = useState<ContentItem[]>([]); // For "Good afternoon"
   
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,57 +64,59 @@ const LibraryContent: FC = () => {
       try {
         const contentCollectionRef = collection(db, 'content');
         
-        const qConstraints: QueryConstraint[] = [
-            where('audioSrc', '!=', null),
+        // Query for items that have an audioSrc
+        const audioQueryConstraints: QueryConstraint[] = [
+            where('audioSrc', '!=', null), // Ensure audioSrc exists
+            // where('audioSrc', '!=', ''), // Ensure audioSrc is not an empty string - Firestore might not support this directly on a non-equality. Filter client-side.
             orderBy('createdAt', 'desc')
         ];
         
-        const contentQuery = query(contentCollectionRef, ...qConstraints);
+        const contentQuery = query(contentCollectionRef, ...audioQueryConstraints);
         const querySnapshot = await getDocs(contentQuery);
         
-        const allAudioItems = querySnapshot.docs.map(doc => {
+        const fetchedAudioItems = querySnapshot.docs.map(doc => {
           const data = doc.data();
-          if (!data.title || !data.imageUrl || !data.audioSrc || typeof data.audioSrc !== 'string' || data.audioSrc.trim() === '' || !data.dataAiHint) {
+          // Basic validation for essential fields
+          if (!data.title || !data.imageUrl || typeof data.audioSrc !== 'string' || data.audioSrc.trim() === '' || !data.dataAiHint) {
+            console.warn(`Content item ID ${doc.id} missing essential audio fields or has empty audioSrc. Filtering out.`);
             return null; 
           }
           return {
             id: doc.id,
             ...data
           } as ContentItem;
-        }).filter(item => item !== null && item.audioSrc && item.audioSrc.trim() !== '') as ContentItem[];
+        }).filter(item => item !== null && item.audioSrc && item.audioSrc.trim() !== '') as ContentItem[]; // Additional client-side filter for empty audioSrc
 
-        // Populate TopList (e.g., first 6 items, or could be a specific category)
-        setTopListItems(allAudioItems.slice(0, 6));
-        
-        // Filter for Music and Podcasts
-        setMusicItems(allAudioItems.filter(item => item.category === 'Music'));
-        setPodcastItems(allAudioItems.filter(item => item.category === 'Podcast'));
+        setAllAudioContent(fetchedAudioItems);
+        setTopListItems(fetchedAudioItems.slice(0, 6)); // Example: "Good afternoon" shows first 6 overall audio items
 
       } catch (err) {
         console.error("Error fetching library content:", err);
-        setError("Failed to load library content. Please try again later.");
+        setError("Failed to load your library. Please try again later.");
       } finally {
         setLoading(false);
       }
     };
 
     fetchLibraryContent();
-  }, []); // Fetch once on mount
+  }, []);
 
-  const getDisplayedItems = () => {
-    if (activeFilter === 'Music') return musicItems;
-    if (activeFilter === 'Podcasts') return podcastItems;
-    // For 'All', we could display sections or merge all. Let's display sections.
-    return []; // 'All' will render sections directly
+  const getFilteredItems = (filter: 'All' | 'Music' | 'Podcasts'): ContentItem[] => {
+    if (filter === 'All') return allAudioContent;
+    return allAudioContent.filter(item => item.category === filter);
   };
+  
+  const musicItems = getFilteredItems('Music');
+  const podcastItems = getFilteredItems('Podcasts');
+
 
   const getEmptyStateIcon = () => {
     switch(activeFilter) {
       case 'Music': return <Music className="mx-auto h-12 w-12 text-muted-foreground mb-3" />;
-      case 'Podcasts': return <PodcastIcon className="mx-auto h-12 w-12 text-muted-foreground mb-3" />; // Use PodcastIcon
-      default: return <Music className="mx-auto h-12 w-12 text-muted-foreground mb-3" />;
+      case 'Podcasts': return <PodcastIcon className="mx-auto h-12 w-12 text-muted-foreground mb-3" />;
+      default: return <Music className="mx-auto h-12 w-12 text-muted-foreground mb-3" />; // Default for 'All' if empty
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -143,7 +137,7 @@ const LibraryContent: FC = () => {
     );
   }
   
-  const displayedItems = getDisplayedItems();
+  const displayedItemsForActiveFilter = getFilteredItems(activeFilter);
 
   return (
     <div className="text-foreground pb-12">
@@ -170,7 +164,7 @@ const LibraryContent: FC = () => {
         </ScrollArea>
       </div>
       
-      {/* Good Afternoon Section - always show for 'All' or if topListItems are relevant */}
+      {/* "Good afternoon" Section - Only show if 'All' filter is active and there are items */}
       {(activeFilter === 'All' && topListItems.length > 0) && (
         <section className="pt-4 px-4 md:px-0">
           <h2 className="text-xl font-bold text-foreground mb-3">Good afternoon</h2>
@@ -183,23 +177,32 @@ const LibraryContent: FC = () => {
                 imageUrl={item.imageUrl}
                 audioSrc={item.audioSrc!}
                 dataAiHint={item.dataAiHint}
-                artist={item.subtitle} // Assuming subtitle can be used as artist for TopListItem
-                hasMoreOptions // Example: always show more options for these
+                artist={item.subtitle} 
+                hasMoreOptions // Example: always show more options
               />
             ))}
           </div>
         </section>
       )}
 
+      {/* Main Content Sections */}
       {activeFilter === 'All' ? (
         <>
-          <CardSection title="Music" items={musicItems} />
-          <CardSection title="Podcasts" items={podcastItems} />
-          {/* You can add more sections here like "Artists you like", "Made For You" by creating similar fetching logic */}
+          {/* Display separate sections for Music and Podcasts if 'All' is selected */}
+          {musicItems.length > 0 && <CardSection title="Music" items={musicItems} />}
+          {podcastItems.length > 0 && <CardSection title="Podcasts" items={podcastItems} />}
+          {musicItems.length === 0 && podcastItems.length === 0 && allAudioContent.length === 0 && (
+            <div className="text-center py-10 px-4 min-h-[calc(100vh-350px)] flex flex-col justify-center items-center">
+              {getEmptyStateIcon()}
+              <p className="text-muted-foreground text-lg">No audio content found in your library.</p>
+              <p className="text-muted-foreground text-sm">Try adding some music or podcasts!</p>
+            </div>
+          )}
         </>
-      ) : displayedItems.length > 0 ? (
-         <CardSection title={activeFilter} items={displayedItems} />
+      ) : displayedItemsForActiveFilter.length > 0 ? (
+         <CardSection title={activeFilter} items={displayedItemsForActiveFilter} />
       ) : (
+        // Empty state for specific filter (Music or Podcasts)
         <div className="text-center py-10 px-4 min-h-[calc(100vh-350px)] flex flex-col justify-center items-center">
           {getEmptyStateIcon()}
           <p className="text-muted-foreground text-lg">No {activeFilter.toLowerCase()} found.</p>
