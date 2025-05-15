@@ -10,6 +10,8 @@ import {
   query,
   orderBy,
   Timestamp,
+  where,
+  QueryConstraint,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -19,7 +21,7 @@ export interface ContentItem {
   subtitle?: string;
   imageUrl: string;
   dataAiHint: string;
-  category?: string; // Kept for general filtering
+  category?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 
@@ -33,14 +35,30 @@ export interface ContentItem {
 export interface ContentItemData extends Omit<ContentItem, 'id' | 'createdAt' | 'updatedAt'> {
 }
 
-
 const CONTENT_COLLECTION = 'content';
 
-// Fetch all content items
-export const getContentItems = async (): Promise<ContentItem[]> => {
+// Helper function to create a Firestore-safe data object by omitting undefined fields
+const prepareDataForFirestore = <T extends Record<string, any>>(data: T): Partial<T> => {
+  const firestoreData: Partial<T> = {};
+  for (const key in data) {
+    if (Object.prototype.hasOwnProperty.call(data, key) && data[key] !== undefined) {
+      // Retain empty strings as they are valid, only omit undefined
+      firestoreData[key as keyof T] = data[key];
+    }
+  }
+  return firestoreData;
+};
+
+
+// Fetch all content items (generic fetch, filtering should happen in components)
+export const getContentItems = async (queryConstraints: QueryConstraint[] = []): Promise<ContentItem[]> => {
   try {
     const contentCollectionRef = collection(db, CONTENT_COLLECTION);
-    const q = query(contentCollectionRef, orderBy('createdAt', 'desc'));
+    // Add default ordering if not already present in constraints
+    const hasOrderBy = queryConstraints.some(c => c.type === 'orderBy');
+    const finalConstraints = hasOrderBy ? queryConstraints : [...queryConstraints, orderBy('createdAt', 'desc')];
+    
+    const q = query(contentCollectionRef, ...finalConstraints);
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map((doc) => ({
       id: doc.id,
@@ -48,23 +66,16 @@ export const getContentItems = async (): Promise<ContentItem[]> => {
     } as ContentItem));
   } catch (error) {
     console.error('Error fetching content items:', error);
-    throw error; // Re-throw to be handled by the caller
+    throw error;
   }
 };
 
 // Add a new content item
 export const addContentItem = async (itemData: ContentItemData): Promise<string> => {
   try {
-    // Ensure optional fields that are empty strings are stored as null or undefined if preferred,
-    // or ensure Firestore rules/queries handle empty strings appropriately.
-    // For simplicity, we'll pass them as they are; Firestore stores empty strings.
+    const preparedData = prepareDataForFirestore(itemData);
     const dataToSave = {
-      ...itemData,
-      audioSrc: itemData.audioSrc || undefined,
-      excerpt: itemData.excerpt || undefined,
-      fullBodyContent: itemData.fullBodyContent || undefined,
-      subtitle: itemData.subtitle || undefined,
-      category: itemData.category || undefined,
+      ...preparedData,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     };
@@ -80,19 +91,18 @@ export const addContentItem = async (itemData: ContentItemData): Promise<string>
 // Update an existing content item
 export const updateContentItem = async (itemId: string, itemData: Partial<ContentItemData>): Promise<void> => {
   try {
-    const itemDocRef = doc(db, CONTENT_COLLECTION, itemId);
-    // Ensure optional fields that are empty strings are handled (e.g., converted to null or field removed)
-    // For update, partial data is fine. If an empty string means "remove field", handle that here.
-    // Otherwise, Firestore will update with empty strings.
-    const dataToUpdate = {
-        ...itemData,
-        audioSrc: itemData.audioSrc || undefined,
-        excerpt: itemData.excerpt || undefined,
-        fullBodyContent: itemData.fullBodyContent || undefined,
-        subtitle: itemData.subtitle || undefined,
-        category: itemData.category || undefined,
-        updatedAt: Timestamp.now(),
+    const preparedData = prepareDataForFirestore(itemData);
+    const dataToUpdate: Record<string, any> = {
+      ...preparedData,
+      updatedAt: Timestamp.now(),
     };
+    
+    // Ensure createdAt is not part of update data
+    if ('createdAt' in dataToUpdate) {
+        delete dataToUpdate.createdAt;
+    }
+
+    const itemDocRef = doc(db, CONTENT_COLLECTION, itemId);
     await updateDoc(itemDocRef, dataToUpdate);
   } catch (error) {
     console.error('Error updating content item:', error);
