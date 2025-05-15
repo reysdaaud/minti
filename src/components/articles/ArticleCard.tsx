@@ -14,12 +14,20 @@ import { format, isValid } from 'date-fns';
 interface ArticleCardProps {
   article: ContentItem;
   isCurrentlyExpanded: boolean;
-  onToggleExpand: () => void; // Simplified: just toggles the state managed by parent
+  onToggleExpand: (articleId: string) => void; 
 }
 
 const ArticleCard: FC<ArticleCardProps> = ({ article, isCurrentlyExpanded, onToggleExpand }) => {
+  console.log(`ArticleCard ${article.id}: isCurrentlyExpanded = ${isCurrentlyExpanded}`);
+  if (isCurrentlyExpanded && article.fullBodyContent) {
+    console.log(`ArticleCard ${article.id}: Rendering fullBodyContent.`);
+  } else if (article.excerpt) {
+    console.log(`ArticleCard ${article.id}: Rendering excerpt.`);
+  }
+
 
   if (!article.fullBodyContent && !article.excerpt) {
+    console.warn(`ArticleCard ${article.id}: Missing both fullBodyContent and excerpt. Not rendering card.`);
     return null;
   }
 
@@ -50,10 +58,10 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, isCurrentlyExpanded, onTog
         <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">{metaInfo}</p>
         <CardTitle
             className="text-xl lg:text-2xl font-bold text-foreground mb-2 leading-tight hover:text-primary transition-colors cursor-pointer"
-            onClick={onToggleExpand}
+            onClick={() => onToggleExpand(article.id)}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onToggleExpand()}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onToggleExpand(article.id)}
         >
           {article.title}
         </CardTitle>
@@ -78,15 +86,16 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, isCurrentlyExpanded, onTog
             ))}
           </div>
         )}
-        {(article.excerpt || article.fullBodyContent) && (
+        
+        {!isCurrentlyExpanded && (article.excerpt || article.fullBodyContent) && (
             <Button
             variant="outline"
             className="p-2 text-foreground/90 hover:text-primary transition-colors mt-3 text-sm flex items-center border-primary/50 hover:border-primary h-auto" 
-            onClick={onToggleExpand}
+            onClick={() => onToggleExpand(article.id)}
             aria-expanded={isCurrentlyExpanded}
             >
-            {isCurrentlyExpanded ? 'Read Less' : 'Read More'}
-            {isCurrentlyExpanded ? <ChevronUp className="ml-1 h-4 w-4" /> : <ArrowRight className="ml-1 h-4 w-4" />}
+            Read More
+            <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
         )}
       </CardContent>

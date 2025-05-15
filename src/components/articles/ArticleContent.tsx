@@ -21,11 +21,12 @@ const ArticleContent: FC = () => {
   const fetchArticles = useCallback(async () => {
     setLoading(true);
     setError(null);
+    console.log("Fetching articles...");
     try {
       const contentCollectionRef = collection(db, 'content');
       
       const queryConstraints: QueryConstraint[] = [
-        where('contentType', '==', 'article'),
+        where('contentType', '==', 'article'), // Ensure it's an article
         orderBy('createdAt', 'desc')    
       ];
       
@@ -35,12 +36,14 @@ const ArticleContent: FC = () => {
       const fetchedItems = querySnapshot.docs.map(doc => {
         const data = doc.data();
         
+        // Basic validation for essential article fields
         if (!data.title || typeof data.title !== 'string' || 
             !data.imageUrl || typeof data.imageUrl !== 'string' ||
-            !data.fullBodyContent || typeof data.fullBodyContent !== 'string' || data.fullBodyContent.trim() === '' ||
+            !data.fullBodyContent || typeof data.fullBodyContent !== 'string' || // Check for fullBodyContent
             !data.dataAiHint || typeof data.dataAiHint !== 'string' ||
-            data.contentType !== 'article'
+            data.contentType !== 'article' // Explicitly check contentType
             ) {
+          console.warn("Skipping invalid article item (missing essential fields or wrong contentType):", doc.id, data);
           return null; 
         }
         
@@ -53,16 +56,17 @@ const ArticleContent: FC = () => {
           category: typeof data.category === 'string' ? data.category : undefined,
           excerpt: typeof data.excerpt === 'string' ? data.excerpt : undefined, 
           fullBodyContent: data.fullBodyContent, 
-          audioSrc: undefined, 
+          audioSrc: undefined, // Articles shouldn't have audioSrc
           contentType: 'article',
           createdAt: data.createdAt instanceof Timestamp ? data.createdAt : undefined, 
           updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt : undefined,
         } as ContentItem;
       }).filter(item => item !== null) as ContentItem[]; 
       
+      console.log("Fetched articles:", fetchedItems.length);
       setArticles(fetchedItems);
 
-    } catch (err: any) {
+    } catch (err: any) { // Added opening brace here
       console.error("Error fetching articles:", err);
        if (err.code === 'failed-precondition') {
            setError(`Firestore query for articles requires an index. Please check the Firebase console for a link to create it, or manually create an index on 'contentType' (Ascending) and 'createdAt' (Descending). Error: ${err.message}`);
@@ -78,9 +82,11 @@ const ArticleContent: FC = () => {
     fetchArticles();
   }, [fetchArticles]);
 
-  const handleToggleExpand = useCallback((articleId: string | null) => {
+  const handleToggleExpand = useCallback((articleId: string) => {
+    console.log("Toggling expand for article ID:", articleId, "Current expanded:", expandedArticleId);
     setExpandedArticleId(prevId => (prevId === articleId ? null : articleId));
-  }, []);
+  }, [expandedArticleId]);
+
 
   if (loading) {
     return (
@@ -108,7 +114,7 @@ const ArticleContent: FC = () => {
     ? articles.filter(article => article.id === expandedArticleId) 
     : articles;
 
-  if (articles.length === 0) { 
+  if (articles.length === 0 && !loading) { 
     return (
       <div className="flex flex-col items-center justify-center py-10 text-center min-h-[calc(100vh-200px)] px-4">
         <Newspaper className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
@@ -126,10 +132,10 @@ const ArticleContent: FC = () => {
         <p className="text-muted-foreground">The selected article could not be displayed.</p>
         <Button 
             variant="outline"
-            onClick={() => handleToggleExpand(null)} 
+            onClick={() => setExpandedArticleId(null)} 
             className="mt-4 text-foreground/90 hover:text-primary border-primary/50 hover:border-primary transition-colors"
         >
-            Back to Articles
+            Back to All Articles
         </Button>
       </div>
     );
@@ -147,6 +153,17 @@ const ArticleContent: FC = () => {
           />
         ))}
       </div>
+      {expandedArticleId && (
+        <div className="mt-8 text-center">
+          <Button 
+            variant="outline"
+            onClick={() => setExpandedArticleId(null)} 
+            className="text-foreground/90 hover:text-primary border-primary/50 hover:border-primary transition-colors py-2 px-4"
+          >
+            Back to All Articles
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
