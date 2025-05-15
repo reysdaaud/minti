@@ -3,10 +3,10 @@
 
 import type { FC } from 'react';
 import { useEffect, useState } from 'react';
-import { collection, getDocs, query, where, orderBy, QueryConstraint } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, QueryConstraint, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ContentItem } from '@/services/contentService';
-import { Loader2, AlertTriangle, Newspaper } from 'lucide-react'; // Changed FileText to Newspaper
+import { Loader2, AlertTriangle, Newspaper } from 'lucide-react';
 import ArticleCard from './ArticleCard';
 
 const ArticleContent: FC = () => {
@@ -21,8 +21,21 @@ const ArticleContent: FC = () => {
       try {
         const contentCollectionRef = collection(db, 'content');
         
+        // Query for documents that have fullBodyContent and do NOT have a non-empty audioSrc
+        // Firestore doesn't have a "does not exist or is empty" query directly for strings.
+        // A common approach is to query for items that are NOT audio, then client-filter,
+        // or structure data so that "article" type is explicit.
+        // For now, we'll fetch all non-audio, then client-side filter for fullBodyContent.
+        // A more robust way would be to add an explicit 'contentType' field (e.g., 'article', 'audio')
+
         const queryConstraints: QueryConstraint[] = [
-          where('fullBodyContent', '!=', null), // Ensure field exists to consider it an article
+          // Option 1: If you want items that are explicitly NOT audio (audioSrc is null or empty)
+          // This might require an index if combined with orderBy on a different field.
+          // where('audioSrc', 'in', [null, ""]), // This might not work as expected or require specific indexing.
+          // For simplicity and to avoid complex indexing for this step, we'll fetch where fullBodyContent exists
+          // and then refine client-side if needed, or assume if fullBodyContent exists, it's an article.
+          where('fullBodyContent', '!=', null), // Ensures fullBodyContent exists
+          where('fullBodyContent', '!=', ""),   // Ensures fullBodyContent is not empty
           orderBy('createdAt', 'desc')
         ];
         
@@ -31,6 +44,12 @@ const ArticleContent: FC = () => {
         const querySnapshot = await getDocs(articlesQuery);
         const fetchedArticles = querySnapshot.docs.map(doc => {
           const data = doc.data();
+
+          // Primary filter: if it has audioSrc, it's not purely an article for this tab
+          if (data.audioSrc && data.audioSrc.trim() !== '') {
+            return null;
+          }
+
           // Validate essential article fields
           if (!data.title || typeof data.title !== 'string' || 
               !data.imageUrl || typeof data.imageUrl !== 'string' ||
@@ -40,13 +59,7 @@ const ArticleContent: FC = () => {
             console.warn(`Content item ID ${doc.id} is missing essential article fields or has empty fullBodyContent and will be filtered out.`);
             return null; 
           }
-          // Filter out items that primarily look like audio content (if audioSrc exists and text content is minimal/absent)
-          // For now, we only require fullBodyContent to be present.
-          // if (data.audioSrc && (!data.fullBodyContent || data.fullBodyContent.trim().length < 50)) { // Example threshold
-          //   console.warn(`Content item ID ${doc.id} seems more like audio, filtering out from articles.`);
-          //   return null;
-          // }
-
+          
           return {
             id: doc.id,
             title: data.title,
@@ -55,18 +68,21 @@ const ArticleContent: FC = () => {
             dataAiHint: data.dataAiHint,
             category: typeof data.category === 'string' ? data.category : undefined,
             excerpt: typeof data.excerpt === 'string' ? data.excerpt : undefined, 
-            fullBodyContent: data.fullBodyContent, // Already validated to be non-empty string
-            // audioSrc is not strictly needed for ArticleCard, but retaining for ContentItem consistency
-            audioSrc: typeof data.audioSrc === 'string' ? data.audioSrc : undefined, 
-            createdAt: data.createdAt, // Keep timestamp for potential future use
+            fullBodyContent: data.fullBodyContent, 
+            audioSrc: typeof data.audioSrc === 'string' ? data.audioSrc : undefined, // Retain for consistency
+            createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
           } as ContentItem;
         }).filter(item => item !== null) as ContentItem[]; 
         
         setArticles(fetchedArticles);
 
-      } catch (err) {
+      } catch (err: any) {
         console.error("Error fetching articles:", err);
-        setError("Failed to load articles. Please try again later.");
+         if (err.code === 'failed-precondition') {
+             setError(`Firestore query for articles requires an index. Please create it using the link in the console error message, or ensure your query is supported. Error: ${err.message}`);
+        } else {
+            setError("Failed to load articles. Please try again later.");
+        }
       } finally {
         setLoading(false);
       }
@@ -89,7 +105,7 @@ const ArticleContent: FC = () => {
       <div className="flex flex-col items-center justify-center py-10 text-destructive px-4 text-center min-h-[calc(100vh-200px)]">
         <AlertTriangle className="h-10 w-10 mb-3" />
         <p className="text-xl font-semibold">Error</p>
-        <p>{error}</p>
+        <p className="text-sm">{error}</p>
       </div>
     );
   }
