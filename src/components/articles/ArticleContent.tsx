@@ -1,4 +1,3 @@
-
 // src/components/articles/ArticleContent.tsx
 'use client';
 
@@ -7,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { collection, getDocs, query, where, orderBy, QueryConstraint } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ContentItem } from '@/services/contentService';
-import { Loader2, AlertTriangle, FileText } from 'lucide-react';
+import { Loader2, AlertTriangle, Newspaper } from 'lucide-react'; // Changed FileText to Newspaper
 import ArticleCard from './ArticleCard';
 
 const ArticleContent: FC = () => {
@@ -21,11 +20,9 @@ const ArticleContent: FC = () => {
       setError(null);
       try {
         const contentCollectionRef = collection(db, 'content');
-        // Fetch items that have fullBodyContent (indicating they are articles)
-        // and ensure it's not an empty string.
+        
         const queryConstraints: QueryConstraint[] = [
-          where('fullBodyContent', '!=', null), // Ensure field exists
-          // where('fullBodyContent', '>', ''), // Firestore way to check for non-empty string if indexed
+          where('fullBodyContent', '!=', null), // Ensure field exists to consider it an article
           orderBy('createdAt', 'desc')
         ];
         
@@ -37,13 +34,19 @@ const ArticleContent: FC = () => {
           // Validate essential article fields
           if (!data.title || typeof data.title !== 'string' || 
               !data.imageUrl || typeof data.imageUrl !== 'string' ||
-              // Excerpt is optional, but fullBodyContent must exist and not be empty for an "article"
               !data.fullBodyContent || typeof data.fullBodyContent !== 'string' || data.fullBodyContent.trim() === '' ||
               !data.dataAiHint || typeof data.dataAiHint !== 'string'
               ) {
             console.warn(`Content item ID ${doc.id} is missing essential article fields or has empty fullBodyContent and will be filtered out.`);
             return null; 
           }
+          // Filter out items that primarily look like audio content (if audioSrc exists and text content is minimal/absent)
+          // For now, we only require fullBodyContent to be present.
+          // if (data.audioSrc && (!data.fullBodyContent || data.fullBodyContent.trim().length < 50)) { // Example threshold
+          //   console.warn(`Content item ID ${doc.id} seems more like audio, filtering out from articles.`);
+          //   return null;
+          // }
+
           return {
             id: doc.id,
             title: data.title,
@@ -51,11 +54,13 @@ const ArticleContent: FC = () => {
             imageUrl: data.imageUrl,
             dataAiHint: data.dataAiHint,
             category: typeof data.category === 'string' ? data.category : undefined,
-            excerpt: data.excerpt || undefined, // Ensure excerpt is string or undefined
-            fullBodyContent: data.fullBodyContent,
-            audioSrc: data.audioSrc || undefined, // Include if it exists, though ArticleCard might not use it
+            excerpt: typeof data.excerpt === 'string' ? data.excerpt : undefined, 
+            fullBodyContent: data.fullBodyContent, // Already validated to be non-empty string
+            // audioSrc is not strictly needed for ArticleCard, but retaining for ContentItem consistency
+            audioSrc: typeof data.audioSrc === 'string' ? data.audioSrc : undefined, 
+            createdAt: data.createdAt, // Keep timestamp for potential future use
           } as ContentItem;
-        }).filter(item => item !== null) as ContentItem[]; // Filter out nulls from validation
+        }).filter(item => item !== null) as ContentItem[]; 
         
         setArticles(fetchedArticles);
 
@@ -72,8 +77,8 @@ const ArticleContent: FC = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
-        <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+      <div className="flex flex-col items-center justify-center py-10 text-muted-foreground min-h-[calc(100vh-200px)]">
+        <Loader2 className="h-10 w-10 animate-spin text-primary mb-3" />
         <p>Loading articles...</p>
       </div>
     );
@@ -81,9 +86,9 @@ const ArticleContent: FC = () => {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-10 text-destructive px-4 text-center">
-        <AlertTriangle className="h-8 w-8 mb-2" />
-        <p className="font-semibold">Error</p>
+      <div className="flex flex-col items-center justify-center py-10 text-destructive px-4 text-center min-h-[calc(100vh-200px)]">
+        <AlertTriangle className="h-10 w-10 mb-3" />
+        <p className="text-xl font-semibold">Error</p>
         <p>{error}</p>
       </div>
     );
@@ -91,18 +96,18 @@ const ArticleContent: FC = () => {
 
   if (articles.length === 0) {
     return (
-      <div className="text-center py-10 px-4">
-        <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
-        <p className="text-muted-foreground text-lg">No articles found.</p>
-        <p className="text-muted-foreground">Check back later for new content!</p>
+      <div className="flex flex-col items-center justify-center py-10 text-center min-h-[calc(100vh-200px)] px-4">
+        <Newspaper className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
+        <p className="text-xl text-muted-foreground font-semibold">No Articles Found</p>
+        <p className="text-muted-foreground">Check back later for new stories and updates!</p>
       </div>
     );
   }
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <h1 className="text-3xl font-bold text-foreground mb-6">Articles</h1>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <h1 className="text-3xl font-bold text-foreground mb-8 text-center sm:text-left">Latest Articles</h1>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {articles.map((article) => (
           <ArticleCard key={article.id} article={article} />
         ))}

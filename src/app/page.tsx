@@ -7,6 +7,7 @@ import MarketSection from '@/components/exchange/MarketSection';
 import BottomNavBar from '@/components/exchange/BottomNavBar';
 import CardBalance from '@/components/exchange/CardBalance';
 import LibraryContent from '@/components/library/LibraryContent';
+import ArticleContent from '@/components/articles/ArticleContent'; // Import ArticleContent
 import PlayerBar from '@/components/library/PlayerBar';
 import FullScreenPlayer from '@/components/player/FullScreenPlayer';
 import { useAuth } from '@/contexts/AuthContext';
@@ -270,14 +271,8 @@ export default function CryptoExchangePage() {
         return <LibraryContent />;
       case 'Markets': 
         return <MarketSection /> 
-      case 'Assets': 
-        return (
-            <div className="text-center py-10 px-4">
-                <CardBalance />
-                <UserActions setCoinBalance={setCoinBalance} />
-                <p className="text-muted-foreground mt-4">Premium features coming soon.</p>
-            </div>
-        );
+      case 'Articles': // Changed from 'Assets' to 'Articles'
+        return <ArticleContent />; // Render ArticleContent for the 'Articles' tab
       case 'Trade': 
         return (
              <div className="text-center py-10 px-4">
