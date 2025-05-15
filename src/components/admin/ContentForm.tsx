@@ -47,16 +47,6 @@ const formSchema = z.object({
   excerpt: z.string().optional(),
   fullBodyContent: z.string().optional(),
 });
-// We can add a superRefine if we want to ensure at least one "content" part is filled
-// .superRefine((data, ctx) => {
-//   if (!data.audioSrc && !data.excerpt && !data.fullBodyContent) {
-//     ctx.addIssue({
-//       code: z.ZodIssueCode.custom,
-//       message: 'Content is empty. Please provide an Audio URL, or an Excerpt, or Full Body Content.',
-//       path: ['audioSrc'], // Or a more general path like 'title'
-//     });
-//   }
-// });
 
 
 type ContentFormValues = z.infer<typeof formSchema>;
@@ -104,9 +94,7 @@ const ContentForm: FC<ContentFormProps> = ({ isOpen, onClose, onSubmit, initialD
       
       const submissionData: ContentItemData = {
         ...parsedData,
-        // Ensure empty strings for optional URL/text fields become undefined if that's preferred
-        // by backend or for cleaner data. Otherwise, Firestore stores empty strings.
-        audioSrc: parsedData.audioSrc || undefined,
+        audioSrc: parsedData.audioSrc || undefined, // Ensure empty string becomes undefined
         excerpt: parsedData.excerpt || undefined,
         fullBodyContent: parsedData.fullBodyContent || undefined,
         subtitle: parsedData.subtitle || undefined,
@@ -246,7 +234,7 @@ const ContentForm: FC<ContentFormProps> = ({ isOpen, onClose, onSubmit, initialD
               name="audioSrc"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Audio URL (Optional - for audio content)</FormLabel>
+                  <FormLabel>Audio URL (Optional)</FormLabel>
                   <FormControl>
                     <Input type="url" placeholder="https://example.com/audio.mp3" {...field} className="bg-input text-foreground border-border" />
                   </FormControl>
@@ -261,7 +249,7 @@ const ContentForm: FC<ContentFormProps> = ({ isOpen, onClose, onSubmit, initialD
               name="excerpt"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Excerpt (Optional - for articles)</FormLabel>
+                  <FormLabel>Excerpt (Optional)</FormLabel>
                   <FormControl>
                     <Textarea placeholder="Short summary of the article..." {...field} className="bg-input text-foreground border-border min-h-[100px]" />
                   </FormControl>
@@ -274,7 +262,7 @@ const ContentForm: FC<ContentFormProps> = ({ isOpen, onClose, onSubmit, initialD
               name="fullBodyContent"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Body Content (Optional - for articles)</FormLabel>
+                  <FormLabel>Full Body Content (Optional)</FormLabel>
                   <FormControl>
                     <Textarea placeholder="Write the full article content here..." {...field} className="bg-input text-foreground border-border min-h-[200px]" />
                   </FormControl>
@@ -302,3 +290,4 @@ const ContentForm: FC<ContentFormProps> = ({ isOpen, onClose, onSubmit, initialD
 };
 
 export default ContentForm;
+
