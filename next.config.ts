@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -31,6 +32,12 @@ const nextConfig: NextConfig = {
        {
         protocol: 'https',
         hostname: 'wirenext-b4b65.appspot.com', // For Firebase Storage (alternative domain)
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'ichef.bbci.co.uk', // Added for BBC images
         port: '',
         pathname: '/**',
       }
