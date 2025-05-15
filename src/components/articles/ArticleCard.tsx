@@ -1,7 +1,9 @@
+
 // src/components/articles/ArticleCard.tsx
 'use client';
 
 import type { FC } from 'react';
+import React from 'react'; // Import React for Fragment
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -65,16 +67,23 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, isCurrentlyExpanded, onTog
         )}
 
         {isCurrentlyExpanded && article.fullBodyContent && (
-          <div className="prose dark:prose-invert sm:prose-lg lg:prose-xl mt-4 text-foreground/90 whitespace-pre-line">
-            {article.fullBodyContent.split('\\n').map((paragraph, index) => (
-              <p key={index}>{paragraph.trim()}</p>
+          <div className="prose dark:prose-invert sm:prose-lg lg:prose-xl mt-4 text-foreground/90">
+            {article.fullBodyContent.split(/\n\s*\n/).map((paragraphBlock, pIndex) => ( // Split by one or more newlines (effectively \n\n or \n \n etc.)
+              <p key={pIndex}>
+                {paragraphBlock.split('\n').map((line, lIndex, linesArray) => (
+                  <React.Fragment key={lIndex}>
+                    {line.trim()}
+                    {lIndex < linesArray.length - 1 && <br />}
+                  </React.Fragment>
+                ))}
+              </p>
             ))}
           </div>
         )}
         {(article.excerpt || article.fullBodyContent) && (
             <Button
-            variant="outline" // Changed variant to outline for a border
-            className="p-2 text-foreground/90 hover:text-primary transition-colors mt-3 text-sm flex items-center border-primary/50 hover:border-primary h-auto" // Adjusted classes
+            variant="outline"
+            className="p-2 text-foreground/90 hover:text-primary transition-colors mt-3 text-sm flex items-center border-primary/50 hover:border-primary h-auto" 
             onClick={() => onToggleExpand(article.id)}
             aria-expanded={isCurrentlyExpanded}
             >
