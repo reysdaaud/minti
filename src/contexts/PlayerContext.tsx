@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ReactNode} from 'react';
@@ -30,14 +31,13 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [isPlayerOpen, setIsPlayerOpen] = useState<boolean>(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Memoized event handlers that depend on `isPlaying`
   const audioLoadedDataHandler = useCallback(() => {
     const audioElement = audioRef.current;
     if (!audioElement) return;
 
     if (isPlaying && audioElement.src && audioElement.src !== window.location.href && !audioElement.src.startsWith('blob:')) {
       audioElement.play().catch(playError => {
-        console.error("Error attempting to play audio on loadeddata:", playError);
+        console.error("Error attempting to play audio on loadeddata:", playError, "for src:", audioElement.currentSrc);
         if (playError.name === 'NotAllowedError' || playError.name === 'NotSupportedError') {
           setIsPlaying(false);
         }
@@ -51,7 +51,7 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     if (isPlaying && audioElement.paused && audioElement.src && audioElement.src !== window.location.href && !audioElement.src.startsWith('blob:')) {
          audioElement.play().catch(playError => {
-            console.error("Error attempting to play audio on canplay:", playError);
+            console.error("Error attempting to play audio on canplay:", playError, "for src:", audioElement.currentSrc);
             if (playError.name === 'NotAllowedError' || playError.name === 'NotSupportedError') {
                 setIsPlaying(false);
             }
@@ -61,28 +61,31 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
 
   useEffect(() => {
-    // Initialize audio element only once
     if (!audioRef.current) {
       audioRef.current = new Audio();
     }
-    const audioElement = audioRef.current; // Safe to assume it's non-null for this effect's scope
+    const audioElement = audioRef.current;
 
     const handleTrackEnd = () => {
-        // console.log("Track ended");
         setIsPlaying(false);
     }
     
     const handleError = (e: Event) => {
+      // audioElement is already defined in the outer scope of this useEffect
       if (audioElement && audioElement.error) {
-        console.error('Audio Player Error Code:', audioElement.error.code); // MEDIA_ERR_SRC_NOT_SUPPORTED is 4
+        console.error('Audio Player Error Code:', audioElement.error.code, 'for src:', audioElement.currentSrc);
         console.error('Audio Player Error Message:', audioElement.error.message || "No specific message.");
+        // MediaError codes:
+        // 1: MEDIA_ERR_ABORTED - fetching process aborted by user
+        // 2: MEDIA_ERR_NETWORK - network error occurred while fetching
+        // 3: MEDIA_ERR_DECODE - error occurred while decoding
+        // 4: MEDIA_ERR_SRC_NOT_SUPPORTED - source or format not supported
       } else {
-        console.error('Audio Player Error (unknown details or error object missing):', e);
+        console.error('Audio Player Error (unknown details or error object missing):', e, 'for src:', audioElement?.currentSrc);
       }
-      setIsPlaying(false); // Stop playback attempts on error
+      setIsPlaying(false); 
     };
 
-    // Add event listeners
     audioElement.addEventListener('ended', handleTrackEnd);
     audioElement.addEventListener('error', handleError);
     audioElement.addEventListener('loadeddata', audioLoadedDataHandler);
@@ -90,13 +93,12 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
 
     return () => {
-      // Cleanup: remove event listeners
       audioElement.removeEventListener('ended', handleTrackEnd);
       audioElement.removeEventListener('error', handleError);
       audioElement.removeEventListener('loadeddata', audioLoadedDataHandler);
       audioElement.removeEventListener('canplay', audioCanPlayHandler);
     };
-  }, [audioLoadedDataHandler, audioCanPlayHandler]); // Dependencies are memoized handlers
+  }, [audioLoadedDataHandler, audioCanPlayHandler]);
 
 
   useEffect(() => {
@@ -108,30 +110,24 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     if (!currentTrack || !currentTrack.audioSrc) {
         audioElement.pause();
-        // Only clear src if it was previously set to something meaningful and not already empty
-        if (audioElement.src && audioElement.src !== "") { 
-            // console.log("Clearing audio source because no current track or src");
+        if (audioElement.src && audioElement.src !== "" && audioElement.src !== window.location.href && !audioElement.src.startsWith('blob:')) {
             audioElement.src = ""; 
         }
         if (isPlaying) setIsPlaying(false);
         return;
     }
 
-    // If track src is different, update and load it
     if (audioElement.src !== currentTrack.audioSrc) {
-        // console.log(`Setting audio source to: ${currentTrack.audioSrc}`);
         audioElement.src = currentTrack.audioSrc;
-        audioElement.load(); // Load the new source
+        audioElement.load(); 
     }
 
-    // Handle play/pause based on isPlaying state
     if (isPlaying) {
-      // Check if src is valid (not empty or default page URL which some browsers might set)
       if (audioElement.src && audioElement.src !== window.location.href && !audioElement.src.startsWith('blob:')) {
         const playPromise = audioElement.play();
         if (playPromise !== undefined) {
           playPromise.catch(error => {
-            console.error("Error attempting to play audio in isPlaying/currentTrack effect:", error);
+            console.error("Error attempting to play audio in isPlaying/currentTrack effect:", error, "for src:", audioElement.currentSrc);
             if (audioElement.error) { 
                 console.error(`Audio Element Error details: code ${audioElement.error.code}, message: ${audioElement.error.message || "No specific message."}`);
             }
@@ -139,8 +135,6 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           });
         }
       } else if (!audioElement.src || audioElement.src === window.location.href || audioElement.src.startsWith('blob:')) {
-        // If src is invalid/empty or a blob URL that hasn't resolved, but we are trying to play, stop.
-        // console.log("isPlaying is true, but src is invalid or not ready. Setting isPlaying to false.");
         if (isPlaying) setIsPlaying(false);
       }
     } else {
@@ -158,7 +152,7 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     if (currentTrack) { 
       setIsPlaying((prevIsPlaying) => !prevIsPlaying);
     } else {
-      setIsPlaying(false); // Cannot play if no track
+      setIsPlaying(false); 
     }
   }, [currentTrack]);
 
@@ -186,4 +180,3 @@ export const usePlayer = (): PlayerContextType => {
   }
   return context;
 };
-
