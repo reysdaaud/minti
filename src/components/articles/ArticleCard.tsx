@@ -16,14 +16,14 @@ interface ArticleCardProps {
 }
 
 const ArticleCard: FC<ArticleCardProps> = ({ article, isCurrentlyExpanded, onToggleExpand }) => {
-  console.log(`ArticleCard ${article.id}: Rendering. isCurrentlyExpanded = ${isCurrentlyExpanded}, Has fullBodyContent: ${!!article.fullBodyContent}, Has excerpt: ${!!article.excerpt}`);
+  // console.log(`ArticleCard ${article.id}: Rendering. isCurrentlyExpanded = ${isCurrentlyExpanded}, Has fullBodyContent: ${!!article.fullBodyContent}, Has excerpt: ${!!article.excerpt}`);
 
   if (!article.fullBodyContent && !article.excerpt) {
-    console.warn(`ArticleCard received an item (ID: ${article.id}) that does not have fullBodyContent or excerpt.`);
+    // console.warn(`ArticleCard received an item (ID: ${article.id}) that does not have fullBodyContent or excerpt.`);
     return null;
   }
 
-  const dateToFormat = article.createdAt?.seconds 
+  const dateToFormat = article.createdAt?.seconds
     ? new Date(article.createdAt.seconds * 1000 + (article.createdAt.nanoseconds || 0) / 1000000)
     : null;
 
@@ -48,8 +48,8 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, isCurrentlyExpanded, onTog
       )}
       <CardContent className="p-0">
         <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">{metaInfo}</p>
-        <CardTitle 
-            className="text-xl lg:text-2xl font-bold text-foreground mb-2 leading-tight hover:text-primary transition-colors cursor-pointer"  
+        <CardTitle
+            className="text-xl lg:text-2xl font-bold text-foreground mb-2 leading-tight hover:text-primary transition-colors cursor-pointer"
             onClick={() => onToggleExpand(article.id)}
             role="button"
             tabIndex={0}
@@ -71,11 +71,10 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, isCurrentlyExpanded, onTog
             ))}
           </div>
         )}
-         {/* Always render the button, but change its text and icon */}
-        {(article.excerpt || article.fullBodyContent) && ( // Only show button if there's something to expand/collapse
+        {(article.excerpt || article.fullBodyContent) && (
             <Button
-            variant="link"
-            className="p-0 text-foreground/70 hover:text-primary transition-colors mt-3 text-sm flex items-center"
+            variant="outline" // Changed variant to outline for a border
+            className="p-2 text-foreground/90 hover:text-primary transition-colors mt-3 text-sm flex items-center border-primary/50 hover:border-primary h-auto" // Adjusted classes
             onClick={() => onToggleExpand(article.id)}
             aria-expanded={isCurrentlyExpanded}
             >

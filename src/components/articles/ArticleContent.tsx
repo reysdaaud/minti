@@ -6,9 +6,10 @@ import { useEffect, useState } from 'react';
 import { collection, getDocs, query, where, orderBy, QueryConstraint, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ContentItem } from '@/services/contentService';
-import { Loader2, AlertTriangle, Newspaper, Search, Filter } from 'lucide-react';
+import { Loader2, AlertTriangle, Newspaper } from 'lucide-react';
 import ArticleCard from './ArticleCard';
 import { Button } from '@/components/ui/button';
+
 
 const ArticleContent: FC = () => {
   const [articles, setArticles] = useState<ContentItem[]>([]);
@@ -40,7 +41,7 @@ const ArticleContent: FC = () => {
               !data.fullBodyContent || typeof data.fullBodyContent !== 'string' || data.fullBodyContent.trim() === '' ||
               !data.dataAiHint || typeof data.dataAiHint !== 'string'
               ) {
-            console.warn(`Content item ID ${doc.id} is missing essential article fields or has empty fullBodyContent and will be filtered out from articles.`);
+            // console.warn(`Content item ID ${doc.id} is missing essential article fields or has empty fullBodyContent and will be filtered out from articles.`);
             return null; 
           }
           
@@ -82,10 +83,10 @@ const ArticleContent: FC = () => {
   }, []);
 
   const handleToggleExpand = (articleId: string) => {
-    console.log(`ArticleContent: Toggling expand for article ID: ${articleId}`);
+    // console.log(`ArticleContent: Toggling expand for article ID: ${articleId}`);
     setExpandedArticleId(prevId => {
       const newId = prevId === articleId ? null : articleId;
-      console.log(`ArticleContent: New expandedArticleId: ${newId}`);
+      // console.log(`ArticleContent: New expandedArticleId: ${newId}`);
       return newId;
     });
   };
@@ -114,13 +115,10 @@ const ArticleContent: FC = () => {
     : articles;
 
   if (articlesToDisplay.length === 0 && !expandedArticleId && articles.length > 0) {
-     // This case means filtering resulted in no articles to display, but there are articles
-     // This might happen if `expandedArticleId` points to an ID not in the current `articles` list
-     // Or if the filter `articles.filter(article => article.id === expandedArticleId)` returns empty
-     console.warn("ArticleContent: articlesToDisplay is empty after filtering, but articles list is not. expandedArticleId:", expandedArticleId);
+     // console.warn("ArticleContent: articlesToDisplay is empty after filtering, but articles list is not. expandedArticleId:", expandedArticleId);
   }
   
-  if (articles.length === 0) { // Check original articles list for empty state
+  if (articles.length === 0) { 
     return (
       <div className="flex flex-col items-center justify-center py-10 text-center min-h-[calc(100vh-200px)] px-4">
         <Newspaper className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
@@ -131,7 +129,6 @@ const ArticleContent: FC = () => {
   }
   
   if (articlesToDisplay.length === 0 && expandedArticleId) {
-    // This means an article was supposed to be expanded, but it's not found in the display list
     return (
       <div className="flex flex-col items-center justify-center py-10 text-center min-h-[calc(100vh-200px)] px-4">
         <AlertTriangle className="mx-auto h-16 w-16 text-destructive mb-4" />
@@ -151,17 +148,7 @@ const ArticleContent: FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      {!expandedArticleId && (
-        <div className="flex items-center justify-between mb-6 px-0 sm:px-4">
-          <button className="flex items-center text-foreground/90 hover:text-primary transition-colors">
-            <Filter className="h-5 w-5 mr-2" />
-            Filter +
-          </button>
-          <button className="text-foreground/90 hover:text-primary transition-colors">
-            <Search className="h-6 w-6" />
-          </button>
-        </div>
-      )}
+      {/* Removed Filter and Search buttons section */}
       <div className={`space-y-8 ${expandedArticleId ? '' : 'md:grid md:grid-cols-2 md:gap-x-8 md:space-y-0 lg:grid-cols-3'}`}>
         {articlesToDisplay.map((article) => (
           <ArticleCard 
