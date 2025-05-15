@@ -2,10 +2,10 @@
 
 .audioPlayerContainer {
   background-color: #282828; /* Player background color */
-  padding: 20px 0px; /* Adjusted padding to remove horizontal for full width */
+  padding: 20px 0px; 
   border-radius: 8px;
-  width: 100%; /* Full width */
-  max-width: 100%; /* Ensure it can go full width */
+  width: 100%; 
+  max-width: 100%; 
   margin: auto; 
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
@@ -15,7 +15,7 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 15px;
-  padding: 0 25px; /* Add padding back here if needed for inner content */
+  padding: 0 25px; 
 }
 
 .timeStamp {
@@ -49,7 +49,6 @@
   background-color: #ffffff;
   border-radius: 50%;
   position: absolute;
-  /* 'left' is set dynamically by style prop in component, adjust to center thumb */
   top: 50%;
   transform: translateY(-50%); 
   box-shadow: 0 0 3px rgba(0,0,0,0.5);
@@ -59,15 +58,15 @@
 .controlsSection {
   display: flex;
   align-items: center;
-  justify-content: space-between; /* Distributes space between items */
-  padding: 0 25px; /* Add padding back here if needed for inner content */
+  justify-content: space-between; 
+  padding: 0 25px; 
 }
 
 .controlButton {
   background: none;
   border: none;
   color: #b3b3b3;
-  font-size: 1.25em; /* Base size for icons, e.g., 20px */
+  font-size: 1.25em; 
   cursor: pointer;
   padding: 8px;
   display: flex;
@@ -100,8 +99,8 @@
   justify-content: center;
 }
 .controlButtonPlayPause svg {
-  width: 1em; 
-  height: 1em;
+  /* width: 1em; */ /* Controlled by size prop now */
+  /* height: 1em; */ /* Controlled by size prop now */
   fill: #000000; 
 }
 
@@ -113,10 +112,10 @@
 .controlButtonSkipStyled {
   background-color: #ffffff; 
   color: #000000;           
-  width: 36px;              /* Reduced from 40px */
-  height: 36px;             /* Reduced from 40px */
+  width: 36px;              
+  height: 36px;             
   border-radius: 50%;
-  font-size: 1.1em;         /* Reduced from 1.2em, makes internal SVG 1.1em */
+  font-size: 1.1em;        
   display: flex;
   align-items: center;
   justify-content: center;
@@ -126,9 +125,9 @@
 }
 
 .controlButtonSkipStyled svg {
-  width: 1em; /* SVG size relative to button's font-size (1.1em) */
+  width: 1em; 
   height: 1em;
-  fill: #000000; /* Ensure icon is black */
+  fill: #000000; 
 }
 
 .controlButtonSkipStyled:hover {
@@ -138,7 +137,7 @@
 
 .controlButtonActive,
 .controlButtonRepeatActive {
-  color: #1DB954; /* Spotify green for active state */
+  color: #1DB954; 
 }
 
 .controlButtonRepeatActive .repeatDot {
@@ -154,15 +153,14 @@
 }
 
 .repeatDot {
-  display: none; /* Hidden by default */
+  display: none; 
 }
 
 
 .controlButtonShuffle {
-  font-size: 1.1em; /* Slightly smaller shuffle icon */
+  font-size: 1.1em; 
 }
 .controlButtonRepeat {
-  font-size: 1.1em; /* Slightly smaller repeat icon */
-  position: relative; /* For positioning the dot */
+  font-size: 1.1em; 
+  position: relative; 
 }
-

@@ -149,7 +149,7 @@ const FullScreenPlayer: FC = () => {
         </div>
         
         {/* Player Controls Container */}
-        <div className={`${styles.audioPlayerContainer} my-4 flex-shrink-0 -mx-4 md:-mx-0`}> {/* Removed md:-mx-6 to allow full width on larger screens as well */}
+        <div className={`${styles.audioPlayerContainer} my-4 flex-shrink-0 -mx-4 md:-mx-0`}>
           <div className={styles.progressSection}>
             <span className={styles.timeStamp}>{formatTime(currentTime)}</span>
             <div 
@@ -197,7 +197,7 @@ const FullScreenPlayer: FC = () => {
               aria-label={isPlaying ? "Pause" : "Play"}
               onClick={togglePlayPause}
             >
-              {isPlaying ? <Pause className="fill-black" /> : <Play className="fill-black" />}
+              {isPlaying ? <Pause size={24} /> : <Play size={24} />}
             </button>
             <button 
               className={`${styles.controlButton} ${styles.controlButtonSkipStyled}`}
@@ -249,4 +249,3 @@ const FullScreenPlayer: FC = () => {
 };
 
 export default FullScreenPlayer;
-
