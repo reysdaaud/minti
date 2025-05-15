@@ -8,8 +8,6 @@ import {
   doc,
   query,
   orderBy,
-  type DocumentData,
-  type FirestoreError,
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -17,18 +15,17 @@ import { db } from '@/lib/firebase';
 export interface ContentItem {
   id: string;
   title: string;
-  subtitle?: string; // Or artist for audio, or a brief subtitle for articles
-  imageUrl: string; // Used for album art (audio) or featured image (article)
+  subtitle?: string;
+  imageUrl: string;
   dataAiHint: string;
-  category?: 'Music' | 'Podcast' | 'News' | 'Tech' | 'Lifestyle' | string; // Expanded categories
+  category?: 'Music' | 'Podcast' | 'News' | 'Tech' | 'Lifestyle' | string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 
-  // New fields for content type differentiation
-  contentType: 'audio' | 'article';
-  audioSrc?: string; // Optional: only for audio content
-  excerpt?: string; // Optional: only for article content
-  fullBodyContent?: string; // Optional: only for article content
+  // Fields for all content, now optional
+  audioSrc?: string;
+  excerpt?: string;
+  fullBodyContent?: string;
 }
 
 export interface ContentItemData extends Omit<ContentItem, 'id' | 'createdAt' | 'updatedAt'> {

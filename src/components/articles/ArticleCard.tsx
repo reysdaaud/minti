@@ -5,19 +5,18 @@ import type { FC } from 'react';
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link'; // For linking to a full article page if needed
+import Link from 'next/link';
 import type { ContentItem } from '@/services/contentService';
 import { ArrowRight } from 'lucide-react';
 
 interface ArticleCardProps {
-  article: ContentItem; // We expect this to be an article with contentType 'article'
+  article: ContentItem;
 }
 
 const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
-  // Basic validation for article type and essential fields
-  if (article.contentType !== 'article' || !article.excerpt) {
-    // Optionally render a placeholder or null if it's not a valid article for this card
-    console.warn(`ArticleCard received an item that is not a valid article: ${article.id}`);
+  // An item is considered an article if it has an excerpt or fullBodyContent.
+  if (!article.excerpt && !article.fullBodyContent) {
+    console.warn(`ArticleCard received an item (ID: ${article.id}) that does not have excerpt or full body content.`);
     return null; 
   }
 
@@ -45,14 +44,20 @@ const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
             {article.subtitle}
           </CardDescription>
         )}
-        <p className="text-sm text-foreground/80 line-clamp-3">
-          {article.excerpt}
-        </p>
+        {/* Display excerpt if available */}
+        {article.excerpt && (
+          <p className="text-sm text-foreground/80 line-clamp-3">
+            {article.excerpt}
+          </p>
+        )}
+        {/* If no excerpt but fullBodyContent exists, could show a snippet of fullBodyContent, or nothing.
+            For now, prioritizes excerpt.
+        */}
       </CardContent>
       <CardFooter className="p-4 border-t border-border/50">
-        {/* Placeholder for a "Read More" link. This would navigate to a dynamic article page e.g., /articles/[id] */}
         <Button asChild variant="ghost" className="w-full text-primary hover:text-primary/90">
-          <Link href={`#`}> {/* Replace # with actual link, e.g., /articles/${article.id} */}
+          {/* Link would ideally go to a dynamic page like /content/${article.id} or /article/${article.id} */}
+          <Link href={`#`}> 
             Read More <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>

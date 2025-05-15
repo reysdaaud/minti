@@ -3,26 +3,14 @@
 
 import type { FC } from 'react';
 import { useEffect, useState } from 'react';
-import { collection, getDocs, query, where, type QueryConstraint } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy } from 'firebase/firestore'; // Added orderBy
 import { db } from '@/lib/firebase'; 
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import LibraryCard from './LibraryCard';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle, Music, Podcast } from 'lucide-react'; // Added icons
+import type { ContentItem } from '@/services/contentService'; // Using ContentItem from contentService
 
-// Define the structure of a content item from Firestore
-export interface ContentItem {
-  id: string;
-  title: string;
-  subtitle?: string; // Or artist
-  imageUrl: string;
-  audioSrc: string;
-  dataAiHint: string;
-  category?: 'Music' | 'Podcast' | string; // For filtering
-  // Add any other fields that might come from Firestore
-}
-
-// Interface for the LibrarySection component props
 interface LibrarySectionProps {
   title: string;
   items: ContentItem[];
@@ -44,15 +32,17 @@ const LibrarySection: FC<LibrarySectionProps> = ({ title, items }) => {
       <ScrollArea className="w-full whitespace-nowrap">
         <div className="flex space-x-4 pb-4 px-4 md:px-0">
           {items.map((item) => (
-            <LibraryCard
-              key={item.id}
-              id={item.id}
-              title={item.title}
-              subtitle={item.subtitle}
-              imageUrl={item.imageUrl}
-              audioSrc={item.audioSrc}
-              dataAiHint={item.dataAiHint}
-            />
+            item.audioSrc && ( // Only render if audioSrc is present
+              <LibraryCard
+                key={item.id}
+                id={item.id}
+                title={item.title}
+                subtitle={item.subtitle}
+                imageUrl={item.imageUrl}
+                audioSrc={item.audioSrc} 
+                dataAiHint={item.dataAiHint}
+              />
+            )
           ))}
         </div>
         <ScrollBar orientation="horizontal" />
@@ -76,19 +66,22 @@ const LibraryContent: FC = () => {
       setError(null);
       try {
         const contentCollectionRef = collection(db, 'content');
-        let contentQuery: QueryConstraint | any = contentCollectionRef; // Type any for simplicity here, or use specific query type
+        const queryConstraints = [
+            where('audioSrc', '!=', null), // Ensure only items with an audioSrc are fetched
+            orderBy('createdAt', 'desc') // Optional: order by creation date
+        ];
 
         if (activeFilter !== 'All') {
-          // Assuming items in Firestore have a 'category' field matching 'Music' or 'Podcast'
-          contentQuery = query(contentCollectionRef, where('category', '==', activeFilter));
+          queryConstraints.push(where('category', '==', activeFilter));
         }
+        
+        const contentQuery = query(contentCollectionRef, ...queryConstraints);
         
         const querySnapshot = await getDocs(contentQuery);
         const items = querySnapshot.docs.map(doc => {
           const data = doc.data();
-          // Basic validation: Ensure essential fields are present
           if (!data.title || !data.imageUrl || !data.audioSrc || !data.dataAiHint) {
-            console.warn(`Item with ID ${doc.id} is missing essential fields and will be filtered out.`);
+            console.warn(`Audio item with ID ${doc.id} is missing essential fields and will be filtered out.`);
             return null; 
           }
           return {
@@ -99,8 +92,9 @@ const LibraryContent: FC = () => {
             audioSrc: data.audioSrc,
             dataAiHint: data.dataAiHint,
             category: data.category,
+            // Ensure other fields from ContentItem are mapped if needed for LibraryCard
           } as ContentItem;
-        }).filter(item => item !== null) as ContentItem[]; // Filter out null items and cast
+        }).filter(item => item !== null) as ContentItem[]; 
         
         setLibraryItems(items);
 
@@ -113,7 +107,15 @@ const LibraryContent: FC = () => {
     };
 
     fetchLibraryContent();
-  }, [activeFilter]); // Refetch when filter changes
+  }, [activeFilter]); 
+
+  const getEmptyStateIcon = () => {
+    switch(activeFilter) {
+      case 'Music': return <Music className="mx-auto h-12 w-12 text-muted-foreground mb-3" />;
+      case 'Podcasts': return <Podcast className="mx-auto h-12 w-12 text-muted-foreground mb-3" />;
+      default: return <Music className="mx-auto h-12 w-12 text-muted-foreground mb-3" />; // Default or 'All'
+    }
+  }
 
   return (
     <div className="text-foreground pb-12">
@@ -143,7 +145,7 @@ const LibraryContent: FC = () => {
       {loading && (
         <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-          <p>Loading library...</p>
+          <p>Loading {activeFilter.toLowerCase()}...</p>
         </div>
       )}
 
@@ -157,7 +159,8 @@ const LibraryContent: FC = () => {
 
       {!loading && !error && libraryItems.length === 0 && (
         <div className="text-center py-10 px-4">
-          <p className="text-muted-foreground text-lg">Your library is currently empty for "{activeFilter}".</p>
+          {getEmptyStateIcon()}
+          <p className="text-muted-foreground text-lg">No {activeFilter.toLowerCase()} found in your library.</p>
           <p className="text-muted-foreground">Explore and add some content!</p>
         </div>
       )}
