@@ -17,13 +17,18 @@ import { db } from '@/lib/firebase';
 export interface ContentItem {
   id: string;
   title: string;
-  subtitle?: string; // Or artist
-  imageUrl: string;
-  audioSrc: string;
+  subtitle?: string; // Or artist for audio, or a brief subtitle for articles
+  imageUrl: string; // Used for album art (audio) or featured image (article)
   dataAiHint: string;
-  category?: 'Music' | 'Podcast' | string;
+  category?: 'Music' | 'Podcast' | 'News' | 'Tech' | 'Lifestyle' | string; // Expanded categories
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
+
+  // New fields for content type differentiation
+  contentType: 'audio' | 'article';
+  audioSrc?: string; // Optional: only for audio content
+  excerpt?: string; // Optional: only for article content
+  fullBodyContent?: string; // Optional: only for article content
 }
 
 export interface ContentItemData extends Omit<ContentItem, 'id' | 'createdAt' | 'updatedAt'> {

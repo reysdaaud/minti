@@ -5,7 +5,7 @@ import type { FC } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Edit, Trash2, PlusCircle, Music, Podcast, List } from 'lucide-react';
+import { Edit, Trash2, PlusCircle, Music, Podcast, List, FileText } from 'lucide-react'; // Added FileText for articles
 import type { ContentItem } from '@/services/contentService';
 import {
   AlertDialog,
@@ -26,16 +26,17 @@ interface ContentListProps {
   isLoadingDelete?: string | null; // ID of item being deleted
 }
 
-const CategoryIcon: FC<{ category?: string }> = ({ category }) => {
-  switch (category) {
-    case 'Music':
+const ContentTypeIcon: FC<{ contentType?: 'audio' | 'article' | string }> = ({ contentType }) => {
+  switch (contentType) {
+    case 'audio':
       return <Music className="h-4 w-4 text-primary" />;
-    case 'Podcast':
-      return <Podcast className="h-4 w-4 text-primary" />;
+    case 'article':
+      return <FileText className="h-4 w-4 text-blue-500" />; // Using a different color for articles
     default:
       return <List className="h-4 w-4 text-muted-foreground" />;
   }
 };
+
 
 const ContentList: FC<ContentListProps> = ({ items, onEdit, onDelete, isLoadingDelete }) => {
   if (items.length === 0) {
@@ -58,18 +59,24 @@ const ContentList: FC<ContentListProps> = ({ items, onEdit, onDelete, isLoadingD
             </div>
             <CardTitle className="text-lg truncate">{item.title}</CardTitle>
             {item.subtitle && <CardDescription className="truncate">{item.subtitle}</CardDescription>}
+             {item.contentType === 'article' && item.excerpt && (
+              <CardDescription className="text-sm text-muted-foreground mt-1 line-clamp-2">{item.excerpt}</CardDescription>
+            )}
           </CardHeader>
           <CardContent className="flex-grow">
             <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-1">
-              <CategoryIcon category={item.category} />
-              <span>{item.category || 'Uncategorized'}</span>
+              <ContentTypeIcon contentType={item.contentType} />
+              <span className="capitalize">{item.contentType || 'Unknown Type'}</span>
+              {item.category && <span className="text-muted-foreground">&bull; {item.category}</span>}
             </div>
             <p className="text-xs text-muted-foreground">
               ID: {item.id}
             </p>
-             <p className="text-xs text-muted-foreground mt-1">
-              Audio: <a href={item.audioSrc} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate block max-w-full">{item.audioSrc}</a>
-            </p>
+            {item.contentType === 'audio' && item.audioSrc && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Audio: <a href={item.audioSrc} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate block max-w-full">{item.audioSrc}</a>
+              </p>
+            )}
             <p className="text-xs text-muted-foreground mt-1">
               AI Hint: {item.dataAiHint}
             </p>
