@@ -8,6 +8,7 @@ import { db } from '@/lib/firebase';
 import type { ContentItem } from '@/services/contentService';
 import { Loader2, AlertTriangle, Newspaper, Search, Filter } from 'lucide-react';
 import ArticleCard from './ArticleCard';
+import { Button } from '@/components/ui/button'; // Added missing import
 
 const ArticleContent: FC = () => {
   const [articles, setArticles] = useState<ContentItem[]>([]);
@@ -34,15 +35,22 @@ const ArticleContent: FC = () => {
         const fetchedItems = querySnapshot.docs.map(doc => {
           const data = doc.data();
           
+          // Basic validation for essential article fields
           if (!data.title || typeof data.title !== 'string' || 
               !data.imageUrl || typeof data.imageUrl !== 'string' ||
               !data.fullBodyContent || typeof data.fullBodyContent !== 'string' || data.fullBodyContent.trim() === '' ||
               !data.dataAiHint || typeof data.dataAiHint !== 'string'
               ) {
-            console.warn(`Content item ID ${doc.id} is missing essential article fields or has empty fullBodyContent and will be filtered out.`);
+            console.warn(`Content item ID ${doc.id} is missing essential article fields or has empty fullBodyContent and will be filtered out from articles.`);
             return null; 
           }
           
+          // Further client-side filter: ensure it's NOT an audio item
+          if (data.audioSrc && typeof data.audioSrc === 'string' && data.audioSrc.trim() !== '') {
+            // console.log(`Content item ID ${doc.id} has audioSrc, filtering out from articles.`);
+            return null;
+          }
+
           return {
             id: doc.id,
             title: data.title,
@@ -52,12 +60,12 @@ const ArticleContent: FC = () => {
             category: typeof data.category === 'string' ? data.category : undefined,
             excerpt: typeof data.excerpt === 'string' ? data.excerpt : undefined, 
             fullBodyContent: data.fullBodyContent, 
-            audioSrc: typeof data.audioSrc === 'string' ? data.audioSrc : undefined,
-            createdAt: data.createdAt instanceof Timestamp ? data.createdAt : undefined, // Ensure it's a Timestamp or undefined
+            // audioSrc should be undefined or empty for articles based on the logic above
+            audioSrc: undefined, 
+            createdAt: data.createdAt instanceof Timestamp ? data.createdAt : undefined, 
             updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt : undefined,
           } as ContentItem;
-        }).filter(item => item !== null && (!item.audioSrc || item.audioSrc.trim() === '')) as ContentItem[];
-        // Final client-side filter to ensure no audioSrc for articles
+        }).filter(item => item !== null) as ContentItem[]; 
         
         setArticles(fetchedItems);
 
@@ -103,7 +111,7 @@ const ArticleContent: FC = () => {
     ? articles.filter(article => article.id === expandedArticleId) 
     : articles;
 
-  if (articlesToDisplay.length === 0 && !expandedArticleId) { // Only show no articles if not specifically viewing one that might have been filtered out
+  if (articlesToDisplay.length === 0 && !expandedArticleId) {
     return (
       <div className="flex flex-col items-center justify-center py-10 text-center min-h-[calc(100vh-200px)] px-4">
         <Newspaper className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
@@ -119,9 +127,13 @@ const ArticleContent: FC = () => {
         <AlertTriangle className="mx-auto h-16 w-16 text-destructive mb-4" />
         <p className="text-xl text-destructive font-semibold">Article Not Found</p>
         <p className="text-muted-foreground">The selected article could not be displayed.</p>
-        <button onClick={() => setExpandedArticleId(null)} className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90">
+        <Button 
+            variant="outline"
+            onClick={() => setExpandedArticleId(null)} 
+            className="mt-4 text-foreground/90 hover:text-primary border-primary/50 hover:border-primary transition-colors"
+        >
             Back to Articles
-        </button>
+        </Button>
       </div>
     );
   }
