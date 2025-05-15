@@ -21,36 +21,22 @@ const ArticleContent: FC = () => {
       try {
         const contentCollectionRef = collection(db, 'content');
         
-        // Query for documents that have fullBodyContent and do NOT have a non-empty audioSrc
-        // Firestore doesn't have a "does not exist or is empty" query directly for strings.
-        // A common approach is to query for items that are NOT audio, then client-filter,
-        // or structure data so that "article" type is explicit.
-        // For now, we'll fetch all non-audio, then client-side filter for fullBodyContent.
-        // A more robust way would be to add an explicit 'contentType' field (e.g., 'article', 'audio')
-
+        // Query for documents that have a non-empty fullBodyContent.
+        // Firestore query for "exists and is not empty string" can be `where(field, '>', '')`
+        // This requires an index on fullBodyContent (ascending) and createdAt (descending).
         const queryConstraints: QueryConstraint[] = [
-          // Option 1: If you want items that are explicitly NOT audio (audioSrc is null or empty)
-          // This might require an index if combined with orderBy on a different field.
-          // where('audioSrc', 'in', [null, ""]), // This might not work as expected or require specific indexing.
-          // For simplicity and to avoid complex indexing for this step, we'll fetch where fullBodyContent exists
-          // and then refine client-side if needed, or assume if fullBodyContent exists, it's an article.
-          where('fullBodyContent', '!=', null), // Ensures fullBodyContent exists
-          where('fullBodyContent', '!=', ""),   // Ensures fullBodyContent is not empty
-          orderBy('createdAt', 'desc')
+          where('fullBodyContent', '>', ''), // Ensures fullBodyContent exists and is not empty
+          orderBy('fullBodyContent'), // Firestore requires an orderBy on the field used in the inequality
+          orderBy('createdAt', 'desc')    // Then order by creation date
         ];
         
         const articlesQuery = query(contentCollectionRef, ...queryConstraints);
         
         const querySnapshot = await getDocs(articlesQuery);
-        const fetchedArticles = querySnapshot.docs.map(doc => {
+        const fetchedItems = querySnapshot.docs.map(doc => {
           const data = doc.data();
-
-          // Primary filter: if it has audioSrc, it's not purely an article for this tab
-          if (data.audioSrc && data.audioSrc.trim() !== '') {
-            return null;
-          }
-
-          // Validate essential article fields
+          
+          // Basic validation for core fields
           if (!data.title || typeof data.title !== 'string' || 
               !data.imageUrl || typeof data.imageUrl !== 'string' ||
               !data.fullBodyContent || typeof data.fullBodyContent !== 'string' || data.fullBodyContent.trim() === '' ||
@@ -69,17 +55,20 @@ const ArticleContent: FC = () => {
             category: typeof data.category === 'string' ? data.category : undefined,
             excerpt: typeof data.excerpt === 'string' ? data.excerpt : undefined, 
             fullBodyContent: data.fullBodyContent, 
-            audioSrc: typeof data.audioSrc === 'string' ? data.audioSrc : undefined, // Retain for consistency
+            audioSrc: typeof data.audioSrc === 'string' ? data.audioSrc : undefined,
             createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
           } as ContentItem;
-        }).filter(item => item !== null) as ContentItem[]; 
+        }).filter(item => item !== null);
+
+        // Client-side filter: exclude items that also have a non-empty audioSrc
+        const purelyArticles = fetchedItems.filter(item => !item.audioSrc || item.audioSrc.trim() === '') as ContentItem[];
         
-        setArticles(fetchedArticles);
+        setArticles(purelyArticles);
 
       } catch (err: any) {
         console.error("Error fetching articles:", err);
          if (err.code === 'failed-precondition') {
-             setError(`Firestore query for articles requires an index. Please create it using the link in the console error message, or ensure your query is supported. Error: ${err.message}`);
+             setError(`Firestore query for articles requires an index. Please create it using the link likely provided in the browser console error message, then refresh. Error: ${err.message}`);
         } else {
             setError("Failed to load articles. Please try again later.");
         }
