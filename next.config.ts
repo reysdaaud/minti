@@ -46,6 +46,12 @@ const nextConfig: NextConfig = {
         hostname: 'www.newtimes.co.rw', // Added for New Times images
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.theatlantic.com', // Added for The Atlantic images
+        port: '',
+        pathname: '/**',
       }
     ],
   },
