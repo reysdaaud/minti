@@ -8,26 +8,18 @@ import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { ContentItem } from '@/services/contentService';
-import { ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronUp, Heart, Bookmark } from 'lucide-react'; // Added Heart and Bookmark
 import { format, isValid } from 'date-fns';
 
 interface ArticleCardProps {
   article: ContentItem;
   isCurrentlyExpanded: boolean;
-  onToggleExpand: (articleId: string) => void; 
+  onToggleExpand: (articleId: string | null) => void; 
+  // onLike and onSave would be passed here if implemented
 }
 
 const ArticleCard: FC<ArticleCardProps> = ({ article, isCurrentlyExpanded, onToggleExpand }) => {
-  console.log(`ArticleCard ${article.id}: isCurrentlyExpanded = ${isCurrentlyExpanded}`);
-  if (isCurrentlyExpanded && article.fullBodyContent) {
-    console.log(`ArticleCard ${article.id}: Rendering fullBodyContent.`);
-  } else if (article.excerpt) {
-    console.log(`ArticleCard ${article.id}: Rendering excerpt.`);
-  }
-
-
   if (!article.fullBodyContent && !article.excerpt) {
-    console.warn(`ArticleCard ${article.id}: Missing both fullBodyContent and excerpt. Not rendering card.`);
     return null;
   }
 
@@ -87,17 +79,26 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, isCurrentlyExpanded, onTog
           </div>
         )}
         
-        {!isCurrentlyExpanded && (article.excerpt || article.fullBodyContent) && (
-            <Button
-            variant="outline"
-            className="p-2 text-foreground/90 hover:text-primary transition-colors mt-3 text-sm flex items-center border-primary/50 hover:border-primary h-auto" 
-            onClick={() => onToggleExpand(article.id)}
-            aria-expanded={isCurrentlyExpanded}
-            >
-            Read More
-            <ArrowRight className="ml-1 h-4 w-4" />
+        <div className="mt-3 flex items-center space-x-3">
+            {!isCurrentlyExpanded && (article.excerpt || article.fullBodyContent) && (
+                <Button
+                variant="outline"
+                className="p-2 text-foreground/90 hover:text-primary transition-colors text-sm flex items-center border-primary/50 hover:border-primary h-auto" 
+                onClick={() => onToggleExpand(article.id)}
+                aria-expanded={isCurrentlyExpanded}
+                >
+                Read More
+                <ArrowRight className="ml-1 h-4 w-4" />
+                </Button>
+            )}
+             {/* Like and Save buttons - Placeholder functionality */}
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary p-1" aria-label="Like article">
+                <Heart className="h-5 w-5" />
             </Button>
-        )}
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary p-1" aria-label="Save article">
+                <Bookmark className="h-5 w-5" />
+            </Button>
+        </div>
       </CardContent>
     </Card>
   );
