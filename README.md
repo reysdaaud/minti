@@ -1,3 +1,4 @@
+
 # Firebase Studio Project (NeoWallet)
 
 This is a Next.js starter project for NeoWallet, a modern digital banking solution, in Firebase Studio.
@@ -8,49 +9,51 @@ This is a Next.js starter project for NeoWallet, a modern digital banking soluti
 
 - Node.js (v18 or later recommended)
 - npm or yarn
+- Git
 
 ### Environment Variables
 
-This project requires several environment variables for connecting to Firebase and Paystack.
+This project requires several environment variables. Create a `.env.local` file in the root of your project by copying `.env.example` (if one exists) or by creating it manually.
 
-1.  Create a `.env.local` file in the root of the project. You can copy the contents of `.env.example` as a template:
-    ```bash
-    cp .env.example .env.local
-    ```
-2.  Fill in the values in `.env.local` with your actual credentials and API keys.
+**Required for Paystack:**
+*   `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`: Your Paystack Public Key (e.g., `pk_test_xxxxxxxxxxxx` or `pk_live_xxxxxxxxxxxx`).
+*   `NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE`: Your Paystack **LIVE Secret Key** (e.g., `sk_live_xxxxxxxxxxxx`).
+    *   **SECURITY WARNING:** Exposing a `SECRET_KEY` prefixed with `NEXT_PUBLIC_` makes it available on the client-side. This is **highly insecure** for production. For production, secret key operations (like server-side verification) MUST be handled by a secure backend API. This setup is for simplified development and testing with acknowledged risk.
 
-    **Frontend (Next.js - `src/app/**`):**
-    *   `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`: Your Paystack Public Key (e.g., `pk_test_xxxxxxxxxxxx` or `pk_live_xxxxxxxxxxxx`). This key is used directly in the frontend for Paystack integration.
-    *   Firebase configuration details (apiKey, authDomain, etc.) are typically embedded in `src/lib/firebase.tsx` or loaded via environment variables if you choose to abstract them further for different Firebase projects.
+**Required for Waafi (Somali Mobile Money):**
+*   `WAAFI_API_KEY`: Your Waafi API Key.
+*   `WAAFI_MERCHANT_ID`: Your Waafi Merchant ID.
+*   `WAAFI_API_SECRET` (or similar, e.g., `WAAFI_WEBHOOK_SECRET`): Any secret used for authenticating API calls or verifying webhooks from Waafi. (Consult Waafi documentation for exact names).
 
-    **Important Security Note for Paystack Keys:**
-    *   Your **Paystack Secret Key** (`sk_test_...` or `sk_live_...`) should **NEVER** be exposed in your frontend code or committed to your repository. For a production application, operations requiring the secret key (like server-side verification, refunds) MUST be handled by a secure backend server.
-    *   The current implementation uses a client-side only approach with `react-paystack` which relies on the public key. While this simplifies development, for robust transaction verification and security, a backend is typically involved.
+**Required for Deployment (e.g., to Vercel):**
+*   `NEXT_PUBLIC_APP_BASE_URL`: The full base URL of your deployed application (e.g., `https://your-app-name.vercel.app`). This is crucial for constructing callback URLs for payment gateways.
+
+**Firebase Configuration:**
+Firebase API keys and project details are currently hardcoded in `src/lib/firebase.tsx`. Ensure these match your Firebase project settings.
 
 ### Firebase Setup
 
-The application uses Firebase for authentication (Google Sign-In) and Firestore for storing user data (like coin balances).
+The application uses Firebase for:
+1.  Authentication (Google Sign-In)
+2.  Firestore Database (user profiles, content, wallet balances, payment history)
+
+**Steps:**
 1.  Set up a Firebase project at [https://console.firebase.google.com/](https://console.firebase.google.com/).
-2.  Enable Google Sign-In in the Firebase Authentication section.
-3.  Set up Firestore database and configure security rules as needed.
-4.  The Firebase configuration (apiKey, authDomain, etc.) is in `src/lib/firebase.tsx`. Ensure these match your Firebase project settings.
+2.  In your Firebase project, enable **Google Sign-In** in the Authentication section.
+3.  Set up **Firestore Database**.
+4.  Configure **Security Rules** for Firestore to protect your data.
+5.  Ensure the Firebase configuration object in `src/lib/firebase.tsx` matches your project's settings.
 
 ### Running the Application Locally
 
-The application is a Next.js frontend.
-
-To run the Next.js frontend:
-
 ```bash
+npm install
 npm run dev
 # or
+yarn
 yarn dev
 ```
-
-This command will:
-1.  Start the Next.js development server (usually on `http://localhost:9002`).
-
-To get started with development, take a look at `src/app/page.tsx`.
+This will start the Next.js development server (usually on `http://localhost:9002`).
 
 ### Building for Production
 
@@ -58,20 +61,34 @@ To get started with development, take a look at `src/app/page.tsx`.
 npm run build
 npm run start
 ```
-This will build and start the Next.js application.
+
+### Deploying to Vercel
+
+1.  Push your project to a Git repository (GitHub, GitLab, Bitbucket).
+2.  Sign up/log in to [Vercel](https://vercel.com/).
+3.  Import your Git repository into Vercel.
+4.  Configure Environment Variables in Vercel project settings (ensure all variables listed in the ".env.local" section above are set, especially `NEXT_PUBLIC_APP_BASE_URL` for your Vercel domain).
+5.  Deploy.
+6.  **Important:** Add your Vercel deployment URL (e.g., `your-app-name.vercel.app`) to the "Authorized domains" list in your Firebase project's Authentication settings for Google Sign-In to work.
 
 ## Key Components
 
--   **Authentication**: Handled via Firebase Authentication (Google Sign-In). See `src/lib/firebase.tsx` and `src/app/auth/signin/page.tsx`.
--   **Payment Processing**: Uses Paystack via the `react-paystack` library for client-side integration.
-    -   Frontend: `src/components/exchange/Pay.tsx` and `src/components/exchange/PaystackButton.tsx` handle the UI and payment flow. Firestore updates for coin balances occur client-side after successful payment.
--   **State Management**: Primarily uses React Context API (`src/contexts/AuthContext.tsx` which re-exports from `src/lib/firebase.tsx`) and component state.
--   **UI Components**: Built with ShadCN UI (`src/components/ui/`) and custom components (`src/components/exchange/`).
+-   **Authentication**: Firebase Authentication (Google Sign-In). Managed in `src/lib/firebase.tsx` and `src/contexts/AuthContext.tsx`. Profile setup flow in `src/app/profile/`.
+-   **Payment Processing**:
+    -   **Paystack**: Client-side integration using `react-paystack` via `src/components/exchange/PaystackButton.tsx`. Server-side verification is handled by `src/app/page.tsx` (client-side verification using a secret key, **not recommended for production**).
+    -   **Waafi**: Client-side initiation via `src/components/exchange/WaafiButton.tsx` calls backend API routes `pages/api/waafi/initiate.ts` and `pages/api/waafi/callback.ts`.
+-   **State Management**: React Context API (`src/contexts/AuthContext.tsx`, `src/contexts/PlayerContext.tsx`) and component state.
+-   **Content Management**:
+    -   Content (audio, articles) stored in Firestore `content` collection.
+    -   Admin panel at `/admin` for CRUD operations (see `src/app/admin/` and `src/services/contentService.ts`).
+-   **UI Components**: ShadCN UI (`src/components/ui/`) and custom components.
 -   **Styling**: Tailwind CSS (`tailwind.config.ts`) and global styles (`src/app/globals.css`).
 
 ## Troubleshooting
 
--   **Paystack "Invalid Key" error**: Double-check your `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` in `.env.local`. Ensure it's the correct public key (test or live) and is not accidentally a secret key.
--   **Paystack Not Initializing**: Ensure `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` is correctly set and accessible by the `PaystackButton.tsx` component. Check the browser console for any specific errors from the `react-paystack` library.
--   **CORS errors**: While the backend server is removed, if you integrate with other external APIs directly from the client, ensure they have appropriate CORS policies.
--   **Firebase Issues**: Verify your Firebase project configuration in `src/lib/firebase.tsx` is correct and that your Firestore security rules allow the operations performed by the app.
+-   **Payment Gateway "Invalid Key" error**: Double-check your public keys in `.env.local` and Vercel environment variables.
+-   **Payment Verification Failures**: Ensure secret keys (if used on client for testing) are correct. For production, Paystack verification MUST be server-side. Ensure Waafi callback URLs and webhook secrets are correctly configured.
+-   **CORS errors**: If integrating with external APIs, ensure they have appropriate CORS policies. Your Next.js API routes are same-origin.
+-   **Firebase Issues**: Verify Firebase project configuration and Firestore security rules.
+-   **Missing Modules on Vercel Deploy:** Ensure all files, especially new ones, are committed and pushed to your Git repository. Check for filename casing issues.
+-   **Firestore Index Errors:** Check browser console for Firestore errors indicating missing indexes. Create them using the link provided by Firebase.
