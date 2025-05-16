@@ -4,7 +4,6 @@ import {
   getAuth,
   signInWithPopup,
   GoogleAuthProvider,
-  // FacebookAuthProvider, // Removed
   signOut,
   type Auth,
   type User as FirebaseUser
@@ -45,7 +44,6 @@ interface AuthContextType {
   error: Error | null;
   firebaseAuth: Auth;
   signInWithGoogle: () => Promise<FirebaseUser | null>;
-  // signInWithFacebook: () => Promise<FirebaseUser | null>; // Removed
   signOutUser: () => Promise<void>;
   userProfile: UserProfile | null; // Added for profile data
   isUserProfileLoading: boolean; // Added for profile loading state
@@ -58,6 +56,7 @@ export interface UserProfile {
   photoURL?: string | null;
   firstName?: string;
   lastName?: string;
+  country?: string; // Added country field
   mobile?: string;
   profileComplete?: boolean;
   preferredCategories?: string[];
@@ -87,19 +86,6 @@ const firebaseSignInWithGoogle = async (): Promise<FirebaseUser | null> => {
     throw error;
   }
 };
-
-/* // Removed Facebook Sign In
-const firebaseSignInWithFacebook = async (): Promise<FirebaseUser | null> => {
-  try {
-    const provider = new FacebookAuthProvider();
-    const result = await signInWithPopup(authInstance, provider);
-    return result.user;
-  } catch (error) {
-    console.error("Error signing in with Facebook:", error);
-    throw error;
-  }
-};
-*/
 
 const firebaseSignOutUser = async (): Promise<void> => {
   try {
@@ -133,21 +119,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             if (userDocSnap.exists()) {
               const profileData = userDocSnap.data() as UserProfile;
               setUserProfile(profileData);
+              // Check current path to avoid redirect loop if already on setup/preferences
+              const currentPath = window.location.pathname; // Get current path
               if (!profileData.profileComplete) {
-                // Check current path to avoid redirect loop if already on setup/preferences
-                if (router.pathname !== '/profile/setup' && router.pathname !== '/profile/preferences') {
+                if (currentPath !== '/profile/setup' && currentPath !== '/profile/preferences') {
                   router.push('/profile/setup');
                 }
               } else if (!profileData.preferredCategories || profileData.preferredCategories.length === 0) {
-                 if (router.pathname !== '/profile/setup' && router.pathname !== '/profile/preferences') {
+                 if (currentPath !== '/profile/setup' && currentPath !== '/profile/preferences') {
                     router.push('/profile/preferences');
                  }
               }
             } else {
               setUserProfile(null);
-              // This case should ideally be handled by initializeUserInFirestore,
-              // but if somehow user doc is missing, direct to setup.
-              if (router.pathname !== '/profile/setup' && router.pathname !== '/profile/preferences') {
+              const currentPath = window.location.pathname;
+              if (currentPath !== '/profile/setup' && currentPath !== '/profile/preferences') {
                 router.push('/profile/setup');
               }
             }
@@ -179,7 +165,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     error,
     firebaseAuth: authInstance,
     signInWithGoogle: firebaseSignInWithGoogle,
-    // signInWithFacebook: firebaseSignInWithFacebook, // Removed
     signOutUser: firebaseSignOutUser,
     userProfile,
     isUserProfileLoading,
@@ -196,9 +181,7 @@ export {
   authInstance as auth,
   dbInstance as db,
   GoogleAuthProvider,
-  // FacebookAuthProvider, // Removed
   firebaseSignInWithGoogle as signInWithGoogle,
-  // firebaseSignInWithFacebook as signInWithFacebook, // Removed
   firebaseSignOutUser as signOutUser
 };
 export type { FirebaseUser }; // Export FirebaseUser type

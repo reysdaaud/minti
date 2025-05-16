@@ -19,20 +19,19 @@ export const initializeUserInFirestore = async (user) => {
         photoURL: user.photoURL,
         firstName: '',
         lastName: '',
+        country: '', // Initialize country
         mobile: '',
         profileComplete: false,
         preferredCategories: [],
-        isAdmin: false, // Default to not admin
+        isAdmin: false,
         coins: 0,
         lastLogin: serverTimestamp(),
         createdAt: serverTimestamp(),
         subscription: false,
-        paymentHistory: [], // Initialize as empty array
+        paymentHistory: [],
       });
       console.log("User initialized in Firestore:", user.uid);
     } else {
-      // Update last login for existing users
-      // Also ensure new fields exist if they were added after user creation
       const existingData = userDoc.data();
       const updates = { lastLogin: serverTimestamp() };
       if (typeof existingData.profileComplete === 'undefined') {
@@ -43,6 +42,9 @@ export const initializeUserInFirestore = async (user) => {
       }
       if (typeof existingData.lastName === 'undefined') {
         updates.lastName = '';
+      }
+      if (typeof existingData.country === 'undefined') { // Add country check
+        updates.country = '';
       }
       if (typeof existingData.mobile === 'undefined') {
         updates.mobile = '';
@@ -58,15 +60,10 @@ export const initializeUserInFirestore = async (user) => {
     }
   } catch (error) {
     console.error("Error initializing/updating user in Firestore:", error);
-    throw error; // Re-throw to allow calling function to handle
+    throw error; 
   }
 };
 
-// trackArticleAccessInFirestore might need adjustment or be deprecated
-// based on how content access is managed with coins in the future.
-// For now, keeping its structure but commenting out specific logic if not immediately relevant.
 export const trackArticleAccessInFirestore = async (/* navigate, setShowPreview */) => {
-  // This function's logic needs to be reviewed based on the app's current features.
-  // For now, it's a placeholder.
   console.warn("trackArticleAccessInFirestore needs review for current app logic.");
 };

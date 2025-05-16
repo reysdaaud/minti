@@ -4,13 +4,24 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ChevronsUpDown, Check } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { cn } from '@/lib/utils';
+import { countries } from '@/lib/countries'; // We'll create this file
 
 export default function ProfileSetupPage() {
   const { user, loading: authLoading, userProfile, isUserProfileLoading } = useAuth();
@@ -20,27 +31,28 @@ export default function ProfileSetupPage() {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    country: '',
     mobile: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [countrySearchOpen, setCountrySearchOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
       router.replace('/auth/signin');
     } else if (!authLoading && user && !isUserProfileLoading && userProfile) {
       if (userProfile.profileComplete) {
-        // If profile is already complete, check preferences
         if (!userProfile.preferredCategories || userProfile.preferredCategories.length === 0) {
           router.replace('/profile/preferences');
         } else {
-          router.replace('/'); // Profile and preferences complete, go to dashboard
+          router.replace('/');
         }
       } else {
-        // Populate form if some data exists (e.g., from Google display name)
         const nameParts = user.displayName?.split(' ') || [];
         setFormData({
           firstName: userProfile.firstName || (nameParts.length > 0 ? nameParts[0] : ''),
           lastName: userProfile.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : ''),
+          country: userProfile.country || '',
           mobile: userProfile.mobile || '',
         });
       }
@@ -49,6 +61,11 @@ export default function ProfileSetupPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleCountrySelect = (countryValue: string) => {
+    setFormData({ ...formData, country: countryValue });
+    setCountrySearchOpen(false);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -61,6 +78,10 @@ export default function ProfileSetupPage() {
       toast({ title: "Validation Error", description: "First name and last name are required.", variant: "destructive" });
       return;
     }
+     if (!formData.country) {
+      toast({ title: "Validation Error", description: "Please select your country.", variant: "destructive" });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -68,13 +89,14 @@ export default function ProfileSetupPage() {
       await updateDoc(userRef, {
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
+        country: formData.country,
         mobile: formData.mobile.trim(),
-        name: `${formData.firstName.trim()} ${formData.lastName.trim()}`, // Update main name field too
+        name: `${formData.firstName.trim()} ${formData.lastName.trim()}`,
         profileComplete: true,
-        updatedAt: new Date(), // Using client-side date, or serverTimestamp()
+        updatedAt: new Date(),
       });
       toast({ title: "Profile Updated", description: "Your profile has been saved." });
-      router.push('/profile/preferences'); // Proceed to preference selection
+      router.push('/profile/preferences');
     } catch (error) {
       console.error("Error updating profile:", error);
       toast({ title: "Error", description: "Failed to update profile. Please try again.", variant: "destructive" });
@@ -91,12 +113,10 @@ export default function ProfileSetupPage() {
     );
   }
 
-  if (!user) {
-    // This case should be handled by the redirect in useEffect, but as a fallback:
-    return <div className="min-h-screen flex items-center justify-center bg-background p-4"><p>Redirecting to sign in...</p></div>;
+  if (!user || (user && userProfile && !userProfile.profileComplete && !isUserProfileLoading)) {
+    return <div className="min-h-screen flex items-center justify-center bg-background p-4"><p>Redirecting...</p></div>;
   }
-  
-  // If profile is complete, useEffect should redirect. If not, show form.
+
    if (userProfile && userProfile.profileComplete) {
      return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -105,7 +125,6 @@ export default function ProfileSetupPage() {
       </div>
     );
   }
-
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -139,6 +158,49 @@ export default function ProfileSetupPage() {
                 onChange={handleChange}
                 className="mt-1 bg-input border-border text-foreground"
               />
+            </div>
+            <div>
+              <Label htmlFor="country" className="text-foreground">Country</Label>
+              <Popover open={countrySearchOpen} onOpenChange={setCountrySearchOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={countrySearchOpen}
+                    className="w-full justify-between mt-1 bg-input border-border text-foreground hover:bg-input/80"
+                  >
+                    {formData.country
+                      ? countries.find((c) => c.value === formData.country)?.label
+                      : "Select country..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search country..." />
+                    <CommandList>
+                      <CommandEmpty>No country found.</CommandEmpty>
+                      <CommandGroup>
+                        {countries.map((c) => (
+                          <CommandItem
+                            key={c.value}
+                            value={c.label} // Search by label
+                            onSelect={() => handleCountrySelect(c.value)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                formData.country === c.value ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {c.label}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div>
               <Label htmlFor="mobile" className="text-foreground">Mobile Number (Optional)</Label>
