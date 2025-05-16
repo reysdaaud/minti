@@ -7,7 +7,8 @@ import { db } from '@/lib/firebase'; // Ensure this path is correct
 // IMPORTANT: Replace with actual Waafi API details and logic
 const WAAFI_API_KEY = process.env.WAAFI_API_KEY;
 const WAAFI_MERCHANT_ID = process.env.WAAFI_MERCHANT_ID;
-const WAAFI_API_ENDPOINT_INITIATE = "https://api.waafipay.com/payment"; // Fictional endpoint - REPLACE WITH ACTUAL WAAFI ENDPOINT
+// THIS IS A FICTIONAL ENDPOINT - REPLACE WITH ACTUAL WAAFI DOCUMENTATION
+const WAAFI_API_ENDPOINT_INITIATE = "https://api.waafipay.com/payment"; 
 
 // Determine the base URL for callbacks. Prioritize environment variable.
 const getAppBaseUrl = () => {
@@ -19,13 +20,14 @@ const getAppBaseUrl = () => {
     return `https://${process.env.VERCEL_URL}`;
   }
   // Fallback for local development or if VERCEL_URL is not available (e.g. local `npm run dev`)
+  // Ensure this matches your live Vercel URL if NEXT_PUBLIC_APP_BASE_URL is not set in Vercel.
   return process.env.NODE_ENV === 'production' ? 'https://minti-c6ls.vercel.app/' : 'http://localhost:9002';
 };
 
 
 interface WaafiInitiateRequestBody {
   amount: number; // Original KES amount from package
-  currency: string; // Target currency for Waafi (should be "USD" as per latest request)
+  currency: string; // Target currency for Waafi (e.g., "USD")
   phoneNumber: string;
   userId: string;
   metadata: {
@@ -54,19 +56,13 @@ export default async function handler(
   if (!amount || !currency || !phoneNumber || !userId || !metadata || !metadata.originalAmountKES) {
     return res.status(400).json({ success: false, message: "Missing required payment details." });
   }
-
-  if (currency.toUpperCase() !== "USD") {
-    // This is an internal check. The frontend should be sending "USD".
-    console.warn(`Waafi API received currency '${currency}' but expected 'USD'. Proceeding with '${currency}'.`);
-  }
   
   // The 'amount' received here is the KES value from the package.
   // If Waafi expects this 'amount' to be in USD, then a conversion from KES to USD is needed here.
   // For now, we are passing the numerical value of KES as 'waafiAmount' and labeling it with 'waafiCurrency' (USD).
-  // This implies Waafi will either interpret 'amount' as USD or perform a conversion.
   // TODO: Implement actual KES to USD conversion here if Waafi's API requires the amount to be in USD.
-  const waafiAmount = amount; // This is the KES numerical value.
-  const waafiCurrency = currency.toUpperCase(); // Should be "USD"
+  const waafiAmount = amount; // This is the KES numerical value. If Waafi expects USD, convert this.
+  const waafiCurrency = currency.toUpperCase(); // Should be "USD" based on your last request.
 
   const transactionId = `WAAFI_${userId}_${Date.now()}`; // Unique transaction ID
 
@@ -83,27 +79,27 @@ export default async function handler(
     serviceName: 'API_PURCHASE', // Example: 'MOBILE_CHECKOUT_INIT' or similar name from Waafi docs
     serviceParams: {
       merchantUid: WAAFI_MERCHANT_ID,
-      apiUserId: WAAFI_API_KEY, // Or however Waafi auth works (e.g. API secret in headers)
-      paymentMethod: 'MWALLET_ACCOUNT', // ** THIS IS A CRITICAL FIELD **
-                                       // Replace 'MWALLET_ACCOUNT' with the specific code Waafi uses for
-                                       // the desired mobile money service (e.g., EVC, ZAAD, SAHAL) or their own wallet.
-                                       // Example values might be: "EVCPLUS", "ZAAD_SERVICE", "SAHAL_PAY", "WAAFI_WALLET".
-                                       // Check Waafi's API documentation for the correct values.
+      apiUserId: WAAFI_API_KEY, 
+      // paymentMethod: 'MWALLET_ACCOUNT', // ** CRITICAL FIELD **
+      // Replace 'MWALLET_ACCOUNT' with the specific code Waafi uses for EVC, ZAAD, SAHAL, etc.
+      // e.g., "EVCPLUS", "ZAAD_SERVICE", "SAHAL_PAY", "WAAFI_WALLET".
+      // This might come from the client if you allow users to select.
+      // For now, you might hardcode one or need to adjust based on Waafi docs.
+      // Example:
+      paymentMethod: "EVCPLUS", // Or "ZAAD_SERVICE", "SAHAL", etc. - CHECK WAAFI DOCS
       payerInfo: {
-        msisdn: phoneNumber, // Customer's phone number for Waafi
+        msisdn: phoneNumber, 
       },
       transactionInfo: {
-        referenceId: transactionId, // Your internal reference ID
-        invoiceId: `INV_${transactionId}`, // Can be same as referenceId or different
-        amount: waafiAmount.toString(), // Amount in target currency (USD), ensure it's a string if Waafi expects that
-        currency: waafiCurrency, // Should be "USD"
+        referenceId: transactionId, 
+        invoiceId: `INV_${transactionId}`, 
+        amount: waafiAmount.toString(), 
+        currency: waafiCurrency, 
         description: `Purchase: ${metadata.packageName} (${metadata.coins} coins)`,
       },
       merchantCallbacks: {
-        notifyUrl: callbackUrl, // Waafi will POST to this URL after payment attempt
+        notifyUrl: callbackUrl, 
       },
-      // Pass our internal metadata through Waafi if possible
-      // This helps reconcile the transaction in the callback. Check Waafi docs for their field name.
       customParameters: { // Or 'params', 'metaData', 'merchantDefinedFields' etc., as per Waafi docs
         userId,
         coins: metadata.coins,
@@ -120,15 +116,14 @@ export default async function handler(
     console.log("Target Waafi API Endpoint:", WAAFI_API_ENDPOINT_INITIATE);
     console.log("Callback URL sent to Waafi:", callbackUrl);
     
-    // Example of what a real fetch might look like:
     // const response = await fetch(WAAFI_API_ENDPOINT_INITIATE, {
     //   method: 'POST',
     //   headers: {
     //     'Content-Type': 'application/json',
     //     // Add Waafi specific auth headers, e.g.,
     //     // 'Authorization': `Bearer YOUR_WAAFI_ACCESS_TOKEN`,
-    //     // 'X-API-KEY': WAAFI_API_KEY, (if it's a header key)
-    //     // 'X-App-Secret': process.env.WAAFI_API_SECRET (if applicable)
+    //     // 'X-API-KEY': WAAFI_API_KEY, 
+    //     // 'X-App-Secret': process.env.WAAFI_API_SECRET 
     //   },
     //   body: JSON.stringify(waafiPayload),
     // });
@@ -146,8 +141,7 @@ export default async function handler(
       responseCode: "2001", // Replace with actual Waafi success code
       responseMsg: "Request processed successfully. User will be prompted on their phone.",
       waafiTransactionId: "WFP_MOCK_" + Date.now(),
-      // Example: Waafi might return a redirectURL if it's a hosted page flow for some methods
-      // redirectUrl: "https://checkout.waafipay.com/..." 
+      // redirectUrl: "https://checkout.waafipay.com/..." // If Waafi provides a redirect URL
     };
     // **************************************************************************
 
