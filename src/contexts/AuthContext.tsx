@@ -4,5 +4,5 @@
 
 'use client';
 
-export { AuthProvider, useAuthContext as useAuth, signInWithGoogle, signOutUser } from '@/lib/firebase';
+export { AuthProvider, useAuthContext as useAuth, signInWithGoogle, signInWithFacebook, signOutUser } from '@/lib/firebase';
 export type { User as FirebaseUser } from 'firebase/auth'; // Export User type if needed elsewhere
