@@ -1,3 +1,4 @@
+
 // src/components/player/FullScreenPlayer.tsx
 'use client';
 
@@ -21,7 +22,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePlayer } from '@/contexts/PlayerContext';
-import styles from './FullScreenPlayer.module.css'; // Import the CSS module
+import styles from './FullScreenPlayer.module.css'; 
 
 const FullScreenPlayer: FC = () => {
   const { currentTrack, isPlaying, togglePlayPause, setIsPlayerOpen, audioElementRef } = usePlayer();
@@ -29,7 +30,7 @@ const FullScreenPlayer: FC = () => {
   const [duration, setDuration] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [isShuffleActive, setIsShuffleActive] = useState(false);
-  const [repeatMode, setRepeatMode] = useState<'off' | 'one' | 'all'>('off'); // 'off', 'one', 'all'
+  const [repeatMode, setRepeatMode] = useState<'off' | 'one' | 'all'>('off'); 
   
   const progressBarContainerRef = useRef<HTMLDivElement>(null);
 
@@ -96,6 +97,10 @@ const FullScreenPlayer: FC = () => {
       if (prev === 'all') return 'one';
       return 'off';
     });
+     if (audioElementRef.current) {
+      if (repeatMode === 'one') audioElementRef.current.loop = true; // for 'one'
+      else audioElementRef.current.loop = false; // for 'off' and 'all' (handled by 'ended' event for 'all')
+    }
   };
 
   const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -148,7 +153,6 @@ const FullScreenPlayer: FC = () => {
           </div>
         </div>
         
-        {/* Player Controls Container */}
         <div className={`${styles.audioPlayerContainer} my-4 flex-shrink-0 -mx-4 md:-mx-0`}>
           <div className={styles.progressSection}>
             <span className={styles.timeStamp}>{formatTime(currentTime)}</span>
@@ -171,7 +175,7 @@ const FullScreenPlayer: FC = () => {
               }}
             >
               <div className={styles.progressBar} style={{ width: `${progressPercentage}%` }}>
-                <div className={styles.progressBarThumb} style={{ left: `${progressPercentage}%`, transform: 'translate(-50%, -50%)' }} />
+                <div className={styles.progressBarThumb} style={{ left: `${progressPercentage}%` }} />
               </div>
             </div>
             <span className={styles.timeStamp}>{formatTime(duration)}</span>
@@ -179,18 +183,18 @@ const FullScreenPlayer: FC = () => {
 
           <div className={styles.controlsSection}>
             <button 
-              className={`${styles.controlButton} ${styles.controlButtonShuffle} ${isShuffleActive ? styles.controlButtonActive : ''}`} 
+              className={`${styles.controlButton} ${isShuffleActive ? styles.controlButtonActive : ''}`} 
               aria-label="Shuffle"
               onClick={handleShuffle}
             >
-              <Shuffle />
+              <Shuffle size={20}/>
             </button>
             <button 
               className={`${styles.controlButton} ${styles.controlButtonSkipStyled}`}
               aria-label="Previous"
               onClick={() => audioElementRef.current && (audioElementRef.current.currentTime = Math.max(0, audioElementRef.current.currentTime - 10))}
             >
-              <SkipBack />
+              <SkipBack size={22} />
             </button>
             <button 
               className={`${styles.controlButton} ${styles.controlButtonPlayPause}`} 
@@ -204,21 +208,19 @@ const FullScreenPlayer: FC = () => {
               aria-label="Next"
               onClick={() => audioElementRef.current && (audioElementRef.current.currentTime = Math.min(duration, audioElementRef.current.currentTime + 10))}
             >
-              <SkipForward />
+              <SkipForward size={22}/>
             </button>
             <button 
-              className={`${styles.controlButton} ${styles.controlButtonRepeat} ${repeatMode !== 'off' ? styles.controlButtonRepeatActive : ''}`} 
+              className={`${styles.controlButton} ${repeatMode !== 'off' ? styles.controlButtonRepeatActive : ''}`} 
               aria-label="Repeat"
               onClick={handleRepeat}
             >
-              <Repeat />
+              <Repeat size={20}/>
               {repeatMode !== 'off' && <span className={styles.repeatDot} />}
             </button>
           </div>
         </div>
 
-
-        {/* Bottom Controls */}
         <div className="flex items-center justify-between text-neutral-300 px-4 mt-auto mb-2 flex-shrink-0">
           <Button variant="ghost" size="icon" className="hover:text-white">
             <LaptopMinimal className="w-5 h-5 md:w-6 md:h-6" />

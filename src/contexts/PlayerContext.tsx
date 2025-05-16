@@ -68,22 +68,22 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     const handleTrackEnd = () => {
         setIsPlaying(false);
+         if (navigator.mediaSession) {
+          navigator.mediaSession.playbackState = 'paused';
+        }
     }
     
     const handleError = (e: Event) => {
-      // audioElement is already defined in the outer scope of this useEffect
       if (audioElement && audioElement.error) {
         console.error('Audio Player Error Code:', audioElement.error.code, 'for src:', audioElement.currentSrc);
         console.error('Audio Player Error Message:', audioElement.error.message || "No specific message.");
-        // MediaError codes:
-        // 1: MEDIA_ERR_ABORTED - fetching process aborted by user
-        // 2: MEDIA_ERR_NETWORK - network error occurred while fetching
-        // 3: MEDIA_ERR_DECODE - error occurred while decoding
-        // 4: MEDIA_ERR_SRC_NOT_SUPPORTED - source or format not supported
       } else {
         console.error('Audio Player Error (unknown details or error object missing):', e, 'for src:', audioElement?.currentSrc);
       }
-      setIsPlaying(false); 
+      setIsPlaying(false);
+      if (navigator.mediaSession) {
+        navigator.mediaSession.playbackState = 'paused';
+      }
     };
 
     audioElement.addEventListener('ended', handleTrackEnd);
@@ -101,6 +101,14 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, [audioLoadedDataHandler, audioCanPlayHandler]);
 
 
+  const togglePlayPauseCb = useCallback(() => {
+    if (currentTrack) { 
+      setIsPlaying((prevIsPlaying) => !prevIsPlaying);
+    } else {
+      setIsPlaying(false); 
+    }
+  }, [currentTrack]);
+
   useEffect(() => {
     const audioElement = audioRef.current;
     if (!audioElement) { 
@@ -114,6 +122,10 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             audioElement.src = ""; 
         }
         if (isPlaying) setIsPlaying(false);
+        if (navigator.mediaSession) {
+            navigator.mediaSession.metadata = null;
+            navigator.mediaSession.playbackState = 'none';
+        }
         return;
     }
 
@@ -140,7 +152,66 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     } else {
       audioElement.pause();
     }
+
+    // Media Session API Integration
+    if (navigator.mediaSession) {
+      if (currentTrack) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: currentTrack.title,
+          artist: currentTrack.artist || 'Unknown Artist',
+          album: currentTrack.artist || currentTrack.title, // Or a generic app name like "KeyFind Player"
+          artwork: [
+            { src: currentTrack.imageUrl, sizes: '96x96', type: 'image/jpeg' }, // Common types, adjust if necessary
+            { src: currentTrack.imageUrl, sizes: '128x128', type: 'image/jpeg' },
+            { src: currentTrack.imageUrl, sizes: '192x192', type: 'image/jpeg' },
+            { src: currentTrack.imageUrl, sizes: '256x256', type: 'image/jpeg' },
+            { src: currentTrack.imageUrl, sizes: '384x384', type: 'image/jpeg' },
+            { src: currentTrack.imageUrl, sizes: '512x512', type: 'image/jpeg' },
+          ]
+        });
+      }
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+    }
+
   }, [isPlaying, currentTrack]);
+
+  // Setup Media Session action handlers
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) {
+      return;
+    }
+
+    navigator.mediaSession.setActionHandler('play', () => togglePlayPauseCb());
+    navigator.mediaSession.setActionHandler('pause', () => togglePlayPauseCb());
+
+    navigator.mediaSession.setActionHandler('seekbackward', () => {
+      if (audioRef.current) {
+        audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+      }
+    });
+    navigator.mediaSession.setActionHandler('seekforward', () => {
+      if (audioRef.current) {
+        const duration = audioRef.current.duration;
+        if (duration) {
+            audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 10);
+        }
+      }
+    });
+
+    // Optional: Add previoustrack and nexttrack if you have playlist logic
+    // navigator.mediaSession.setActionHandler('previoustrack', () => { /* ... */ });
+    // navigator.mediaSession.setActionHandler('nexttrack', () => { /* ... */ });
+
+    return () => {
+      // Clean up action handlers when component unmounts or context changes
+      navigator.mediaSession.setActionHandler('play', null);
+      navigator.mediaSession.setActionHandler('pause', null);
+      navigator.mediaSession.setActionHandler('seekbackward', null);
+      navigator.mediaSession.setActionHandler('seekforward', null);
+      // navigator.mediaSession.setActionHandler('previoustrack', null);
+      // navigator.mediaSession.setActionHandler('nexttrack', null);
+    };
+  }, [togglePlayPauseCb]);
 
 
   const setCurrentTrackCb = useCallback((track: Track) => {
@@ -148,13 +219,6 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setIsPlaying(true); 
   }, []);
 
-  const togglePlayPauseCb = useCallback(() => {
-    if (currentTrack) { 
-      setIsPlaying((prevIsPlaying) => !prevIsPlaying);
-    } else {
-      setIsPlaying(false); 
-    }
-  }, [currentTrack]);
 
   return (
     <PlayerContext.Provider 

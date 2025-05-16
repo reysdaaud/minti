@@ -1,7 +1,6 @@
 
-
 .audioPlayerContainer {
-  background-color: #282828; /* Player background color */
+  background-color: #282828; 
   padding: 20px 0px; 
   border-radius: 8px;
   width: 100%; 
@@ -20,7 +19,7 @@
 
 .timeStamp {
   color: #b3b3b3;
-  font-size: 0.75em; /* 12px */
+  font-size: 0.75em; 
   min-width: 40px;
   text-align: center;
 }
@@ -37,7 +36,6 @@
 
 .progressBar {
   height: 100%;
-  /* width is set dynamically by style prop in component */
   background-color: #ffffff;
   border-radius: 2px;
   position: relative;
@@ -50,7 +48,7 @@
   border-radius: 50%;
   position: absolute;
   top: 50%;
-  transform: translateY(-50%); 
+  transform: translateY(-50%) translateX(-50%); /* Ensure thumb is centered over the progress point */
   box-shadow: 0 0 3px rgba(0,0,0,0.5);
   z-index: 10;
 }
@@ -73,11 +71,11 @@
   align-items: center;
   justify-content: center;
   transition: color 0.2s ease-in-out;
+  flex-shrink: 0; /* Prevent buttons from shrinking */
 }
 
 .controlButton svg {
-  width: 1em;
-  height: 1em;
+  display: block; /* Helps prevent extra space below inline SVGs */
 }
 
 
@@ -91,7 +89,7 @@
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  font-size: 1.5em; 
+  /* font-size is controlled by icon size prop */
   margin: 0 15px; 
   box-shadow: 0 2px 4px rgba(0,0,0,0.3);
   display: flex;
@@ -99,8 +97,6 @@
   justify-content: center;
 }
 .controlButtonPlayPause svg {
-  /* width: 1em; */ /* Controlled by size prop now */
-  /* height: 1em; */ /* Controlled by size prop now */
   fill: #000000; 
 }
 
@@ -115,18 +111,16 @@
   width: 36px;              
   height: 36px;             
   border-radius: 50%;
-  font-size: 1.1em;        
+  /* font-size is controlled by icon size prop */
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color 0.2s ease-in-out;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
   box-shadow: 0 2px 4px rgba(0,0,0,0.2); 
 }
 
 .controlButtonSkipStyled svg {
-  width: 1em; 
-  height: 1em;
   fill: #000000; 
 }
 
@@ -137,14 +131,14 @@
 
 .controlButtonActive,
 .controlButtonRepeatActive {
-  color: #1DB954; 
+  color: hsl(var(--primary)); /* Use primary color for active state */
 }
 
 .controlButtonRepeatActive .repeatDot {
   display: block;
   width: 4px;
   height: 4px;
-  background-color: #1DB954;
+  background-color: hsl(var(--primary));
   border-radius: 50%;
   position: absolute;
   bottom: 5px;
@@ -157,10 +151,10 @@
 }
 
 
-.controlButtonShuffle {
+/* .controlButtonShuffle {
   font-size: 1.1em; 
 }
 .controlButtonRepeat {
   font-size: 1.1em; 
   position: relative; 
-}
+} */
