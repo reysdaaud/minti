@@ -1,9 +1,8 @@
 // src/lib/userManagement.js
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { auth, db } from './firebase'; // Adjust path if needed
+import { db } from './firebase'; // db is exported from firebase.tsx now
 
-// Function to initialize user if not present in Firestore
-export const initializeUserInFirestore = async (user) => { // Renamed to avoid conflict and match original
+export const initializeUserInFirestore = async (user) => {
   if (!user) {
     console.error("User not provided for initialization.");
     return;
@@ -14,91 +13,60 @@ export const initializeUserInFirestore = async (user) => { // Renamed to avoid c
 
     if (!userDoc.exists()) {
       await setDoc(userRef, {
-        uid: user.uid, // Storing UID as per original logic
-        name: user.displayName,
+        uid: user.uid,
+        name: user.displayName || 'New User',
         email: user.email,
         photoURL: user.photoURL,
-        articleCount: 0, // Set initial article count to 0
-        lastLogin: serverTimestamp(), // Use serverTimestamp for consistency
-        createdAt: serverTimestamp(), // Added createdAt
-        subscription: false, // Set initial subscription status to false
-        coins: 0, // Initialize wallet balance (coins)
+        firstName: '',
+        lastName: '',
+        mobile: '',
+        profileComplete: false,
+        preferredCategories: [],
+        isAdmin: false, // Default to not admin
+        coins: 0,
+        lastLogin: serverTimestamp(),
+        createdAt: serverTimestamp(),
+        subscription: false,
+        paymentHistory: [], // Initialize as empty array
       });
       console.log("User initialized in Firestore:", user.uid);
     } else {
-      // Optionally update last login time for existing users
-      await updateDoc(userRef, { lastLogin: serverTimestamp() });
-      console.log("User already exists, updated last login:", user.uid);
+      // Update last login for existing users
+      // Also ensure new fields exist if they were added after user creation
+      const existingData = userDoc.data();
+      const updates = { lastLogin: serverTimestamp() };
+      if (typeof existingData.profileComplete === 'undefined') {
+        updates.profileComplete = false;
+      }
+      if (typeof existingData.firstName === 'undefined') {
+        updates.firstName = '';
+      }
+      if (typeof existingData.lastName === 'undefined') {
+        updates.lastName = '';
+      }
+      if (typeof existingData.mobile === 'undefined') {
+        updates.mobile = '';
+      }
+      if (typeof existingData.preferredCategories === 'undefined') {
+        updates.preferredCategories = [];
+      }
+      if (typeof existingData.isAdmin === 'undefined') {
+        updates.isAdmin = false;
+      }
+      await updateDoc(userRef, updates);
+      console.log("User already exists, updated last login and ensured new fields:", user.uid);
     }
   } catch (error) {
-    console.error("Error initializing user:", error);
-    // It's generally better to re-throw or handle errors specifically based on app needs
-    // For now, logging and not throwing to avoid breaking flows if this is non-critical
+    console.error("Error initializing/updating user in Firestore:", error);
+    throw error; // Re-throw to allow calling function to handle
   }
 };
 
-// Function to track article access and check wallet balance
-// This function seems specific to an article-based app.
-// For the current Crypto Exchange app, this might not be directly applicable.
-// Keeping the structure but commenting out parts that don't fit the current context.
-export const trackArticleAccessInFirestore = async (navigate, setShowPreview) => {
-  try {
-    const currentUser = auth.currentUser; // Changed variable name for clarity
-    console.log("trackArticleAccess - Current user:", currentUser); // Debugging statement
-    if (currentUser) {
-      // This part assumes a 'topup' collection and specific logic (e.g., deducting coins for articles)
-      // This needs to be adapted or removed if not relevant to the Crypto Exchange app's features.
-      // For now, I will keep the structure but this logic might need to change.
-
-      const userRef = doc(db, "users", currentUser.uid); // Reference to the user document
-      const userDoc = await getDoc(userRef);
-      console.log("trackArticleAccess - User document data:", userDoc.data()); // Debugging statement
-
-      if (!userDoc.exists()) {
-        console.warn("User document does not exist for balance check.");
-        // Handle case where user document might not exist (e.g., after new sign-up before full init)
-        if (window.confirm("Your account is not fully set up. Please try again or contact support.")) {
-          // Optionally redirect or guide user
-        }
-        return;
-      }
-
-      let balance = userDoc.data().coins || 0; // Fetch balance from user document
-
-      // The following logic is for an article-based system.
-      // It will need to be adapted or removed for the coin purchase system.
-      // For now, let's assume a hypothetical cost for an action.
-      const costOfAction = 1; // Example cost
-
-      if (balance < costOfAction) {
-        // Redirect to top-up page if balance is less than cost
-        if (window.confirm(`Your coin balance (${balance}) is too low for this action (cost: ${costOfAction}). Please top up your account.`)) {
-          // For a real app, navigate to the top-up section.
-          // For now, the top-up is handled via a dialog in UserActions.tsx
-          // This navigation might not be the best approach here.
-          // We can show a toast instead.
-          console.log("Redirecting to top-up or showing top-up dialog would happen here.");
-          // navigate('/top-up'); // Example, if there was a dedicated top-up page
-        }
-      } else {
-        balance -= costOfAction; // Deduct cost from the wallet balance
-        await updateDoc(userRef, {
-          coins: balance, // Update the wallet balance
-        });
-        console.log("trackArticleAccess - Action performed. Updated balance:", balance); // Debugging statement
-
-        if (balance < 10) { // Example threshold for low balance warning
-          // Show content preview with buttons if balance is low but still positive
-          // This `setShowPreview` is specific to an article context.
-          if (setShowPreview) setShowPreview(true);
-          console.log("User balance is low:", balance);
-        }
-      }
-    } else {
-      console.warn("trackArticleAccess - No authenticated user found.");
-    }
-  } catch (error) {
-    console.error("Error tracking article/action access:", error);
-    // Avoid throwing here unless the calling code is prepared to handle it
-  }
+// trackArticleAccessInFirestore might need adjustment or be deprecated
+// based on how content access is managed with coins in the future.
+// For now, keeping its structure but commenting out specific logic if not immediately relevant.
+export const trackArticleAccessInFirestore = async (/* navigate, setShowPreview */) => {
+  // This function's logic needs to be reviewed based on the app's current features.
+  // For now, it's a placeholder.
+  console.warn("trackArticleAccessInFirestore needs review for current app logic.");
 };

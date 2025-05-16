@@ -14,14 +14,13 @@ import {
   type ContentItemData,
 } from '@/services/contentService';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, PlusCircle, AlertTriangle } from 'lucide-react';
+import { Loader2, PlusCircle, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-
 export default function AdminPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, userProfile, isUserProfileLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -33,7 +32,10 @@ export default function AdminPage() {
   const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const isAdminUser = !isUserProfileLoading && userProfile && userProfile.isAdmin === true;
+
   const fetchItems = useCallback(async () => {
+    if (!isAdminUser) return; // Don't fetch if not admin
     setIsLoading(true);
     setError(null);
     try {
@@ -50,15 +52,18 @@ export default function AdminPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, isAdminUser]);
 
   useEffect(() => {
     if (!authLoading && !user) {
       router.replace('/auth/signin');
-    } else if (user) {
-      fetchItems();
+    } else if (!authLoading && user && !isUserProfileLoading) {
+      if (userProfile && userProfile.isAdmin) {
+        fetchItems();
+      }
+      // If not admin, access denied message will be shown below
     }
-  }, [user, authLoading, router, fetchItems]);
+  }, [user, authLoading, userProfile, isUserProfileLoading, router, fetchItems]);
 
   const handleOpenForm = (item?: ContentItem) => {
     setEditingItem(item || null);
@@ -80,7 +85,7 @@ export default function AdminPage() {
         await addContentItem(data);
         toast({ title: 'Success', description: 'Content item added successfully.' });
       }
-      await fetchItems(); // Refetch items after submission
+      await fetchItems();
       handleCloseForm();
     } catch (err) {
       console.error('Failed to save content item:', err);
@@ -111,8 +116,8 @@ export default function AdminPage() {
       setDeleteLoadingId(null);
     }
   };
-  
-  if (authLoading) {
+
+  if (authLoading || isUserProfileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -122,13 +127,28 @@ export default function AdminPage() {
   }
 
   if (!user) {
-     return (
+     // Should be redirected by useEffect
+    return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <p className="text-muted-foreground">Redirecting to sign in...</p>
       </div>
     );
   }
 
+  if (!isAdminUser) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 text-center">
+        <ShieldAlert className="h-16 w-16 text-destructive mb-4" />
+        <h1 className="text-2xl font-bold text-destructive">Access Denied</h1>
+        <p className="text-muted-foreground mt-2">You do not have permission to access this page.</p>
+        <Button onClick={() => router.push('/')} className="mt-6">
+          Go to Homepage
+        </Button>
+      </div>
+    );
+  }
+
+  // Admin content
   return (
     <div className="container mx-auto py-8 px-4 md:px-6 lg:px-8">
       <header className="mb-8 flex flex-col sm:flex-row justify-between items-center gap-4">

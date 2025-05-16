@@ -1,25 +1,25 @@
 // src/lib/firebase.tsx
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
-import { 
-  getAuth, 
-  signInWithPopup, 
-  GoogleAuthProvider, 
-  FacebookAuthProvider, // Ensure this is imported
-  signOut, 
-  type Auth, 
-  type User as FirebaseUser 
+import {
+  getAuth,
+  signInWithPopup,
+  GoogleAuthProvider,
+  // FacebookAuthProvider, // Removed
+  signOut,
+  type Auth,
+  type User as FirebaseUser
 } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import { getFirestore, type Firestore, doc, getDoc } from "firebase/firestore"; // Added doc, getDoc
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { initializeUserInFirestore } from './userManagement';
-
+import { useRouter } from "next/navigation"; // For redirection
 
 // Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyAl1iiyOrU49GOJdezPc-6zQPeonpJxl0I",
   authDomain: "wirenext-b4b65.firebaseapp.com",
   projectId: "wirenext-b4b65",
-  storageBucket: "wirenext-b4b65.appspot.com", 
+  storageBucket: "wirenext-b4b65.appspot.com",
   messagingSenderId: "486545175288",
   appId: "1:486545175288:web:6d53203232567ae786810d",
   measurementId: "G-9H1ZKBRWK0"
@@ -41,17 +41,35 @@ dbInstance = getFirestore(app);
 
 interface AuthContextType {
   user: FirebaseUser | null;
-  signInWithGoogle: () => Promise<FirebaseUser | null>;
-  signInWithFacebook: () => Promise<FirebaseUser | null>;
-  signOutUser: () => Promise<void>;
   loading: boolean;
   error: Error | null;
-  firebaseAuth: Auth; 
+  firebaseAuth: Auth;
+  signInWithGoogle: () => Promise<FirebaseUser | null>;
+  // signInWithFacebook: () => Promise<FirebaseUser | null>; // Removed
+  signOutUser: () => Promise<void>;
+  userProfile: UserProfile | null; // Added for profile data
+  isUserProfileLoading: boolean; // Added for profile loading state
 }
+
+export interface UserProfile {
+  uid: string;
+  name?: string | null;
+  email?: string | null;
+  photoURL?: string | null;
+  firstName?: string;
+  lastName?: string;
+  mobile?: string;
+  profileComplete?: boolean;
+  preferredCategories?: string[];
+  isAdmin?: boolean;
+  coins?: number;
+  // Add other fields from your user document as needed
+}
+
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuthContext = () => { 
+export const useAuthContext = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error("useAuthContext must be used within an AuthProvider");
@@ -59,33 +77,30 @@ export const useAuthContext = () => {
   return context;
 };
 
-// Define signInWithGoogle function directly using authInstance
 const firebaseSignInWithGoogle = async (): Promise<FirebaseUser | null> => {
   try {
     const provider = new GoogleAuthProvider();
     const result = await signInWithPopup(authInstance, provider);
-    // User initialization is handled in onAuthStateChanged
     return result.user;
   } catch (error) {
     console.error("Error signing in with Google:", error);
-    throw error; 
+    throw error;
   }
 };
 
-// Define signInWithFacebook function directly using authInstance
+/* // Removed Facebook Sign In
 const firebaseSignInWithFacebook = async (): Promise<FirebaseUser | null> => {
   try {
     const provider = new FacebookAuthProvider();
     const result = await signInWithPopup(authInstance, provider);
-    // User initialization is handled in onAuthStateChanged
     return result.user;
   } catch (error) {
     console.error("Error signing in with Facebook:", error);
-    throw error; 
+    throw error;
   }
 };
+*/
 
-// Define signOutUser function directly using authInstance
 const firebaseSignOutUser = async (): Promise<void> => {
   try {
     await signOut(authInstance);
@@ -98,41 +113,76 @@ const firebaseSignOutUser = async (): Promise<void> => {
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [loading, setLoading] = useState(true); 
-  const [error, setError] = useState<Error | null>(null); 
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isUserProfileLoading, setIsUserProfileLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     const unsubscribe = authInstance.onAuthStateChanged(
       async (currentUser) => {
-        try {
-          if (currentUser) {
-            await initializeUserInFirestore(currentUser); 
+        setLoading(true);
+        setIsUserProfileLoading(true);
+        setUser(currentUser);
+        if (currentUser) {
+          try {
+            await initializeUserInFirestore(currentUser); // Ensure user doc exists
+            const userDocRef = doc(dbInstance, "users", currentUser.uid);
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) {
+              const profileData = userDocSnap.data() as UserProfile;
+              setUserProfile(profileData);
+              if (!profileData.profileComplete) {
+                // Check current path to avoid redirect loop if already on setup/preferences
+                if (router.pathname !== '/profile/setup' && router.pathname !== '/profile/preferences') {
+                  router.push('/profile/setup');
+                }
+              } else if (!profileData.preferredCategories || profileData.preferredCategories.length === 0) {
+                 if (router.pathname !== '/profile/setup' && router.pathname !== '/profile/preferences') {
+                    router.push('/profile/preferences');
+                 }
+              }
+            } else {
+              setUserProfile(null);
+              // This case should ideally be handled by initializeUserInFirestore,
+              // but if somehow user doc is missing, direct to setup.
+              if (router.pathname !== '/profile/setup' && router.pathname !== '/profile/preferences') {
+                router.push('/profile/setup');
+              }
+            }
+          } catch (e) {
+            console.error("Error during onAuthStateChanged user processing:", e);
+            setUserProfile(null);
+            setError(e as Error);
+          } finally {
+            setIsUserProfileLoading(false);
           }
-          setUser(currentUser);
-        } catch (e) {
-          console.error("Error during onAuthStateChanged user processing:", e);
-          setUser(null); 
-          setError(e as Error);
-        } finally {
-          setLoading(false); 
+        } else {
+          setUserProfile(null);
+          setIsUserProfileLoading(false);
         }
+        setLoading(false);
       },
-      (err) => { 
+      (err) => {
         setError(err);
         setLoading(false);
+        setIsUserProfileLoading(false);
       }
     );
     return () => unsubscribe();
-  }, []);
+  }, [router]); // Added router to dependency array
 
   const contextValue: AuthContextType = {
     user,
-    signInWithGoogle: firebaseSignInWithGoogle,
-    signInWithFacebook: firebaseSignInWithFacebook,
-    signOutUser: firebaseSignOutUser,
     loading,
     error,
     firebaseAuth: authInstance,
+    signInWithGoogle: firebaseSignInWithGoogle,
+    // signInWithFacebook: firebaseSignInWithFacebook, // Removed
+    signOutUser: firebaseSignOutUser,
+    userProfile,
+    isUserProfileLoading,
   };
 
   return (
@@ -142,14 +192,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 };
 
-// Export auth and db instances, and original provider types for direct use if needed
-export { 
-  authInstance as auth, 
-  dbInstance as db, 
-  GoogleAuthProvider, 
-  FacebookAuthProvider,
-  // Exporting the actual functions for direct use (though context is preferred)
+export {
+  authInstance as auth,
+  dbInstance as db,
+  GoogleAuthProvider,
+  // FacebookAuthProvider, // Removed
   firebaseSignInWithGoogle as signInWithGoogle,
-  firebaseSignInWithFacebook as signInWithFacebook,
+  // firebaseSignInWithFacebook as signInWithFacebook, // Removed
   firebaseSignOutUser as signOutUser
 };
+export type { FirebaseUser }; // Export FirebaseUser type

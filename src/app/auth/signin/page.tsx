@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext'; // Ensure this correctly imports signInWithFacebook
+import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,35 +9,26 @@ import { Loader2, LogIn } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { AuthError } from 'firebase/auth';
 
-// A simple Facebook icon component
-const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="currentColor"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-  </svg>
-);
-
-
 export default function SignInPage() {
-  const { user, loading: authLoading, signInWithGoogle, signInWithFacebook } = useAuth();
+  const { user, loading: authLoading, signInWithGoogle, userProfile } = useAuth(); // Removed signInWithFacebook
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.replace('/');
+      // Redirect based on profile status AFTER user object and profile are loaded
+      if (userProfile) {
+        if (!userProfile.profileComplete) {
+          router.replace('/profile/setup');
+        } else if (!userProfile.preferredCategories || userProfile.preferredCategories.length === 0) {
+          router.replace('/profile/preferences');
+        } else {
+          router.replace('/');
+        }
+      }
+      // If userProfile is still loading, wait for the AuthProvider's redirect or next effect run
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, userProfile, router]);
 
 
   const handleGoogleSignIn = async () => {
@@ -47,8 +38,7 @@ export default function SignInPage() {
         title: 'Signed In',
         description: 'Successfully signed in with Google.',
       });
-       // Redirection is handled by the useEffect hook or can be forced here
-      router.push('/');
+      // Redirection is handled by useEffect or AuthProvider
     } catch (error) {
       const authError = error as AuthError;
       if (authError.code === 'auth/popup-closed-by-user' || authError.code === 'auth/cancelled-popup-request') {
@@ -64,41 +54,6 @@ export default function SignInPage() {
     }
   };
 
-  const handleFacebookSignIn = async () => {
-    try {
-      await signInWithFacebook();
-      toast({
-        title: 'Signed In',
-        description: 'Successfully signed in with Facebook.',
-      });
-      // Redirection is handled by the useEffect hook or can be forced here
-      router.push('/');
-    } catch (error) {
-      const authError = error as AuthError;
-      if (authError.code === 'auth/popup-closed-by-user' || authError.code === 'auth/cancelled-popup-request') {
-        console.info('Facebook Sign-in popup closed by user.');
-        return;
-      }
-      // Handle common Facebook errors like email already in use with another provider
-      if (authError.code === 'auth/account-exists-with-different-credential') {
-        toast({
-          title: 'Sign In Failed',
-          description: 'An account already exists with the same email address but different sign-in credentials. Try signing in with Google.',
-          variant: 'destructive',
-          duration: 7000,
-        });
-      } else {
-        console.error('Error signing in with Facebook:', authError);
-        toast({
-          title: 'Sign In Failed',
-          description: authError.message || 'An unexpected error occurred with Facebook sign-in.',
-          variant: 'destructive',
-        });
-      }
-    }
-  };
-
-
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -108,9 +63,9 @@ export default function SignInPage() {
     );
   }
 
+  // If user exists and auth is not loading, useEffect should handle redirection.
+  // Show a loader to prevent flash of sign-in form if redirection is pending.
   if (user && !authLoading) {
-     // This case should ideally be handled by the useEffect redirecting.
-     // If still on this page, means redirection hasn't happened yet.
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -119,7 +74,7 @@ export default function SignInPage() {
     );
   }
 
-
+  // Not loading and no user, show the sign-in form.
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm shadow-2xl">
@@ -129,16 +84,11 @@ export default function SignInPage() {
             Access your KeyFind account.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4"> {/* Changed space-y-6 to space-y-4 for tighter packing */}
+        <CardContent className="space-y-4">
           <Button onClick={handleGoogleSignIn} className="w-full">
             <LogIn className="mr-2 h-4 w-4" /> Sign In with Google
           </Button>
-          <Button 
-            onClick={handleFacebookSignIn} 
-            className="w-full bg-[#1877F2] hover:bg-[#1877F2]/90 text-white"
-          >
-            <FacebookIcon className="mr-2 h-4 w-4" /> Sign In with Facebook
-          </Button>
+          {/* Facebook button removed */}
           <p className="text-xs text-center text-muted-foreground pt-2">
             By signing in, you agree to our Terms of Service and Privacy Policy.
           </p>

@@ -6,8 +6,8 @@ import UserActions from '@/components/exchange/UserActions';
 import MarketSection from '@/components/exchange/MarketSection';
 import BottomNavBar from '@/components/exchange/BottomNavBar';
 import CardBalance from '@/components/exchange/CardBalance';
-import LibraryContent from '@/components/library/LibraryContent'; // Will display audio/podcast
-import ArticleContent from '@/components/articles/ArticleContent'; // Will display articles
+import LibraryContent from '@/components/library/LibraryContent';
+import ArticleContent from '@/components/articles/ArticleContent';
 import PlayerBar from '@/components/library/PlayerBar';
 import FullScreenPlayer from '@/components/player/FullScreenPlayer';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,47 +22,54 @@ import { db } from '@/lib/firebase';
 
 
 export default function CryptoExchangePage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, userProfile, isUserProfileLoading } = useAuth();
   const { currentTrack, isPlayerOpen } = usePlayer();
   const nextRouter = useNextRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
   const [coinBalance, setCoinBalance] = useState(0);
-  const [activeTab, setActiveTab] = useState('Home'); 
-  const [userDocLoading, setUserDocLoading] = useState(true); 
-
+  const [activeTab, setActiveTab] = useState('Home');
+  const [userDocLoading, setUserDocLoading] = useState(true); // This might be redundant if isUserProfileLoading covers it
 
   useEffect(() => {
     if (!authLoading && !user) {
-      nextRouter.replace('/auth/signin'); 
-    } else if (!authLoading && user) {
-      setUserDocLoading(true); 
-      const userRef = doc(db, 'users', user.uid);
-      const unsubscribe = onSnapshot(userRef, (docSnap) => {
-        if (docSnap.exists()) {
-          setCoinBalance(docSnap.data().coins || 0);
-        } else {
-          setCoinBalance(0);
+      nextRouter.replace('/auth/signin');
+    } else if (!authLoading && user && !isUserProfileLoading) {
+      if (userProfile) {
+        if (!userProfile.profileComplete) {
+          nextRouter.replace('/profile/setup');
+          return;
+        } else if (!userProfile.preferredCategories || userProfile.preferredCategories.length === 0) {
+          nextRouter.replace('/profile/preferences');
+          return;
         }
-        setUserDocLoading(false); 
-      }, (error) => {
-        console.error("Error listening to user balance:", error);
-        toast({ title: "Error", description: "Could not load your coin balance.", variant: "destructive" });
-        setUserDocLoading(false); 
-      });
-      return () => unsubscribe();
-    } else {
-      setUserDocLoading(true); 
-      setCoinBalance(0);
+        // If profile is complete and preferences set, proceed to load dashboard data
+        setUserDocLoading(true);
+        const userRef = doc(db, 'users', user.uid);
+        const unsubscribe = onSnapshot(userRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setCoinBalance(docSnap.data().coins || 0);
+          } else {
+            setCoinBalance(0); // Should not happen if initializeUserInFirestore works
+          }
+          setUserDocLoading(false);
+        }, (error) => {
+          console.error("Error listening to user balance:", error);
+          toast({ title: "Error", description: "Could not load your coin balance.", variant: "destructive" });
+          setUserDocLoading(false);
+        });
+        return () => unsubscribe();
+      } else {
+        // User exists, but profile data isn't loaded or doesn't exist (edge case)
+        // AuthProvider should handle redirect to /profile/setup
+        setUserDocLoading(false);
+      }
     }
-  }, [user, authLoading, nextRouter, toast]);
+  }, [user, authLoading, userProfile, isUserProfileLoading, nextRouter, toast]);
 
 
   const handleVerifyPayment = useCallback(async (paymentReference: string) => {
-    // Moved isVerifyingPayment state to this component if it's specific to this page's verification logic
-    // For this example, we'll assume it's managed locally or through a context if needed across components
-    
     const paystackSecretKey = process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE || "sk_live_7148c4754ef026a94b9015605a4707dc3c3cf8c3";
 
     if (!paystackSecretKey || !(paystackSecretKey.startsWith("sk_live_") || paystackSecretKey.startsWith("sk_test_"))) {
@@ -72,14 +79,12 @@ export default function CryptoExchangePage() {
         description: 'Payment gateway configuration error for verification. Contact support. [PSKNCV]',
         variant: 'destructive',
       });
-      // setIsVerifyingPayment(false); // Assuming local state
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete('trxref');
       newUrl.searchParams.delete('reference');
       nextRouter.replace(newUrl.pathname + newUrl.search, { scroll: false });
       return;
     }
-    
 
     try {
       const verifyUrl = `https://api.paystack.co/transaction/verify/${paymentReference}`;
@@ -95,39 +100,39 @@ export default function CryptoExchangePage() {
 
       if (response.ok && data.status && data.data && data.data.status === 'success') {
         const transactionData = data.data;
-        const amountPaid = transactionData.amount / 100; 
-        
+        const amountPaid = transactionData.amount / 100;
+
         const paymentMetadata = transactionData.metadata;
-        const userIdFromMeta = paymentMetadata?.userId; 
-        const coinsToAddStr = paymentMetadata?.coins; 
-        const packageName = paymentMetadata?.packageName; 
+        const userIdFromMeta = paymentMetadata?.userId;
+        const coinsToAddStr = paymentMetadata?.coins;
+        const packageName = paymentMetadata?.packageName;
 
         if (!userIdFromMeta || typeof coinsToAddStr === 'undefined') {
-            console.error('Invalid metadata from Paystack (userId or coins missing):', paymentMetadata);
-            throw new Error('Crucial payment metadata missing.');
+          console.error('Invalid metadata from Paystack (userId or coins missing):', paymentMetadata);
+          throw new Error('Crucial payment metadata missing.');
         }
-         if (userIdFromMeta !== user?.uid) {
-            console.error('User ID mismatch in payment verification:', userIdFromMeta, user?.uid);
-            throw new Error('Payment verification user mismatch.');
-        }
-        
-        const coinsToAdd = parseInt(coinsToAddStr, 10);
-        if (isNaN(coinsToAdd) || coinsToAdd <= 0) {
-            console.error('Invalid metadata: coinsToAdd is not a positive number', coinsToAddStr);
-            throw new Error('Crucial payment metadata (coins) invalid.');
+        if (user && userIdFromMeta !== user.uid) {
+          console.error('User ID mismatch in payment verification:', userIdFromMeta, user.uid);
+          throw new Error('Payment verification user mismatch.');
         }
 
-        const userRef = doc(db, 'users', userIdFromMeta);
+        const coinsToAdd = parseInt(coinsToAddStr, 10);
+        if (isNaN(coinsToAdd) || coinsToAdd <= 0) {
+          console.error('Invalid metadata: coinsToAdd is not a positive number', coinsToAddStr);
+          throw new Error('Crucial payment metadata (coins) invalid.');
+        }
+
+        const userRef = doc(db, 'users', userIdFromMeta); // Assuming userIdFromMeta is correct
         const userDocSnap = await getDoc(userRef);
 
         const newPaymentRecord = {
           amount: amountPaid,
           coins: coinsToAdd,
-          timestamp: new Date(), 
+          timestamp: new Date(),
           reference: paymentReference,
           status: 'success',
           packageName: packageName || 'N/A',
-          gatewayResponseSummary: { 
+          gatewayResponseSummary: {
             ip_address: transactionData.ip_address,
             currency: transactionData.currency,
             channel: transactionData.channel,
@@ -138,16 +143,20 @@ export default function CryptoExchangePage() {
         };
 
         if (!userDocSnap.exists()) {
+          // This case should be rare if initializeUserInFirestore runs correctly
           await setDoc(userRef, {
-            email: transactionData.customer.email, 
-            name: user?.displayName || 'New User', 
+            email: transactionData.customer.email,
+            name: user?.displayName || 'New User',
             photoURL: user?.photoURL || null,
             coins: coinsToAdd,
             paymentHistory: arrayUnion(newPaymentRecord),
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             lastLogin: serverTimestamp(),
-            subscription: false, 
+            subscription: false,
+            profileComplete: false, // Default, user should go through setup
+            preferredCategories: [],
+            isAdmin: false,
           });
         } else {
           const currentCoins = userDocSnap.data()?.coins || 0;
@@ -156,7 +165,7 @@ export default function CryptoExchangePage() {
             coins: newBalance,
             paymentHistory: arrayUnion(newPaymentRecord),
             updatedAt: serverTimestamp(),
-            lastLogin: serverTimestamp(), 
+            lastLogin: serverTimestamp(),
           });
         }
 
@@ -184,21 +193,20 @@ export default function CryptoExchangePage() {
         variant: 'destructive',
       });
     } finally {
-      // setIsVerifyingPayment(false); // Assuming local state
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete('trxref');
       newUrl.searchParams.delete('reference');
       nextRouter.replace(newUrl.pathname + newUrl.search, { scroll: false });
     }
-  }, [toast, nextRouter, user]); // Removed isVerifyingPayment from dependencies for simplicity, handle with care
+  }, [toast, nextRouter, user]);
 
 
   useEffect(() => {
     const paymentReference = searchParams.get('trxref') || searchParams.get('reference');
-    if (paymentReference && user && !authLoading) { // Removed isVerifyingPayment check for simplicity
+    if (paymentReference && user && !authLoading && !isUserProfileLoading && userProfile?.profileComplete) { // Check if profile setup is done
       const verificationKey = `verified_${paymentReference}`;
       if (sessionStorage.getItem(verificationKey) !== 'true') {
-        sessionStorage.setItem(verificationKey, 'true'); 
+        sessionStorage.setItem(verificationKey, 'true');
         handleVerifyPayment(paymentReference);
       } else {
         const newUrl = new URL(window.location.href);
@@ -209,19 +217,20 @@ export default function CryptoExchangePage() {
         }
       }
     }
-  }, [searchParams, user, authLoading, handleVerifyPayment, nextRouter]);
+  }, [searchParams, user, authLoading, isUserProfileLoading, userProfile, handleVerifyPayment, nextRouter]);
 
 
-  if (authLoading) {
+  if (authLoading || isUserProfileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-2 text-muted-foreground">Loading authentication...</p>
+        <p className="ml-2 text-muted-foreground">Loading...</p>
       </div>
     );
   }
 
   if (!user) {
+     // This should be caught by the initial useEffect and redirected to signin
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -230,8 +239,17 @@ export default function CryptoExchangePage() {
     );
   }
   
+  if (!userProfile || !userProfile.profileComplete || !userProfile.preferredCategories || userProfile.preferredCategories.length === 0) {
+    // This should be caught by initial useEffect and redirected to setup/preferences
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-2 text-muted-foreground">Finalizing profile setup...</p>
+      </div>
+    );
+  }
 
-  if (userDocLoading) {
+  if (userDocLoading && userProfile && userProfile.profileComplete) { // Only show user data loading if profile flow is complete
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -241,7 +259,7 @@ export default function CryptoExchangePage() {
   }
 
   const renderContent = () => {
-    if (isPlayerOpen) return null; 
+    if (isPlayerOpen) return null;
 
     switch (activeTab) {
       case 'Home':
@@ -262,16 +280,16 @@ export default function CryptoExchangePage() {
             </Card>
             <CardBalance />
             <UserActions setCoinBalance={setCoinBalance} />
-            <MarketSection /> 
+            <MarketSection />
           </>
         );
-      case 'Library': // This will show audio/podcast content
+      case 'Library':
         return <LibraryContent />;
-      case 'Markets': 
-        return <MarketSection /> 
-      case 'Articles': // This tab will show articles
-        return <ArticleContent />; 
-      case 'Trade': 
+      case 'Markets':
+        return <MarketSection />
+      case 'Articles':
+        return <ArticleContent />;
+      case 'Trade':
         return (
              <div className="text-center py-10 px-4">
                 <p className="text-muted-foreground">Trade section is currently not directly accessible via main navigation.</p>
@@ -286,12 +304,12 @@ export default function CryptoExchangePage() {
         );
     }
   };
-  
-  let mainPaddingBottom = 'pb-16'; 
-  if (currentTrack && !isPlayerOpen) { 
-    mainPaddingBottom = 'pb-28'; 
+
+  let mainPaddingBottom = 'pb-16';
+  if (currentTrack && !isPlayerOpen) {
+    mainPaddingBottom = 'pb-28';
   } else if (isPlayerOpen) {
-    mainPaddingBottom = 'pb-0'; 
+    mainPaddingBottom = 'pb-0';
   }
 
 
