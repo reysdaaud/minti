@@ -1,8 +1,9 @@
+
 // src/components/exchange/PaystackButton.tsx
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { auth, db } from '@/lib/firebase'; 
+import React, { useState } from 'react';
+import { auth } from '@/lib/firebase'; 
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -23,16 +24,16 @@ const PaystackButton = ({ amount, email, userId, metadata }: PaystackButtonProps
   const { toast } = useToast();
   const user = auth.currentUser; 
 
-  const envSecretKey = process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE;
+  const envSecretKey = process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE; // Changed from _TEMP_LIVE
   const hardcodedSecretKey = "sk_live_7148c4754ef026a94b9015605a4707dc3c3cf8c3"; 
 
   let paystackSecretKey = envSecretKey || hardcodedSecretKey;
 
    if (paystackSecretKey === hardcodedSecretKey && envSecretKey) {
-         console.warn("[Paystack Setup - INFO] Using Paystack secret key from NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE.");
+         console.warn("[Paystack Setup - INFO] Using Paystack secret key from NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE.");
     } else if (paystackSecretKey === hardcodedSecretKey) {
         console.warn(
-          "[Paystack Setup - CRITICAL SECURITY WARNING] Paystack secret key for verification from NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE is not defined. " +
+          "[Paystack Setup - CRITICAL SECURITY WARNING] Paystack secret key for verification from NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE is not defined. " +
           "Falling back to a HARDCODED LIVE SECRET KEY for testing purposes. " +
           "This is EXTREMELY INSECURE and MUST BE REMOVED before production. " +
           "Ensure the environment variable is correctly set."
@@ -57,14 +58,15 @@ const PaystackButton = ({ amount, email, userId, metadata }: PaystackButtonProps
       return;
     }
     if (!paystackSecretKey) {
-      console.error("Paystack secret key is not defined. Set NEXT_PUBLIC_PAYSTACK_SECRET_KEY_TEMP_LIVE or check hardcoded key.");
+      console.error("Paystack secret key is not defined. Set NEXT_PUBLIC_PAYSTACK_SECRET_KEY_LIVE or check hardcoded key.");
       setError('Payment gateway is not configured correctly. Please contact support. [PSKNC]');
       toast({ title: "Configuration Error", description: "Payment gateway critical error. Contact support. [PSKNC]", variant: "destructive" });
       setIsLoading(false);
       return;
     }
     
-    const callbackUrl = `${window.location.origin}${window.location.pathname}`; // Or your specific dashboard/confirmation page
+    const callbackUrl = `${window.location.origin}${window.location.pathname.startsWith('/profile') ? '/' : window.location.pathname}`;
+
 
     const payload = {
       email: email,
@@ -93,25 +95,30 @@ const PaystackButton = ({ amount, email, userId, metadata }: PaystackButtonProps
         body: JSON.stringify(payload),
       });
 
+      const contentType = response.headers.get('content-type');
+      if (!response.ok || !contentType || !contentType.includes('application/json')) {
+        const responseText = await response.text();
+        console.error('Paystack initialization failed. Server response was not JSON:', responseText);
+        console.error('Paystack initialization status:', response.status, response.statusText);
+        throw new Error(`Failed to initialize payment with Paystack. Server responded with ${response.status}. Check console.`);
+      }
+      
       const responseData = await response.json();
 
-      if (!response.ok || !responseData.status) {
+      if (!responseData.status) { // Paystack uses `status: true` for success on initialization
         console.error('Paystack initialization failed:', responseData);
-        throw new Error(responseData.message || 'Failed to initialize payment with Paystack.');
+        throw new Error(responseData.message || 'Failed to initialize payment with Paystack. [PSK_INIT_FAIL]');
       }
 
       const authorizationUrl = responseData.data.authorization_url;
       if (authorizationUrl) {
-        // Open Paystack checkout in a new tab
         window.open(authorizationUrl, '_blank');
         toast({
           title: 'Redirecting to Paystack',
           description: 'Please complete your payment in the new tab.',
         });
-        // Note: onSuccess/onClose from usePaystackPayment are not used here.
-        // Payment verification will happen when the user returns to the app (e.g., via URL params).
       } else {
-        throw new Error('Authorization URL not found in Paystack response.');
+        throw new Error('Authorization URL not found in Paystack response. [PSK_NO_AUTH_URL]');
       }
 
     } catch (err: any) {
@@ -137,7 +144,7 @@ const PaystackButton = ({ amount, email, userId, metadata }: PaystackButtonProps
       <Button
         onClick={handlePayment}
         disabled={isLoading || !user?.email || !paystackSecretKey}
-        className="send-money-button w-full text-sm py-2.5" // Apply send-money-button style
+        className="send-money-button w-full text-sm py-2.5" 
       >
         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} 
         {isLoading ? 'Initiating...' : `Pay KES ${amount.toLocaleString()}`}

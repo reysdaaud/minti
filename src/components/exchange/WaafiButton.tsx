@@ -49,26 +49,33 @@ const WaafiButton: React.FC<WaafiButtonProps> = ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount, // This is the KES amount. The API route will handle conversion if needed.
-          currency, // e.g., "SOS"
+          amount, 
+          currency, 
           phoneNumber,
           userId,
-          metadata, // Will include coins, package name, original KES amount
+          metadata, 
         }),
       });
 
+      const contentType = response.headers.get('content-type');
+      if (!response.ok || !contentType || !contentType.includes('application/json')) {
+        const responseText = await response.text();
+        console.error('Waafi initiation failed. Server response was not JSON:', responseText);
+        console.error('Waafi initiation status:', response.status, response.statusText);
+        throw new Error(result.message || `Failed to initiate Waafi payment. Server responded with ${response.status}. Check console for details.`);
+      }
+      
       const result = await response.json();
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Failed to initiate Waafi payment.');
+      if (!result.success) { // Assuming your API returns a 'success' boolean
+        throw new Error(result.message || 'Failed to initiate Waafi payment. [WAPI_RES_FAIL]');
       }
 
       toast({
         title: 'Waafi Payment Initiated',
         description: result.message || 'Please check your phone to authorize the payment.',
       });
-      // Optionally close the dialog or update UI to show "pending"
-      // onCloseDialog(); // Decide if dialog should close immediately or wait for callback
+      // onCloseDialog(); // Keep dialog open to show processing or success message from callback
     } catch (error: any) {
       console.error('Waafi payment initiation error:', error);
       toast({
@@ -84,7 +91,7 @@ const WaafiButton: React.FC<WaafiButtonProps> = ({
   return (
     <Button
       onClick={handleWaafiPayment}
-      disabled={isLoading}
+      disabled={isLoading || !phoneNumber.trim()}
       className="send-money-button w-full text-sm py-2.5"
     >
       {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
