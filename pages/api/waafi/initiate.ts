@@ -18,14 +18,14 @@ const getAppBaseUrl = () => {
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
   }
-  // Fallback for local development
-  return 'https://minti-c6ls.vercel.app'; // Your provided default
+  // Fallback for local development or if VERCEL_URL is not available (e.g. local `npm run dev`)
+  return process.env.NODE_ENV === 'production' ? 'https://minti-c6ls.vercel.app/' : 'http://localhost:9002';
 };
 
 
 interface WaafiInitiateRequestBody {
   amount: number; // Original KES amount from package
-  currency: string; // Target currency for Waafi (e.g., SOS)
+  currency: string; // Target currency for Waafi (should be "USD" as per latest request)
   phoneNumber: string;
   userId: string;
   metadata: {
@@ -55,10 +55,18 @@ export default async function handler(
     return res.status(400).json({ success: false, message: "Missing required payment details." });
   }
 
-  // TODO: Implement actual KES to target currency (e.g., SOS) conversion if Waafi needs it
-  // For now, assuming Waafi can take KES and do conversion, or you send the target currency amount
-  const waafiAmount = amount; // Placeholder: Use actual converted amount if Waafi needs SOS
-  const waafiCurrency = currency; // e.g., "SOS"
+  if (currency.toUpperCase() !== "USD") {
+    // This is an internal check. The frontend should be sending "USD".
+    console.warn(`Waafi API received currency '${currency}' but expected 'USD'. Proceeding with '${currency}'.`);
+  }
+  
+  // The 'amount' received here is the KES value from the package.
+  // If Waafi expects this 'amount' to be in USD, then a conversion from KES to USD is needed here.
+  // For now, we are passing the numerical value of KES as 'waafiAmount' and labeling it with 'waafiCurrency' (USD).
+  // This implies Waafi will either interpret 'amount' as USD or perform a conversion.
+  // TODO: Implement actual KES to USD conversion here if Waafi's API requires the amount to be in USD.
+  const waafiAmount = amount; // This is the KES numerical value.
+  const waafiCurrency = currency.toUpperCase(); // Should be "USD"
 
   const transactionId = `WAAFI_${userId}_${Date.now()}`; // Unique transaction ID
 
@@ -87,8 +95,8 @@ export default async function handler(
       transactionInfo: {
         referenceId: transactionId, // Your internal reference ID
         invoiceId: `INV_${transactionId}`, // Can be same as referenceId or different
-        amount: waafiAmount.toString(), // Amount in target currency, ensure it's a string if Waafi expects that
-        currency: waafiCurrency, // e.g., "SOS"
+        amount: waafiAmount.toString(), // Amount in target currency (USD), ensure it's a string if Waafi expects that
+        currency: waafiCurrency, // Should be "USD"
         description: `Purchase: ${metadata.packageName} (${metadata.coins} coins)`,
       },
       merchantCallbacks: {
@@ -138,6 +146,8 @@ export default async function handler(
       responseCode: "2001", // Replace with actual Waafi success code
       responseMsg: "Request processed successfully. User will be prompted on their phone.",
       waafiTransactionId: "WFP_MOCK_" + Date.now(),
+      // Example: Waafi might return a redirectURL if it's a hosted page flow for some methods
+      // redirectUrl: "https://checkout.waafipay.com/..." 
     };
     // **************************************************************************
 
@@ -146,6 +156,7 @@ export default async function handler(
       message: mockWaafiResult.responseMsg,
       transactionReference: transactionId,
       waafiReference: mockWaafiResult.waafiTransactionId,
+      // redirectUrl: mockWaafiResult.redirectUrl // Send this back if Waafi provides one
     });
 
   } catch (error: any) {

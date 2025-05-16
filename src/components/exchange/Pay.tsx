@@ -115,15 +115,15 @@ export default function Pay({ userId, userEmail, onCloseDialog }: PayProps) {
           <RadioGroup
             value={selectedPaymentMethod}
             onValueChange={(value) => setSelectedPaymentMethod(value as PaymentMethod)}
-            className="flex space-x-4 mb-4"
+            className="space-y-2 mb-4" // Changed to vertical stacking
           >
-            <Label htmlFor="paystack" className="flex items-center space-x-2 cursor-pointer text-white text-sm">
+            <Label htmlFor="paystack" className="flex items-center space-x-2 cursor-pointer text-white text-sm p-2 rounded-md hover:bg-white/10 transition-colors glass-input-like">
               <RadioGroupItem value="paystack" id="paystack" className="text-primary border-white/50" />
               <span>Paystack (Card, M-Pesa)</span>
             </Label>
-            <Label htmlFor="waafi" className="flex items-center space-x-2 cursor-pointer text-white text-sm">
+            <Label htmlFor="waafi" className="flex items-center space-x-2 cursor-pointer text-white text-sm p-2 rounded-md hover:bg-white/10 transition-colors glass-input-like">
               <RadioGroupItem value="waafi" id="waafi" className="text-primary border-white/50" />
-              <span>Waafi (Mobile Money)</span>
+              <span>Waafi (Mobile Money - USD)</span>
             </Label>
           </RadioGroup>
 
@@ -161,14 +161,14 @@ export default function Pay({ userId, userEmail, onCloseDialog }: PayProps) {
           )}
           {selectedPaymentMethod === 'waafi' && (
             <WaafiButton
-              amount={selectedPackage.amount} // Waafi might expect amount in base currency unit (e.g., Shillings not cents)
-              currency="SOS" // Assuming Somali Shilling for Waafi. Adjust if needed.
+              amount={selectedPackage.amount} // This is still KES amount
+              currency="USD" // Waafi currency is now USD
               phoneNumber={waafiPhoneNumber}
               userId={userId}
               metadata={{
                 coins: selectedPackage.coins,
                 packageName: selectedPackage.description,
-                originalAmountKES: selectedPackage.amount // Store KES amount for reference if needed
+                originalAmountKES: selectedPackage.amount 
               }}
               onCloseDialog={onCloseDialog}
             />
