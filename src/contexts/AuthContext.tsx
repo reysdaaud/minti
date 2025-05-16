@@ -1,8 +1,8 @@
-// This file's content is now largely managed by src/lib/firebase.tsx
-// For simplicity, we re-export the necessary items from there if this file structure is preferred.
-// However, it's often cleaner to import directly from '@/lib/firebase.tsx' where needed.
-
+// src/contexts/AuthContext.tsx
 'use client';
 
-export { AuthProvider, useAuthContext as useAuth, signInWithGoogle, signInWithFacebook, signOutUser } from '@/lib/firebase';
+// Re-export AuthProvider and useAuthContext (as useAuth) from firebase.tsx.
+// Components should get auth functions (signInWithGoogle, signInWithFacebook, etc.)
+// from the useAuth() hook's return value.
+export { AuthProvider, useAuthContext as useAuth } from '@/lib/firebase';
 export type { User as FirebaseUser } from 'firebase/auth'; // Export User type if needed elsewhere
