@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface WaafiButtonProps {
   amount: number; // Amount in KES (base unit for selected package)
-  currency: string; // Target currency for Waafi (e.g., "SOS")
+  currency: string; // Target currency for Waafi (e.g., "USD")
   phoneNumber: string;
   userId: string;
   metadata: {
@@ -42,6 +42,7 @@ const WaafiButton: React.FC<WaafiButtonProps> = ({
     }
 
     setIsLoading(true);
+    let result; // Declare result outside the try block to widen its scope for the catch
     try {
       const response = await fetch('/api/waafi/initiate', {
         method: 'POST',
@@ -49,11 +50,11 @@ const WaafiButton: React.FC<WaafiButtonProps> = ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount, 
-          currency, 
+          amount,
+          currency,
           phoneNumber,
           userId,
-          metadata, 
+          metadata,
         }),
       });
 
@@ -62,10 +63,11 @@ const WaafiButton: React.FC<WaafiButtonProps> = ({
         const responseText = await response.text();
         console.error('Waafi initiation failed. Server response was not JSON:', responseText);
         console.error('Waafi initiation status:', response.status, response.statusText);
-        throw new Error(result.message || `Failed to initiate Waafi payment. Server responded with ${response.status}. Check console for details.`);
+        // Do not use `result.message` here as `result` might not be defined
+        throw new Error(`Failed to initiate Waafi payment. Server responded with ${response.status}. Check console for details.`);
       }
       
-      const result = await response.json();
+      result = await response.json(); // Assign to result here
 
       if (!result.success) { // Assuming your API returns a 'success' boolean
         throw new Error(result.message || 'Failed to initiate Waafi payment. [WAPI_RES_FAIL]');
@@ -80,6 +82,7 @@ const WaafiButton: React.FC<WaafiButtonProps> = ({
       console.error('Waafi payment initiation error:', error);
       toast({
         title: 'Waafi Payment Error',
+        // Check if error.message exists, otherwise provide a generic message
         description: error.message || 'Could not start Waafi payment. Please try again.',
         variant: 'destructive',
       });
