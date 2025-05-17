@@ -7,16 +7,16 @@ import { db } from '@/lib/firebase'; // Ensure this path is correct
 // Placeholder for Waafi's callback verification logic (e.g., signature check)
 // You MUST implement proper verification based on Waafi's documentation.
 const verifyWaafiCallback = (req: NextApiRequest): boolean => {
-  // Example: Check for a specific header or a signature
-  // const waafiSignature = req.headers['x-waafi-signature'];
-  // const expectedSignature = crypto.createHmac('sha256', process.env.WAAFI_WEBHOOK_SECRET)
-  //                             .update(JSON.stringify(req.body))
+  // Example: Check for a specific header or a signature from Waafi
+  // const waafiSignature = req.headers['x-waafi-signature']; // Or similar header
+  // const calculatedSignature = crypto.createHmac('sha256', process.env.WAAFI_WEBHOOK_SECRET) // Use a webhook secret
+  //                             .update(JSON.stringify(req.body)) // Or raw body if required
   //                             .digest('hex');
-  // if (waafiSignature !== expectedSignature) {
+  // if (waafiSignature !== calculatedSignature) {
   //   console.error("Waafi callback signature mismatch.");
   //   return false;
   // }
-  console.log("Waafi callback received. TODO: Implement proper verification.");
+  console.log("Waafi callback received. TODO: Implement proper verification based on Waafi's documentation.");
   return true; // For now, assume it's valid. REPLACE WITH ACTUAL VERIFICATION.
 };
 
@@ -24,16 +24,20 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  console.log(`[API /api/waafi/callback] Received request. Method: ${req.method}`);
+
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
+    console.warn(`[API /api/waafi/callback] Method Not Allowed: Received ${req.method}, expected POST.`);
     return res.status(405).end('Method Not Allowed');
   }
 
-  console.log("Waafi Callback Received - Body:", req.body);
-  console.log("Waafi Callback Received - Headers:", req.headers);
+  console.log("[API /api/waafi/callback] Request Body:", req.body);
+  console.log("[API /api/waafi/callback] Request Headers:", req.headers);
 
 
   if (!verifyWaafiCallback(req)) {
+    console.error("[API /api/waafi/callback] Callback verification failed.");
     return res.status(403).json({ success: false, message: "Callback verification failed." });
   }
 
@@ -42,15 +46,15 @@ export default async function handler(
     const {
       // Example fields from a hypothetical Waafi callback payload
       status, // e.g., "SUCCESS", "FAILED"
-      transactionId, // This should be the referenceId we sent
-      amountPaid, // Amount paid in the target currency (e.g., SOS)
-      currency,   // Currency of amountPaid (e.g., "SOS")
+      transactionId, // This should be the referenceId we sent (or Waafi's transaction ID)
+      amountPaid, // Amount paid in the target currency (e.g., SOS or USD if currency was USD)
+      currency,   // Currency of amountPaid (e.g., "SOS" or "USD")
       msisdn,     // Payer's phone number
       customReference // The JSON stringified metadata we sent
     } = req.body;
 
     if (!customReference) {
-        console.error("Waafi callback missing 'customReference' (our metadata).");
+        console.error("[API /api/waafi/callback] Waafi callback missing 'customReference' (our metadata).");
         return res.status(400).json({ success: false, message: "Callback data incomplete (missing customReference)." });
     }
     
@@ -58,7 +62,7 @@ export default async function handler(
     try {
         internalMetadata = JSON.parse(customReference);
     } catch (parseError) {
-        console.error("Error parsing customReference from Waafi callback:", parseError, "Raw customReference:", customReference);
+        console.error("[API /api/waafi/callback] Error parsing customReference from Waafi callback:", parseError, "Raw customReference:", customReference);
         return res.status(400).json({ success: false, message: "Invalid customReference format." });
     }
 
@@ -66,12 +70,13 @@ export default async function handler(
     const { userId, coins, originalAmountKES, packageName, internalTxId } = internalMetadata;
 
     if (!userId || !coins || !internalTxId) {
-      console.error("Waafi callback missing critical metadata: userId, coins, or internalTxId.");
+      console.error("[API /api/waafi/callback] Waafi callback missing critical metadata: userId, coins, or internalTxId.");
       return res.status(400).json({ success: false, message: "Callback metadata incomplete." });
     }
 
-    if (transactionId !== internalTxId) {
-        console.warn(`Waafi callback transactionId (${transactionId}) does not match internalTxId (${internalTxId}). Proceeding, but investigate.`);
+    // It's good to check if Waafi's transactionId matches the internalTxId we sent, for reconciliation.
+    if (transactionId && transactionId !== internalTxId) {
+        console.warn(`[API /api/waafi/callback] Waafi callback transactionId (${transactionId}) does not match internalTxId (${internalTxId}). Proceeding, but investigate.`);
     }
 
 
@@ -85,14 +90,14 @@ export default async function handler(
         coins: coins,
         timestamp: serverTimestamp(),
         reference: internalTxId, // Our internal transaction ID
-        waafiTransactionId: req.body.waafiTransactionId || transactionId, // Waafi's specific ID from their payload
+        gatewayTransactionId: req.body.waafiTransactionId || transactionId || 'N/A', // Waafi's specific ID from their payload
         status: 'success',
         packageName: packageName,
         currency: "KES", // Record payment in KES
         gatewayResponseSummary: { // Store some raw Waafi data for reference
             waafiStatus: status,
-            waafiAmountPaid: amountPaid,
-            waafiCurrency: currency,
+            waafiAmountPaid: amountPaid, // This is the amount in the currency Waafi processed (e.g., USD)
+            waafiCurrency: currency,   // This is the currency Waafi processed (e.g., "USD")
             waafiMsisdn: msisdn,
         }
       };
@@ -107,10 +112,10 @@ export default async function handler(
       } else {
         // This case should ideally not happen if user is created on signup
         // But handle it defensively
-        console.warn(`User document for ${userId} not found. Creating one for Waafi payment.`);
+        console.warn(`[API /api/waafi/callback] User document for ${userId} not found. Creating one for Waafi payment.`);
         await setDoc(userRef, {
-          // Set default fields for a new user
-          email: `waafi_user_${userId}@example.com`, // Placeholder, ideally get from auth
+          uid: userId,
+          email: `waafi_user_${userId}@example.com`, // Placeholder, ideally get from auth if possible
           name: `Waafi User ${userId}`,
           photoURL: null,
           firstName: '',
@@ -129,18 +134,19 @@ export default async function handler(
           createdAt: serverTimestamp(),
           lastLogin: serverTimestamp(),
           updatedAt: serverTimestamp(),
+          subscription: false, // Default value
         });
       }
-      console.log(`Waafi payment successful for user ${userId}. ${coins} coins added.`);
+      console.log(`[API /api/waafi/callback] Waafi payment successful for user ${userId}. ${coins} coins added.`);
       return res.status(200).json({ success: true, message: "Payment processed successfully." });
     } else {
-      console.log(`Waafi payment not successful or status unknown for user ${userId}. Status: ${status}`);
+      console.log(`[API /api/waafi/callback] Waafi payment not successful or status unknown for user ${userId}. Status: ${status}`);
       // Optionally log failed or pending transactions
       // Example: Log to a 'failed_transactions' collection or update a transaction record
-      return res.status(200).json({ success: false, message: `Payment status: ${status}` });
+      return res.status(200).json({ success: false, message: `Payment status: ${status || 'unknown'}` });
     }
   } catch (error: any) {
-    console.error('Error processing Waafi callback:', error);
+    console.error('[API /api/waafi/callback] Error processing Waafi callback:', error);
     return res.status(500).json({ success: false, message: error.message || 'Internal server error processing Waafi callback.' });
   }
 }

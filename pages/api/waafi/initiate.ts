@@ -53,11 +53,11 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  console.log("[API /api/waafi/initiate] Received request. Method:", req.method);
+  console.log(`[API /api/waafi/initiate] Received request. Method: ${req.method}`);
 
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
-    console.log("[API /api/waafi/initiate] Method Not Allowed:", req.method);
+    console.warn(`[API /api/waafi/initiate] Method Not Allowed: Received ${req.method}, expected POST.`);
     return res.status(405).end('Method Not Allowed');
   }
 
@@ -79,13 +79,15 @@ export default async function handler(
     return res.status(400).json({ success: false, message: "Missing required payment details." });
   }
 
-  // IMPORTANT: Amount Conversion.
   // The `amount` received here is from your KES packages.
-  // If Waafi's API expects the `amount` field to be in USD, you MUST convert `metadata.originalAmountKES`
-  // to USD here using a reliable exchange rate before putting it into `waafiAmount`.
-  // For now, we'll pass the KES numerical value, assuming Waafi handles it or it's intended as USD.
-  const waafiAmount = metadata.originalAmountKES; // This should be converted to USD if Waafi expects USD value.
-  const waafiCurrency = "USD"; // As per your instruction
+  // For Waafi, the currency is set to USD. If Waafi expects the `amount` field to be the USD value,
+  // you MUST convert `metadata.originalAmountKES` to USD here using a reliable exchange rate.
+  // The current code passes the KES numerical value and sets currency to "USD".
+  // This might mean Waafi expects, for example, if KES 100 is roughly $0.75, for amount to be 0.75 and currency USD.
+  // Or, if KES 100 is intended to be 100 units of USD, then amount would be 100 and currency USD.
+  // CLARIFY THIS WITH WAAFI'S DOCUMENTATION.
+  const waafiAmount = metadata.originalAmountKES; // This should be converted to USD if Waafi expects the USD *value*.
+  const waafiCurrency = "USD"; // Currency is set to USD
 
   const transactionId = `WAAFI_${userId}_${Date.now()}`;
   const appBaseUrl = getAppBaseUrl(req);
@@ -96,7 +98,8 @@ export default async function handler(
 
   // CONSULT WAAFI DOCUMENTATION for the correct payload structure and payment methods.
   // The `paymentMethod` string needs to be what Waafi expects for EVC, ZAAD, etc.
-  // Example values: "EVCPLUS", "ZAAD_SOMALIA", "SAHAL_SOMTEL", "WAAFI_WALLET_SOMALIA" - CHECK WAAFI DOCS!
+  // Example values from Waafi documentation could be: "EVCPLUS", "ZAAD_SOMALIA", "SAHAL_SOMTEL", "WAAFI_WALLET_SOMALIA".
+  // Ensure you use the correct method code provided by Waafi.
   const waafiPaymentMethod = "EVCPLUS"; // <<<<< REPLACE THIS with the correct Waafi method code.
 
   const waafiPayload = {
@@ -115,8 +118,8 @@ export default async function handler(
       transactionInfo: {
         referenceId: transactionId, // Your internal transaction ID
         invoiceId: `INV_${transactionId}`, // A unique invoice ID
-        amount: waafiAmount.toString(), // Amount as a string, ensure this is in USD if currency is USD
-        currency: waafiCurrency,       // Should be "USD"
+        amount: waafiAmount.toString(), // Amount as a string. This value should be in USD if currency is USD.
+        currency: waafiCurrency,       // Should be "USD" as per instruction.
         description: `Purchase: ${metadata.packageName} (${metadata.coins} coins)`,
       },
       merchantCallbacks: {
@@ -127,7 +130,7 @@ export default async function handler(
       customParameters: {
         userId,
         coins: metadata.coins,
-        originalAmountKES: metadata.originalAmountKES,
+        originalAmountKES: metadata.originalAmountKES, // Keep original KES for reference
         packageName: metadata.packageName,
         internalTxId: transactionId // Include your internal transaction ID
       },
@@ -140,9 +143,9 @@ export default async function handler(
       requestId: waafiPayload.requestId,
       channelName: waafiPayload.channelName,
       serviceName: waafiPayload.serviceName,
-      // Not logging full serviceParams here to avoid overly verbose logs unless needed
     });
-    console.log("[API /api/waafi/initiate] Full Waafi Payload (for debugging, check sensitive data):", JSON.stringify(waafiPayload, null, 2));
+    // For security, avoid logging the full sensitive payload in production unless specifically debugging.
+    // console.log("[API /api/waafi/initiate] Full Waafi Payload (for debugging, check sensitive data):", JSON.stringify(waafiPayload, null, 2));
 
 
     // ***** THIS IS A MOCK API CALL SECTION - REPLACE WITH ACTUAL WAAFI API INTEGRATION *****
@@ -151,6 +154,7 @@ export default async function handler(
     //   headers: {
     //     'Content-Type': 'application/json',
     //     'Authorization': `Bearer ${WAAFI_API_KEY}` // Or 'Api-Key': WAAFI_API_KEY - CHECK WAAFI DOCS
+    //     // Or other headers as required by Waafi
     //   },
     //   body: JSON.stringify(waafiPayload),
     // });
@@ -173,7 +177,7 @@ export default async function handler(
     const mockWaafiResult = {
       responseCode: "2001", // Waafi's success code for STK push (example)
       responseMsg: "Request processed successfully. User will be prompted on their phone.",
-      transactionId: "WFP_MOCK_" + Date.now(), 
+      transactionId: "WFP_MOCK_" + Date.now(),
       // Potentially other fields like `params` containing info for app-to-app call
       // params: {
       //   appPackageName: "com.waafi.customer", // Example package name for Waafi app
@@ -190,7 +194,7 @@ export default async function handler(
       transactionReference: transactionId, // Your internal reference
       waafiReference: mockWaafiResult.transactionId, // Waafi's reference from their system
       // If Waafi returns parameters for an app-to-app call (if applicable), include them:
-      // waafiParams: mockWaafiResult.params 
+      // waafiParams: mockWaafiResult.params
     });
 
   } catch (error: any) {
