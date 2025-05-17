@@ -40,6 +40,16 @@ const WaafiButton: React.FC<WaafiButtonProps> = ({
       });
       return;
     }
+    // Basic phone number validation (can be more sophisticated)
+    if (!/^\d{9,15}$/.test(phoneNumber.replace(/\D/g,''))) { // Allows digits, common lengths
+        toast({
+            title: 'Invalid Phone Number',
+            description: 'Please enter a valid phone number for Waafi.',
+            variant: 'destructive',
+        });
+        return;
+    }
+
 
     setIsLoading(true);
     let responseData: any; 
@@ -51,11 +61,11 @@ const WaafiButton: React.FC<WaafiButtonProps> = ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount,
-          currency,
+          amount, // This is still the KES package amount
+          currency, // This should be "USD"
           phoneNumber,
           userId,
-          metadata,
+          metadata, // Contains originalAmountKES
         }),
       });
 
@@ -64,27 +74,27 @@ const WaafiButton: React.FC<WaafiButtonProps> = ({
       if (contentType && contentType.includes('application/json')) {
         responseData = await response.json();
       } else {
+        // If not JSON, it's likely an HTML error page (e.g., 404, 500 from Next.js/Vercel)
         const responseText = await response.text();
         console.error('Waafi initiation failed. Server response was not JSON:', responseText);
         console.error('Waafi initiation status:', response.status, response.statusText);
-        throw new Error(`Failed to initiate Waafi payment. Server responded with ${response.status} and non-JSON content. Check server logs and console for details.`);
+        toast({
+          title: 'Waafi Initiation Error',
+          description: `Server error: ${response.status}. Please check console or try again later.`,
+          variant: 'destructive',
+        });
+        throw new Error(`Failed to initiate Waafi payment. Server responded with ${response.status} and non-JSON content.`);
       }
 
       if (!response.ok) { // Checks if status is 200-299
+        // This block handles JSON error responses from *your* API route
         console.error('[API /api/waafi/initiate] Waafi API Error Response (from our API route):', responseData);
-        // If responseData is empty or doesn't have a message, provide a more generic error.
-        // Also, include the status code in the message.
-        const serverMessage = responseData && typeof responseData.message === 'string' 
-                              ? responseData.message 
-                              : `Received status ${response.status}. Check server logs.`;
-        const errorMessage = `Waafi payment initiation failed: ${serverMessage}`;
-        
         toast({
           title: 'Waafi Initiation Error',
-          description: errorMessage,
+          description: responseData.message || `Payment initiation failed. Status: ${response.status}`,
           variant: 'destructive',
         });
-        throw new Error(errorMessage);
+        throw new Error(responseData.message || `Failed to initiate payment with Waafi. Status: ${response.status}`);
       }
 
       // At this point, response.ok is true, and responseData should be the success JSON from your API route
@@ -92,12 +102,12 @@ const WaafiButton: React.FC<WaafiButtonProps> = ({
         title: 'Waafi Payment Initiated',
         description: responseData.message || 'Please check your phone to authorize the payment.',
       });
-      // Consider if onCloseDialog(); should be called here or after user interacts with Waafi prompt
+      // onCloseDialog(); // You might want to close the dialog here, or keep it open
     } catch (error: any) {
-      console.error('Waafi payment button error catch block:', error);
-      // The toast for specific errors is now handled above if !response.ok
-      // This catch block will handle network errors or other unexpected issues.
-      if (!toast.toasts.find(t => t.title === 'Waafi Initiation Error')) { // Avoid duplicate toasts
+      // This catch block handles network errors or errors thrown above
+      console.error('Waafi payment button error catch block:', error.message);
+      // Avoid duplicate toasts if already shown
+      if (!toast.toasts.find(t => t.title === 'Waafi Initiation Error')) { 
         toast({
           title: 'Waafi Payment Error',
           description: error.message || 'Could not start Waafi payment. Please try again.',
@@ -122,3 +132,4 @@ const WaafiButton: React.FC<WaafiButtonProps> = ({
 };
 
 export default WaafiButton;
+
