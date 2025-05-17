@@ -2,37 +2,41 @@
 // pages/api/waafi/initiate.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-// IMPORTANT: Replace with actual Waafi API details and logic
+// Waafi Credentials from Environment Variables
+// Ensure these are set in your .env.local file (and Vercel environment variables for deployment)
+// Example .env.local entries:
+// WAAFI_API_KEY="API-1922135978AHX" (This is your "Api-Key")
+// WAAFI_MERCHANT_ID="M0910161" (This is your "MerchantUid")
+// WAAFI_API_USER_ID="1000146" (This is your "ApiUserId" - see note below)
+// WAAFI_API_SECRET="your_waafi_api_secret_if_any"
 const WAAFI_API_KEY = process.env.WAAFI_API_KEY;
 const WAAFI_MERCHANT_ID = process.env.WAAFI_MERCHANT_ID;
-// THIS IS A FICTIONAL ENDPOINT - REPLACE WITH ACTUAL WAAFI DOCUMENTATION
+const WAAFI_API_USER_ID = process.env.WAAFI_API_USER_ID; // Added for clarity if needed in payload
+
+// THIS IS A FICTIONAL/PLACEHOLDER ENDPOINT - REPLACE WITH ACTUAL WAAFI DOCUMENTATION
 const WAAFI_API_ENDPOINT_INITIATE = "https://api.waafipay.com/payment"; // Example, replace with actual
 
-// Determine the base URL for callbacks.
 const getAppBaseUrl = (req: NextApiRequest) => {
-  // 1. Try NEXT_PUBLIC_APP_BASE_URL (recommended for production)
   if (process.env.NEXT_PUBLIC_APP_BASE_URL) {
     return process.env.NEXT_PUBLIC_APP_BASE_URL;
   }
-  // 2. Try VERCEL_URL (if deployed on Vercel)
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
   }
-  // 3. Fallback for local development using request headers
   const protocol = req.headers['x-forwarded-proto'] || 'http';
-  const host = req.headers.host || 'localhost:9002'; // Default to 9002 if host is not found
+  const host = req.headers.host || 'localhost:9002';
   return `${protocol}://${host}`;
 };
 
 interface WaafiInitiateRequestBody {
   amount: number;
-  currency: string; // Should be "USD" as per your last instruction
+  currency: string;
   phoneNumber: string;
   userId: string;
   metadata: {
     coins: number;
     packageName: string;
-    originalAmountKES: number; // Original KES amount for reference
+    originalAmountKES: number;
   };
 }
 
@@ -51,9 +55,16 @@ export default async function handler(
   console.log("[API /api/waafi/initiate] Request Body:", req.body);
 
   if (!WAAFI_API_KEY || !WAAFI_MERCHANT_ID) {
-    console.error("[API /api/waafi/initiate] Waafi API Key or Merchant ID is not configured in environment variables (WAAFI_API_KEY, WAAFI_MERCHANT_ID).");
-    return res.status(500).json({ success: false, message: "Payment gateway configuration error. [WCFG01]" });
+    console.error(`[API /api/waafi/initiate] Critical Configuration Error:
+      WAAFI_API_KEY: ${WAAFI_API_KEY ? 'Set' : 'MISSING'}
+      WAAFI_MERCHANT_ID: ${WAAFI_MERCHANT_ID ? 'Set' : 'MISSING'}
+      Please ensure WAAFI_API_KEY and WAAFI_MERCHANT_ID are correctly set in your .env.local file and that the server was restarted.`);
+    return res.status(500).json({ success: false, message: "Payment gateway configuration error. Please check server logs. [WCFG01]" });
   }
+  // Note: WAAFI_API_USER_ID might be used within the Waafi payload if required by their API,
+  // not necessarily for direct API authentication headers like WAAFI_API_KEY.
+  // Example: if (WAAFI_API_USER_ID) { waafiPayload.serviceParams.apiUserId = WAAFI_API_USER_ID; }
+
 
   const { amount, currency, phoneNumber, userId, metadata } = req.body as WaafiInitiateRequestBody;
 
@@ -62,10 +73,7 @@ export default async function handler(
     return res.status(400).json({ success: false, message: "Missing required payment details." });
   }
 
-  // The `amount` here is the numerical value from KES package.
-  // If Waafi requires this amount to be a USD value, conversion logic would be needed here.
-  // For now, we pass the KES numerical value with "USD" currency code.
-  const waafiAmount = amount;
+  const waafiAmount = amount; // This is KES amount; ensure it's converted to USD if needed by Waafi API
   const waafiCurrency = currency.toUpperCase(); // Expected to be "USD"
 
   const transactionId = `WAAFI_${userId}_${Date.now()}`;
@@ -74,21 +82,22 @@ export default async function handler(
 
   console.log(`[API /api/waafi/initiate] App Base URL: ${appBaseUrl}, Callback URL: ${callbackUrl}`);
 
-  // Consult Waafi Documentation for the correct payload structure for a push STK payment.
-  // The `paymentMethod` might need specific codes for EVC, ZAAD, Sahal, etc.
-  // Example: "EVCPLUS", "ZAAD_SERVICE", "SAHAL_SOMTEL", "WAAFI_WALLET"
-  // This example uses a generic "MOBILE_MONEY" placeholder.
+  // CONSULT WAAFI DOCUMENTATION for the correct payload structure.
+  // The 'paymentMethod' and other 'serviceParams' will be specific to Waafi.
+  // The 'apiUserId' parameter (1000146 in your case) might go into 'serviceParams'.
   const waafiPaymentMethod = "EVCPLUS"; // <<<<< CONSULT WAAFI DOCS AND REPLACE THIS
 
   const waafiPayload = {
-    schemaVersion: '1.0', // Or whatever version Waafi API uses
+    schemaVersion: '1.0', // Or Waafi's current version
     requestId: transactionId,
     timestamp: new Date().toISOString(),
-    channelName: 'WEB', // Or as specified by Waafi for API payments
-    serviceName: 'API_PURCHASE', // Or specific service name from Waafi for this type of transaction
+    channelName: 'WEB',
+    serviceName: 'API_PURCHASE', // Or specific service name from Waafi
     serviceParams: {
-      merchantUid: WAAFI_MERCHANT_ID,
-      apiUserId: WAAFI_API_KEY,
+      merchantUid: WAAFI_MERCHANT_ID, // Your "MerchantUid"
+      apiUserId: WAAFI_API_USER_ID || WAAFI_API_KEY, // WAAPI API might require apiUserId here, check their docs. Using WAAFI_API_KEY as a placeholder if apiUserId is separate.
+      // If WAAFI_API_KEY is used for Authorization header, then apiUserId (1000146) might be needed here.
+      // Example: apiUserId: "1000146",
       paymentMethod: waafiPaymentMethod,
       payerInfo: {
         msisdn: phoneNumber,
@@ -97,13 +106,13 @@ export default async function handler(
         referenceId: transactionId,
         invoiceId: `INV_${transactionId}`,
         amount: waafiAmount.toString(), // Waafi might expect amount as string
-        currency: waafiCurrency, // Should be "USD"
+        currency: waafiCurrency,
         description: `Purchase: ${metadata.packageName} (${metadata.coins} coins)`,
       },
       merchantCallbacks: {
         notifyUrl: callbackUrl,
       },
-      customParameters: { // Sending our internal metadata to Waafi
+      customParameters: {
         userId,
         coins: metadata.coins,
         originalAmountKES: metadata.originalAmountKES,
@@ -121,7 +130,7 @@ export default async function handler(
     //   method: 'POST',
     //   headers: {
     //     'Content-Type': 'application/json',
-    //     // ... Add any other Waafi-specific Auth Headers (e.g., 'Authorization': `Bearer ${WAAFI_API_KEY}`) ...
+    //     'Authorization': `Bearer ${WAAFI_API_KEY}` // Or other auth mechanism specified by Waafi
     //   },
     //   body: JSON.stringify(waafiPayload),
     // });
@@ -142,9 +151,14 @@ export default async function handler(
 
     // Simulate a successful initiation for now - REMOVE FOR PRODUCTION AND UNCOMMENT ABOVE
     const mockWaafiResult = {
-      responseCode: "2001", // Replace with actual Waafi success code from their docs
+      responseCode: "2001", // Waafi's success code from their docs for STK push
       responseMsg: "Request processed successfully. User will be prompted on their phone.",
-      transactionId: "WFP_MOCK_" + Date.now(), // Waafi's transaction ID
+      transactionId: "WFP_MOCK_" + Date.now(), 
+      // Potentially other fields like `params` containing info for app-to-app call
+      // params: {
+      //   appPackageName: "com.waafi.customer",
+      //   deeplink: "waafi://payment?params=...",
+      // }
     };
     // ****************************************************************************************
 
@@ -153,8 +167,10 @@ export default async function handler(
     return res.status(200).json({
       success: true,
       message: mockWaafiResult.responseMsg,
-      transactionReference: transactionId, // Our internal transaction ID
-      waafiReference: mockWaafiResult.transactionId, // Waafi's transaction ID
+      transactionReference: transactionId, 
+      waafiReference: mockWaafiResult.transactionId,
+      // If Waafi returns parameters for an app-to-app call, include them:
+      // waafiParams: mockWaafiResult.params 
     });
 
   } catch (error: any) {
