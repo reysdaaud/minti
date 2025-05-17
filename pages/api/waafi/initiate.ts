@@ -8,29 +8,31 @@ const WAAFI_MERCHANT_ID = process.env.WAAFI_MERCHANT_ID;
 // THIS IS A FICTIONAL ENDPOINT - REPLACE WITH ACTUAL WAAFI DOCUMENTATION
 const WAAFI_API_ENDPOINT_INITIATE = "https://api.waafipay.com/payment"; // Example, replace with actual
 
-// Determine the base URL for callbacks. Prioritize environment variable.
-const getAppBaseUrl = () => {
+// Determine the base URL for callbacks.
+const getAppBaseUrl = (req: NextApiRequest) => {
+  // 1. Try NEXT_PUBLIC_APP_BASE_URL (recommended for production)
   if (process.env.NEXT_PUBLIC_APP_BASE_URL) {
     return process.env.NEXT_PUBLIC_APP_BASE_URL;
   }
-  if (process.env.VERCEL_URL) { // Vercel system environment variable
+  // 2. Try VERCEL_URL (if deployed on Vercel)
+  if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
   }
-  // Fallback for local development (ensure this matches your local Next.js port)
-  return process.env.NODE_ENV === 'production' 
-    ? 'https://minti-c6ls.vercel.app' // Your production URL as fallback
-    : 'http://localhost:9002'; // Your local dev port (adjust if different)
+  // 3. Fallback for local development using request headers
+  const protocol = req.headers['x-forwarded-proto'] || 'http';
+  const host = req.headers.host || 'localhost:9002'; // Default to 9002 if host is not found
+  return `${protocol}://${host}`;
 };
 
 interface WaafiInitiateRequestBody {
-  amount: number; 
-  currency: string; // Should be "USD"
+  amount: number;
+  currency: string; // Should be "USD" as per your last instruction
   phoneNumber: string;
   userId: string;
   metadata: {
     coins: number;
     packageName: string;
-    originalAmountKES: number;
+    originalAmountKES: number; // Original KES amount for reference
   };
 }
 
@@ -38,62 +40,70 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  console.log("Attempting to handle request for /api/waafi/initiate"); // New Log
+  console.log("[API /api/waafi/initiate] Received request. Method:", req.method);
 
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
-    console.log("/api/waafi/initiate - Method Not Allowed:", req.method);
+    console.log("[API /api/waafi/initiate] Method Not Allowed:", req.method);
     return res.status(405).end('Method Not Allowed');
   }
 
-  console.log("/api/waafi/initiate - Received POST request. Body:", req.body); // New Log
+  console.log("[API /api/waafi/initiate] Request Body:", req.body);
 
   if (!WAAFI_API_KEY || !WAAFI_MERCHANT_ID) {
-    console.error("Waafi API Key or Merchant ID is not configured in environment variables (WAAFI_API_KEY, WAAFI_MERCHANT_ID).");
+    console.error("[API /api/waafi/initiate] Waafi API Key or Merchant ID is not configured in environment variables (WAAFI_API_KEY, WAAFI_MERCHANT_ID).");
     return res.status(500).json({ success: false, message: "Payment gateway configuration error. [WCFG01]" });
   }
 
   const { amount, currency, phoneNumber, userId, metadata } = req.body as WaafiInitiateRequestBody;
 
   if (!amount || !currency || !phoneNumber || !userId || !metadata || typeof metadata.originalAmountKES === 'undefined') {
-    console.error("/api/waafi/initiate - Missing required payment details:", req.body);
+    console.error("[API /api/waafi/initiate] Missing required payment details:", req.body);
     return res.status(400).json({ success: false, message: "Missing required payment details." });
   }
-  
-  // Amount is KES value. Currency is "USD".
-  // If Waafi requires 'amount' to be in USD value, conversion is needed here.
-  const waafiAmount = amount; 
-  const waafiCurrency = currency.toUpperCase(); // Should be "USD"
 
-  const transactionId = `WAAFI_${userId}_${Date.now()}`; 
+  // The `amount` here is the numerical value from KES package.
+  // If Waafi requires this amount to be a USD value, conversion logic would be needed here.
+  // For now, we pass the KES numerical value with "USD" currency code.
+  const waafiAmount = amount;
+  const waafiCurrency = currency.toUpperCase(); // Expected to be "USD"
 
-  const appBaseUrl = getAppBaseUrl();
+  const transactionId = `WAAFI_${userId}_${Date.now()}`;
+  const appBaseUrl = getAppBaseUrl(req);
   const callbackUrl = `${appBaseUrl}/api/waafi/callback`;
 
+  console.log(`[API /api/waafi/initiate] App Base URL: ${appBaseUrl}, Callback URL: ${callbackUrl}`);
+
+  // Consult Waafi Documentation for the correct payload structure for a push STK payment.
+  // The `paymentMethod` might need specific codes for EVC, ZAAD, Sahal, etc.
+  // Example: "EVCPLUS", "ZAAD_SERVICE", "SAHAL_SOMTEL", "WAAFI_WALLET"
+  // This example uses a generic "MOBILE_MONEY" placeholder.
+  const waafiPaymentMethod = "EVCPLUS"; // <<<<< CONSULT WAAFI DOCS AND REPLACE THIS
+
   const waafiPayload = {
-    schemaVersion: '1.0', 
-    requestId: transactionId, 
-    timestamp: new Date().toISOString(), 
-    channelName: 'WEB', 
-    serviceName: 'API_PURCHASE', 
+    schemaVersion: '1.0', // Or whatever version Waafi API uses
+    requestId: transactionId,
+    timestamp: new Date().toISOString(),
+    channelName: 'WEB', // Or as specified by Waafi for API payments
+    serviceName: 'API_PURCHASE', // Or specific service name from Waafi for this type of transaction
     serviceParams: {
       merchantUid: WAAFI_MERCHANT_ID,
-      apiUserId: WAAFI_API_KEY, 
-      paymentMethod: "MOBILE_MONEY", // Placeholder - REPLACE WITH ACTUAL WAAFI METHOD CODE (e.g., EVCPLUS, ZAAD_SERVICE)
+      apiUserId: WAAFI_API_KEY,
+      paymentMethod: waafiPaymentMethod,
       payerInfo: {
-        msisdn: phoneNumber, 
+        msisdn: phoneNumber,
       },
       transactionInfo: {
-        referenceId: transactionId, 
-        invoiceId: `INV_${transactionId}`, 
-        amount: waafiAmount.toString(), 
-        currency: waafiCurrency, 
+        referenceId: transactionId,
+        invoiceId: `INV_${transactionId}`,
+        amount: waafiAmount.toString(), // Waafi might expect amount as string
+        currency: waafiCurrency, // Should be "USD"
         description: `Purchase: ${metadata.packageName} (${metadata.coins} coins)`,
       },
       merchantCallbacks: {
-        notifyUrl: callbackUrl, 
+        notifyUrl: callbackUrl,
       },
-      customParameters: { 
+      customParameters: { // Sending our internal metadata to Waafi
         userId,
         coins: metadata.coins,
         originalAmountKES: metadata.originalAmountKES,
@@ -104,42 +114,51 @@ export default async function handler(
   };
 
   try {
-    console.log("Initiating Waafi payment with MOCK payload:", JSON.stringify(waafiPayload, null, 2));
+    console.log("[API /api/waafi/initiate] Initiating Waafi payment with MOCK payload (actual API call is commented out):", JSON.stringify(waafiPayload, null, 2));
+
     // ***** THIS IS A MOCK API CALL SECTION - REPLACE WITH ACTUAL WAAFI API INTEGRATION *****
-    
     // const response = await fetch(WAAFI_API_ENDPOINT_INITIATE, {
     //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json', /* ... Waafi Auth Headers ... */ },
+    //   headers: {
+    //     'Content-Type': 'application/json',
+    //     // ... Add any other Waafi-specific Auth Headers (e.g., 'Authorization': `Bearer ${WAAFI_API_KEY}`) ...
+    //   },
     //   body: JSON.stringify(waafiPayload),
     // });
-    // if (!response.ok) { 
+
+    // const contentType = response.headers.get('content-type');
+    // if (!response.ok || !contentType || !contentType.includes('application/json')) {
     //    const errorText = await response.text();
-    //    throw new Error(`Waafi API error: ${response.status} - ${errorText}`);
+    //    console.error('[API /api/waafi/initiate] Waafi API error - Non-JSON response:', errorText, 'Status:', response.status);
+    //    throw new Error(`Waafi API error: ${response.status} - ${errorText.substring(0, 100)}`);
     // }
     // const waafiResult = await response.json();
-    // if (!waafiResult.success_flag_or_equivalent_field) { // Adapt success check
-    //   console.error('Waafi API Error:', waafiResult);
+
+    // if (!waafiResult.success_flag_or_equivalent_field) { // Adapt success check based on Waafi's response
+    //   console.error('[API /api/waafi/initiate] Waafi API Error Response:', waafiResult);
     //   throw new Error(waafiResult.response_message_or_equivalent || 'Failed to initiate payment with Waafi. [WAPI_INIT_ERR]');
     // }
+    // ****************************************************************************************
 
-    // Simulate a successful initiation for now - REMOVE FOR PRODUCTION
+    // Simulate a successful initiation for now - REMOVE FOR PRODUCTION AND UNCOMMENT ABOVE
     const mockWaafiResult = {
       responseCode: "2001", // Replace with actual Waafi success code from their docs
       responseMsg: "Request processed successfully. User will be prompted on their phone.",
-      waafiTransactionId: "WFP_MOCK_" + Date.now(),
+      transactionId: "WFP_MOCK_" + Date.now(), // Waafi's transaction ID
     };
-    // **************************************************************************
+    // ****************************************************************************************
 
-    console.log("Mock Waafi initiation successful on server:", mockWaafiResult);
+
+    console.log("[API /api/waafi/initiate] Mock Waafi initiation successful on server:", mockWaafiResult);
     return res.status(200).json({
-      success: true, 
+      success: true,
       message: mockWaafiResult.responseMsg,
-      transactionReference: transactionId, 
-      waafiReference: mockWaafiResult.waafiTransactionId,
+      transactionReference: transactionId, // Our internal transaction ID
+      waafiReference: mockWaafiResult.transactionId, // Waafi's transaction ID
     });
 
   } catch (error: any) {
-    console.error('Error in /api/waafi/initiate catch block:', error);
+    console.error('[API /api/waafi/initiate] Error in catch block:', error);
     return res.status(500).json({ success: false, message: error.message || 'Internal server error during Waafi payment initiation. [WSRV_INIT_ERR]' });
   }
 }
