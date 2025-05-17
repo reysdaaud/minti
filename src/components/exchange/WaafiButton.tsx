@@ -42,7 +42,8 @@ const WaafiButton: React.FC<WaafiButtonProps> = ({
     }
 
     setIsLoading(true);
-    let result; // Declare result outside the try block to widen its scope for the catch
+    let responseData; 
+
     try {
       const response = await fetch('/api/waafi/initiate', {
         method: 'POST',
@@ -59,30 +60,38 @@ const WaafiButton: React.FC<WaafiButtonProps> = ({
       });
 
       const contentType = response.headers.get('content-type');
-      if (!response.ok || !contentType || !contentType.includes('application/json')) {
+
+      if (contentType && contentType.includes('application/json')) {
+        responseData = await response.json();
+      } else {
+        // If not JSON, it's an unexpected server error (like an HTML page from a crash or misconfiguration)
         const responseText = await response.text();
         console.error('Waafi initiation failed. Server response was not JSON:', responseText);
         console.error('Waafi initiation status:', response.status, response.statusText);
-        // Do not use `result.message` here as `result` might not be defined
         throw new Error(`Failed to initiate Waafi payment. Server responded with ${response.status}. Check console for details.`);
       }
-      
-      result = await response.json(); // Assign to result here
 
-      if (!result.success) { // Assuming your API returns a 'success' boolean
-        throw new Error(result.message || 'Failed to initiate Waafi payment. [WAPI_RES_FAIL]');
+      if (!response.ok) { // Checks if status is 200-299
+        console.error('[API /api/waafi/initiate] Waafi API Error Response (from our API route):', responseData);
+        // Use message from JSON error response if available
+        throw new Error(responseData.message || `Failed to initiate payment with Waafi. Status: ${response.status}`);
       }
+
+      // At this point, response.ok is true, and responseData should be the success JSON
+      // No need to check responseData.success explicitly if your API route correctly uses HTTP status codes
+      // For example, a 500 status (like for WCFG01) would mean !response.ok is true.
+      // If your API route *always* returns 200 OK but uses a 'success: false' flag in the JSON,
+      // then you would add: if (!responseData.success) { throw new Error(responseData.message || ...); }
 
       toast({
         title: 'Waafi Payment Initiated',
-        description: result.message || 'Please check your phone to authorize the payment.',
+        description: responseData.message || 'Please check your phone to authorize the payment.',
       });
-      // onCloseDialog(); // Keep dialog open to show processing or success message from callback
+      // onCloseDialog(); // Keep dialog open for now
     } catch (error: any) {
       console.error('Waafi payment initiation error:', error);
       toast({
         title: 'Waafi Payment Error',
-        // Check if error.message exists, otherwise provide a generic message
         description: error.message || 'Could not start Waafi payment. Please try again.',
         variant: 'destructive',
       });
